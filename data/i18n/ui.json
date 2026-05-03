@@ -1,0 +1,60 @@
+{
+  "lang.toggle.label":         { "ja": "言語 / Language", "en": "Language / 言語" },
+  "lang.ja":                   { "ja": "JP：日本語",     "en": "JP：日本語" },
+  "lang.en":                   { "ja": "EN：English",    "en": "EN：English" },
+
+  "title.aria":                { "ja": "ゲームを始める",  "en": "Start the game" },
+  "title.press":               { "ja": "Press to Start", "en": "Press to Start" },
+
+  "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
+
+  "menu.open":                 { "ja": "MENU",         "en": "MENU" },
+  "menu.craft":                { "ja": "クラフト",     "en": "Craft" },
+  "menu.hero":                 { "ja": "ヒーロー",     "en": "Heroes" },
+  "menu.quest":                { "ja": "クエスト",     "en": "Quest" },
+  "menu.shop":                 { "ja": "ショップ",     "en": "Shop" },
+  "menu.market":               { "ja": "マーケット",   "en": "Market" },
+  "menu.settings":             { "ja": "設定",         "en": "Settings" },
+
+  "btn.back":                  { "ja": "← 戻る",       "en": "← Back" },
+
+  "elem.garuda":               { "ja": "ガルーダ",     "en": "Garuda" },
+  "elem.ifrit":                { "ja": "イフリート",   "en": "Ifrit" },
+  "elem.leviathan":            { "ja": "リヴァイアサン", "en": "Leviathan" },
+  "elem.tiamat":               { "ja": "ティアマト",   "en": "Tiamat" },
+
+  "hero.team.title":           { "ja": "クラフトチーム (最大 5 体)", "en": "Craft team (up to 5)" },
+  "hero.team.empty":           { "ja": "空きスロット — ヒーローをタップして配属", "en": "Empty slot — tap a hero to assign" },
+  "hero.list.empty":           { "ja": "所持ヒーローがいません", "en": "No heroes owned" },
+  "hero.craftLevel":           { "ja": "クラフトLV", "en": "Craft Lv" },
+  "hero.stamina":              { "ja": "体力 (HP)",  "en": "Stamina (HP)" },
+  "hero.state.idle":           { "ja": "待機中",     "en": "Idle" },
+  "hero.state.crafting":       { "ja": "クラフト中", "en": "Crafting" },
+  "hero.state.questing":       { "ja": "クエスト中", "en": "On quest" },
+  "hero.state.resting":        { "ja": "休憩中",     "en": "Resting" },
+  "hero.state.assigned":       { "ja": "配属中",     "en": "Assigned" },
+
+  "hero.sort":                 { "ja": "並び順:",                  "en": "Sort:" },
+  "hero.sort.clDesc":          { "ja": "クラフトLV (高い順)",      "en": "Craft Lv (desc)" },
+  "hero.sort.garuda":          { "ja": "ガルーダ",                 "en": "Garuda" },
+  "hero.sort.ifrit":           { "ja": "イフリート",               "en": "Ifrit" },
+  "hero.sort.leviathan":       { "ja": "リヴァイアサン",           "en": "Leviathan" },
+  "hero.sort.tiamat":          { "ja": "ティアマト",               "en": "Tiamat" },
+  "hero.sort.rarity":          { "ja": "レアリティ",               "en": "Rarity" },
+
+  "order.none":                { "ja": "受注なし", "en": "No order" },
+
+  "stub.desc":                 { "ja": "この機能は次のフェーズで実装予定です。", "en": "This feature is coming in a future phase." },
+
+  "help.title":                { "ja": "ヘルプ", "en": "Help" },
+  "help.body":                 { "ja": "マイクリ工房 (MyCryptoFactory) を 8 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう。", "en": "MyCryptoFactory is a workshop-management sim set in the MCH economy. Aim to grow your workshop to #1 in the world within 8 years by earning GUM and reinvesting." },
+  "help.timeNote":             { "ja": "ホーム画面で待機している間のみ時間が進行します（1 週間 = 7 秒）。メニュー / 機能画面を開いている間は時間が止まります。", "en": "Time only advances while you're on the home screen (1 week = 7 seconds). Time pauses while a menu or sub-screen is open." },
+
+  "btn.close":                 { "ja": "閉じる", "en": "Close" },
+  "deck.modal.close":          { "ja": "閉じる", "en": "Close" },
+  "btn.cancel":                { "ja": "キャンセル", "en": "Cancel" },
+  "btn.save":                  { "ja": "保存", "en": "Save" },
+
+  "footer.meta":               { "ja": "MyCryptoFactory Ver.2.0.0 · 非営利のファン制作", "en": "MyCryptoFactory Ver.2.0.0 · Non-commercial fan project" },
+  "footer.credit.full":        { "ja": "キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> 参照。", "en": "Character artwork / assets belong to <strong>My Crypto Heroes (MCH Co., Ltd.)</strong>. See <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> for usage terms." }
+}

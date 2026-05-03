@@ -2,11 +2,14 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   push:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
+  # NOTE: ジョブ名は意図的に "build-and-test" のまま (旧 React+TS scaffold 時の名称)。
+  # main ブランチの保護ルールが required check 名 "build-and-test" を要求しているため、
+  # 名前を変えると PR がマージ不能になる。中身は plain JS 用の syntax check に置換済み。
   build-and-test:
     runs-on: ubuntu-latest
     steps:
@@ -15,15 +18,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - run: npm ci
+      - name: JS syntax check (node --check on every js/*.js)
+        run: |
+          fail=0
+          for f in js/*.js; do
+            echo "checking $f"
+            node --check "$f" || fail=1
+          done
+          exit $fail
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type check + Build
-        run: npm run build
-
-      - name: Test
-        run: npm test
+      - name: JSON validity check (data/**/*.json)
+        run: |
+          fail=0
+          for f in $(find data -name '*.json'); do
+            echo "checking $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf-8'))" || fail=1
+          done
+          exit $fail

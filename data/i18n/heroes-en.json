@@ -1,0 +1,2830 @@
+{
+  "1001": {
+    "name": "Arthur Conan Doyle",
+    "faction": "GENBU",
+    "passiveName": "Sherlock Holmes",
+    "passiveText": "If this hero's HP is less than 70% , {triggerRate}% chance to trigger once. / Increase the first ally's INT by 30% of this hero's INT.",
+    "attributes": "Soft Science; England; Mystery"
+  },
+  "1002": {
+    "name": "Kaihime",
+    "faction": "SUZAKU",
+    "passiveName": "Namikiri",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the first ally's PHY by 15% of this hero's PHY. / Deal damage to the first enemy equal to 50% of this hero's PHY.",
+    "attributes": "Female; Sengoku; Pole weapon"
+  },
+  "1003": {
+    "name": "Zhang Liao",
+    "faction": "BYAKKO",
+    "passiveName": "Zhang Liao is coming!",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 20% of this hero's PHY.",
+    "attributes": "Romance of the Three Kingdoms; Wei; Axe"
+  },
+  "1004": {
+    "name": "Ernest Thompson Seton",
+    "faction": "GENBU",
+    "passiveName": "Lobo the King of Currumpaw",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Deal damage to the enemy with the highest PHY equal to 40% of this hero's INT. / {successRate}% chance to inflict Bleed on the enemy with the highest PHY.",
+    "attributes": "Soft Science; Animal; England"
+  },
+  "1005": {
+    "name": "Inō Tadataka",
+    "faction": "KOURYU",
+    "passiveName": "Dai Nihon Enkai Yochi Zenzu",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the INT of all allies by 25 ~ 30% of this hero's AGI.",
+    "attributes": "Soft Science; Journey; Edo"
+  },
+  "1006": {
+    "name": "Pythagoras",
+    "faction": "SEIRYU",
+    "passiveName": "Tetractys",
+    "passiveText": "If this hero's HP is less than 40% , {triggerRate}% chance to trigger once. / Increase the PHY of the ally with the highest PHY by 28% of this hero's INT. / Increase the INT of the ally with the highest INT by 28% of this hero's PHY.",
+    "attributes": "Soft Science; Hard Science; Greece"
+  },
+  "1007": {
+    "name": "Jang-geum",
+    "faction": "BYAKKO",
+    "passiveName": "Joseon dynasty's Uinyeo",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the ally with the lowest HP for 15% of Healing Coefficient.",
+    "attributes": "Hard Science; Female"
+  },
+  "1008": {
+    "name": "John L. Sullivan",
+    "faction": "SUZAKU",
+    "passiveName": "Boston Strong Boy",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's CHARGE by 100 ~ 250% of this hero's HP decrease.",
+    "attributes": "Duel; America; Grappling"
+  },
+  "1009": {
+    "name": "Hercules beetle",
+    "faction": "SEIRYU",
+    "passiveName": "Rolling Driver",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the highest INT by 64% of this hero's INT. / Increase the INT of the enemy with the lowest INT by 100% of target's PHY.",
+    "attributes": "America"
+  },
+  "1010": {
+    "name": "Prosopocoilus giraffa",
+    "faction": "GENBU",
+    "passiveName": "Bull Rock",
+    "passiveText": "If the total PHY/INT/AGI of this hero is over 150% of its original value, {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 64% of this hero's PHY.",
+    "attributes": "Asia"
+  },
+  "2001": {
+    "name": "Wright Brothers",
+    "faction": "KOURYU",
+    "passiveName": "Wright Flyer",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of all allies by 10% of this hero's INT.",
+    "attributes": "Hard Science; America; Duo; Machine"
+  },
+  "2002": {
+    "name": "Spartacus",
+    "faction": "SUZAKU",
+    "passiveName": "Gladiator War",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 100% of the total INT increase of all enemies. / [2 times]Deal damage to the enemy with the highest INT equal to 30 ~ 50% of this hero's PHY. / Decrease this hero's PHY by 100% of the total INT increase of all enemies.",
+    "attributes": "Duel; Rome"
+  },
+  "2003": {
+    "name": "Jack the Ripper",
+    "faction": "KOURYU",
+    "passiveName": "Langer's Line",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 80% of this hero's PHY decrease. / Deal damage to the last enemy equal to 20% of this hero's PHY. / Decrease the midline ally's PHY by 20% of this hero's INT. / Increase this hero's AGI by 5% of this hero's AGI.",
+    "attributes": "Covert; Occult; England"
+  },
+  "2004": {
+    "name": "Franz Schubert ",
+    "faction": "GENBU",
+    "passiveName": "Erlkönig",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Sleep on all enemies. / Revive this hero with 5 ~ 15% of this hero's Max HP. / Decrease this hero's AGI by 100% of the total HP of all enemies.",
+    "attributes": "Music; Austria"
+  },
+  "2005": {
+    "name": "Brothers Grimm",
+    "faction": "GENBU",
+    "passiveName": "Town Musicians of Bremen",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Heal this hero for 10% of Healing Coefficient. / {successRate}% chance to inflict Confusion on the first enemy.",
+    "attributes": "Soft Science; Animal; Germany; Duo; Fairy tale"
+  },
+  "2006": {
+    "name": "Archimedes",
+    "faction": "KOURYU",
+    "passiveName": "Eureka!Eureka!",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Set this hero's SHIELD to 100% of target's Max HP if higher.",
+    "attributes": "Hard Science; Greece"
+  },
+  "2007": {
+    "name": "Santa Claus",
+    "faction": "SUZAKU",
+    "passiveName": "Present for you",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / [3 times]Heal the ally with the lowest HP for 12 ~ 25% of Healing Coefficient.",
+    "attributes": "Animal; Rome; Faith"
+  },
+  "2008": {
+    "name": "Erwin Schrödinger",
+    "faction": "KOURYU",
+    "passiveName": "Schrödinger's Cat",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 30% of this hero's Max HP. / Increase this hero's INT by 20% of this hero's INT. / Increase this hero's AGI by 20% of this hero's AGI.",
+    "attributes": "Hard Science; Animal; Austria"
+  },
+  "2009": {
+    "name": "Mori Ranmaru",
+    "faction": "SUZAKU",
+    "passiveName": "Messenger of the Amenor",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase the AGI of the enemy with the highest AGI by 25% of this hero's Max HP. / Decrease the AGI of the enemy with the highest AGI by 40% of target's AGI. / {successRate}% chance to inflict Bind on the enemy with the highest AGI.",
+    "attributes": "Sengoku; Honnō-ji Incident"
+  },
+  "2010": {
+    "name": "Franz Kafka",
+    "faction": "GENBU",
+    "passiveName": "The Metamorphosis",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Heal all allies for 30% of Healing Coefficient. / Increase the AGI of all allies by 10% of this hero's AGI.",
+    "attributes": "Soft Science; Poland"
+  },
+  "2011": {
+    "name": "Sun Tzu",
+    "faction": "BYAKKO",
+    "passiveName": "A military operation involves deception.",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the AGI of all enemies by 15 ~ 20% of this hero's INT. / Decrease the AGI of all allies by 10% of this hero's INT.",
+    "attributes": "Soft Science; China"
+  },
+  "2012": {
+    "name": "Ishida Mitsunari",
+    "faction": "SEIRYU",
+    "passiveName": "Pull together",
+    "passiveText": "If the total PHY/INT/AGI of all enemies is over 115% of its original value, {triggerRate}% chance to trigger once. / Increase the first ally's PHY by 20% of the total INT increase of all enemies. / Decrease the first enemy's INT by 120 ~ 140% of target's INT increase.",
+    "attributes": "Politics; Sengoku"
+  },
+  "2013": {
+    "name": "Xu Chu",
+    "faction": "BYAKKO",
+    "passiveName": "Sense of Tiger",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 45% of this hero's INT decrease. / Increase this hero's PHY by 200% of this hero's INT decrease. / Increase this hero's AGI by 100% of this hero's INT decrease. / Decrease this hero's INT by 70.",
+    "attributes": "Romance of the Three Kingdoms; Wei; Axe"
+  },
+  "2014": {
+    "name": "Tokugawa Yoshinobu",
+    "faction": "SEIRYU",
+    "passiveName": "Taisei hokan",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 30% of this hero's INT decrease. / Decrease the PHY of all enemies by 15% of this hero's INT. / Decrease the INT of all enemies by 15% of this hero's INT. / Decrease this hero's INT by 40% of this hero's INT.",
+    "attributes": "Politics; Edo; Machine"
+  },
+  "2015": {
+    "name": "Montesquieu",
+    "faction": "BYAKKO",
+    "passiveName": "The Spirit of the Laws",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the highest INT by 30% of this hero's INT. / Increase the INT of the enemy with the lowest INT by 20% of target's INT. / Increase this hero's INT by 5% of this hero's INT. / Increase this hero's AGI by 5% of this hero's INT.",
+    "attributes": "Soft Science; France"
+  },
+  "2016": {
+    "name": "Anastasia",
+    "faction": "SEIRYU",
+    "passiveName": "Phantom Survivor",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the INT of all enemies by 30 ~ 40% of this hero's INT. / Deal damage to all enemies equal to 50% of target's INT decrease. / Decrease the PHY of all allies by 20% of this hero's INT.",
+    "attributes": "Politics; Female; Occult; Russia"
+  },
+  "2017": {
+    "name": "Geronimo",
+    "faction": "SUZAKU",
+    "passiveName": "Revenge of the Wilderness",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Decrease the first enemy's INT by 15% of this hero's PHY. / Decrease the INT of the enemy with the highest INT by 30% of the total PHY decrease of all allies. / Decrease this hero's INT by 15% of this hero's INT.",
+    "attributes": "America; Faith; Axe"
+  },
+  "2018": {
+    "name": "Lady Chacha",
+    "faction": "GENBU",
+    "passiveName": "Mistress of Osaka Castle",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 30% of this hero's INT. / Set the SHIELD of all allies to 70% of this hero's INT if higher.",
+    "attributes": "Female; Sengoku; Pole weapon"
+  },
+  "2019": {
+    "name": "Kintaro",
+    "faction": "SUZAKU",
+    "passiveName": "Bear and Sumo",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the first enemy's PHY by 20% of target's PHY. / Increase this hero's PHY by 40% of this hero's PHY.",
+    "attributes": "Animal; Japan; Axe"
+  },
+  "2020": {
+    "name": "Akechi Mitsuhide",
+    "faction": "SEIRYU",
+    "passiveName": "Honno-ji Incident",
+    "passiveText": "If this hero's HP is less than 30% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the highest PHY equal to 80% of this hero's INT. / {successRate}% chance to inflict Confusion on the enemy with the highest PHY.",
+    "attributes": "Revolution; Sengoku; Honnō-ji Incident"
+  },
+  "2021": {
+    "name": "Takasugi Shinsaku",
+    "faction": "KOURYU",
+    "passiveName": "Kiheitai",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Barrier on this hero. / 100% chance to inflict Decoy on this hero.",
+    "attributes": "Tactics; Bakumatsu"
+  },
+  "2022": {
+    "name": "Hans Christian Andersen",
+    "faction": "GENBU",
+    "passiveName": "The Little Match Girl",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 35 ~ 55% of this hero's INT.",
+    "attributes": "Soft Science; Poland; Duo; Fairy tale"
+  },
+  "2023": {
+    "name": "Michelangelo",
+    "faction": "GENBU",
+    "passiveName": "The Awakening of David",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase this hero's INT by 50.",
+    "attributes": "Art; Italy"
+  },
+  "2024": {
+    "name": "Salome",
+    "faction": "SUZAKU",
+    "passiveName": "Daughter of Herodias",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 5% of this hero's PHY. / Heal the ally with the lowest HP for 25% of damage taken. / {successRate}% chance to inflict Fear on the first enemy.",
+    "attributes": "Female; Occult; Performing Arts; Mediterranean"
+  },
+  "2025": {
+    "name": "SATOSHI・NAKAMOTO ALPHA CC",
+    "faction": "GENBU",
+    "passiveName": "Mining ALPHA CC",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the last ally's PHY by 10% of this hero's PHY. / Increase the last ally's AGI by 10% of this hero's PHY.",
+    "attributes": "Hard Science; Mystery"
+  },
+  "2026": {
+    "name": "Toyotomi Hideyoshi",
+    "faction": "SEIRYU",
+    "passiveName": "Monkey Success Story",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of the ally with the highest PHY by 20% of this hero's AGI.",
+    "attributes": "Head; Animal; Sengoku; Ruler over Sengoku"
+  },
+  "2027": {
+    "name": "Aesop",
+    "faction": "GENBU",
+    "passiveName": "The Tortoise and the Hare",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Decrease the AGI of the enemy with the highest INT by 100% of target's AGI. / Increase the AGI of the enemy with the highest INT by 30% of this hero's AGI.",
+    "attributes": "Soft Science; Animal; Greece; Fairy tale"
+  },
+  "2028": {
+    "name": "Trưng Sisters",
+    "faction": "SEIRYU",
+    "passiveName": "Sister Rebellion",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 70 ~ 100% of this hero's PHY decrease. / Deal damage to the last enemy equal to 70 ~ 100% of this hero's INT decrease.",
+    "attributes": "Female; Animal; Asia; Duo; The world's three greatest Jeannes"
+  },
+  "2029": {
+    "name": "Ikkyu",
+    "faction": "KOURYU",
+    "passiveName": "Happy and Unhappy",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 20% of this hero's Max HP. / Deal damage to the last enemy equal to 30 ~ 50% of this hero's INT.",
+    "attributes": "Sengoku; Faith; Mystery"
+  },
+  "2030": {
+    "name": "Izumo no Okuni",
+    "faction": "GENBU",
+    "passiveName": "Yayako-Dance",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 35 ~ 55% of this hero's PHY.",
+    "attributes": "Female; Sengoku; Performing Arts"
+  },
+  "2031": {
+    "name": "Bismarck",
+    "faction": "SEIRYU",
+    "passiveName": "Blood and Iron speech",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Fear on the midline enemy. / {successRate}% chance to inflict Fear on the last enemy.",
+    "attributes": "Head; Politics; Germany"
+  },
+  "2032": {
+    "name": "Montgomery",
+    "faction": "SUZAKU",
+    "passiveName": "Green Gables",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 30% of this hero's INT. / Deal damage to the last enemy equal to 50% of this hero's INT decrease.",
+    "attributes": "Soft Science; Female; America"
+  },
+  "2033": {
+    "name": "Goethe",
+    "faction": "BYAKKO",
+    "passiveName": "The Sorrows of Young Werther",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Decrease the first enemy's PHY by 100% of target's PHY. / Increase the first enemy's PHY by 30% of this hero's PHY. / {successRate}% chance to inflict Bind on all enemies.",
+    "attributes": "Politics; Soft Science; Hard Science; Germany"
+  },
+  "2034": {
+    "name": "Plato",
+    "faction": "BYAKKO",
+    "passiveName": "Theory of Ideas",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of this hero's PHY. / Increase the PHY of the enemy with the lowest PHY by 20% of target's PHY. / Increase this hero's PHY by 5% of this hero's PHY. / Increase this hero's AGI by 5% of this hero's PHY.",
+    "attributes": "Soft Science; Greece"
+  },
+  "2035": {
+    "name": "Sarutahiko",
+    "faction": "KOURYU",
+    "passiveName": "AD 3344 years",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the first enemy's INT by 20% of this hero's PHY. / Increase this hero's INT by 20 ~ 30% of this hero's INT.",
+    "attributes": "Hard Science; Japan; Traditional; TEZUKA"
+  },
+  "2036": {
+    "name": "Higuchi Ichiyō",
+    "faction": "BYAKKO",
+    "passiveName": "Takekurabe",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the AGI of the enemy with the highest Max HP by 30% of target's AGI. / Decrease the first ally's INT by 100% of this hero's INT. / Increase the first ally's INT by 80% of this hero's INT.",
+    "attributes": "Soft Science; Female; Japan"
+  },
+  "2037": {
+    "name": "Sun Ce",
+    "faction": "SUZAKU",
+    "passiveName": "Prince Huan of Changsha",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 25% of this hero's PHY. / [5 times]Deal damage to the enemy with the lowest HP equal to 15% of this hero's PHY. / Decrease this hero's PHY by 20% of this hero's PHY.",
+    "attributes": "Romance of the Three Kingdoms; Wu"
+  },
+  "2038": {
+    "name": "Taira no Kiyomori",
+    "faction": "SEIRYU",
+    "passiveName": "Political Change in Jicho 3",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 30 ~ 40% of this hero's PHY. / Deal damage to all enemies equal to 50% of target's PHY decrease. / Decrease the INT of all allies by 20% of this hero's PHY.",
+    "attributes": "Politics; Revolution; Heian-Kamakura"
+  },
+  "2039": {
+    "name": "Fyodor Dostoevsky",
+    "faction": "SEIRYU",
+    "passiveName": "The Brothers Karamazov",
+    "passiveText": "If the total HP of all allies is less than 75% , {triggerRate}% chance to trigger once. / Decrease this hero's PHY by 100% of this hero's INT. / Increase the INT of all allies by 60% of this hero's PHY decrease. / Increase the AGI of all allies by 30% of this hero's PHY decrease.",
+    "attributes": "Soft Science; Revolution; Russia"
+  },
+  "2040": {
+    "name": "Hua Mulan",
+    "faction": "SUZAKU",
+    "passiveName": "Three principles and five virtues",
+    "passiveText": "If the total HP of all enemies is less than 65% , {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Barrier on all allies.",
+    "attributes": "Female; China"
+  },
+  "2041": {
+    "name": "Benjamin Franklin",
+    "faction": "KOURYU",
+    "passiveName": "Kite and Leyden jar lightning experiment",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the PHY of the ally with the highest PHY by 100% of this hero's PHY. / Increase the INT of the ally with the highest INT by 100% of this hero's INT.",
+    "attributes": "Politics; Soft Science; Hard Science; America; American Dream"
+  },
+  "2042": {
+    "name": "Vasco da Gama",
+    "faction": "KOURYU",
+    "passiveName": "Sao Gabriel",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / 100% chance to inflict Decoy on this hero. / Increase this hero's AGI by 5% of this hero's AGI.",
+    "attributes": "Sea; Journey; Mediterranean"
+  },
+  "2043": {
+    "name": "Kirigakure Saizō",
+    "faction": "BYAKKO",
+    "passiveName": "Ninjutsu-Dokugiri",
+    "passiveText": "If this hero's HP is less than 80% , {triggerRate}% chance to trigger once. / Increase this hero's INT by 90% of this hero's PHY. / {successRate}% chance to inflict Poison on all allies. / {successRate}% chance to inflict Poison on all enemies. / Decrease the last enemy's PHY by 5% of this hero's INT. 15% if affected by Poison.",
+    "attributes": "Covert; Japan"
+  },
+  "2044": {
+    "name": "Socrates",
+    "faction": "BYAKKO",
+    "passiveName": "Arete",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of all allies by 60% of target's INT increase. / Decrease the INT of all enemies by 60% of target's INT increase. / Increase the INT of all allies by 30% of target's INT. / Increase the INT of all enemies by 30% of target's INT.",
+    "attributes": "Soft Science; Greece"
+  },
+  "2045": {
+    "name": "Bodhidharma",
+    "faction": "BYAKKO",
+    "passiveName": "Treatise on the Two Entrances and Four Practices",
+    "passiveText": "If the total HP of all enemies is less than 65% , {triggerRate}% chance to trigger once. / Decrease the AGI of all enemies by 15 ~ 25% of target's Max HP. / Increase the AGI of all enemies by 10 ~ 15% of target's PHY. / Increase the AGI of all enemies by 10 ~ 15% of target's INT.",
+    "attributes": "China; Faith; Grappling"
+  },
+  "2046": {
+    "name": "Hōjō Masako",
+    "faction": "SEIRYU",
+    "passiveName": "Nun Shogun",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the last enemy's higher PHY/INT by 5 ~ 10% of this hero's PHY. / Increase this hero's PHY by 10 ~ 30% of the total PHY/INT/AGI decrease of all enemies.",
+    "attributes": "Head; Politics; Female; Heian-Kamakura; Faith"
+  },
+  "2047": {
+    "name": "Aristotle",
+    "faction": "BYAKKO",
+    "passiveName": "Aether",
+    "passiveText": "If this hero's HP is less than 55% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the lowest HP equal to 45% of this hero's INT. / Deal damage to the enemy with the lowest HP equal to 25 ~ 35% of this hero's HP decrease.",
+    "attributes": "Soft Science; Greece; Universe"
+  },
+  "2048": {
+    "name": "Pierre-Auguste Renoir",
+    "faction": "GENBU",
+    "passiveName": "Bal du moulin de la Galette",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the higher PHY/INT of all enemies by 10% of target's Max HP. / Decrease the lower PHY/INT of all allies by 10% of target's Max HP. / Deal damage to the enemy with the lowest INT equal to 20% of this hero's INT.",
+    "attributes": "Art; France"
+  },
+  "2049": {
+    "name": "Frédéric Chopin",
+    "faction": "GENBU",
+    "passiveName": "Valse de l'adieu",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Sleep on the enemy with the highest Max HP. / Decrease the AGI of the enemy with the highest Max HP by 10% of target's AGI. 60% if affected by Decoy.",
+    "attributes": "Music; Poland"
+  },
+  "2051": {
+    "name": "Armaroid Lady",
+    "faction": "KOURYU",
+    "passiveName": "Live Metal",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of the ally with the highest INT by 10 ~ 20% of this hero's PHY. 20 ~ 30% if affected by Sleep.",
+    "attributes": "Female; Journey; Duo; Machine; Universe"
+  },
+  "2052": {
+    "name": "UKA",
+    "faction": "SUZAKU",
+    "passiveName": "Desperately",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the lower PHY/INT of an ally or enemy by 88. / Deal damage to the first enemy equal to 33% of this hero's INT.",
+    "attributes": "Female; Animal; Machine; OASYX"
+  },
+  "2053": {
+    "name": "RAMON",
+    "faction": "SEIRYU",
+    "passiveName": "One-on-One",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 70% of this hero's PHY decrease. / Deal damage to the enemy with the highest Max HP equal to 55% of this hero's PHY.",
+    "attributes": "Hard Science; Duel; Grappling; One-eyed; OASYX"
+  },
+  "3001": {
+    "name": "ETHEREMON-RED",
+    "faction": "SUZAKU",
+    "passiveName": "Kyari Slash",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 70% of this hero's PHY decrease. / Deal damage to the first enemy equal to 70% of this hero's PHY.",
+    "attributes": "Duel; Etheremon"
+  },
+  "3002": {
+    "name": "D'Artagnan",
+    "faction": "SUZAKU",
+    "passiveName": "One for all/ All for one",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 10% of this hero's INT. / Increase the INT of all allies by 10% of this hero's INT.",
+    "attributes": "Firearms; France"
+  },
+  "3003": {
+    "name": "Gennai Hiraga",
+    "faction": "BYAKKO",
+    "passiveName": "The Elekiter",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase this hero's INT by 90% of this hero's INT decrease. / Deal damage to all enemies equal to 40% of this hero's INT.",
+    "attributes": "Hard Science; Edo; Machine"
+  },
+  "3004": {
+    "name": "Mata Hari",
+    "faction": "BYAKKO",
+    "passiveName": "Eye of the day",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the lowest INT by 10% of this hero's INT. / Deal damage to the enemy with the lowest INT equal to 20% of this hero's INT. / {successRate}% chance to inflict Bind on the enemy with the lowest INT.",
+    "attributes": "Female; Covert; Poland"
+  },
+  "3005": {
+    "name": "ETHEREMON-BLUE",
+    "faction": "SEIRYU",
+    "passiveName": "Omnom Tactics",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 75% , {triggerRate}% chance to trigger. / Increase this hero's INT by 50% of this hero's INT decrease. / Increase this hero's AGI by 50% of this hero's AGI decrease. / Deal damage to the first enemy equal to 50% of this hero's INT.",
+    "attributes": "Tactics; Etheremon"
+  },
+  "3006": {
+    "name": "ETHEREMON-GREEN",
+    "faction": "GENBU",
+    "passiveName": "Mintol Art",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 50% of target's PHY decrease. / Increase the INT of all allies by 50% of target's INT decrease. / Heal all allies for 30% of Healing Coefficient.",
+    "attributes": "Music; Etheremon"
+  },
+  "3007": {
+    "name": "Emperor Nero",
+    "faction": "SEIRYU",
+    "passiveName": "The Tyrant",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 50% of damage taken. / Heal this hero for 40% of this hero's INT. / Decrease the PHY of all allies by 30% of this hero's INT.",
+    "attributes": "Head; Politics; Rome; Pole weapon; Performing Arts"
+  },
+  "3008": {
+    "name": "Michel Nostradamus",
+    "faction": "BYAKKO",
+    "passiveName": "Les Propheties",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Confusion on all enemies. / Decrease the highest PHY/INT/AGI of all enemies by 100% of the total PHY/INT/AGI increase of target.",
+    "attributes": "Hard Science; Occult; France"
+  },
+  "3009": {
+    "name": "Jiang Ziya",
+    "faction": "BYAKKO",
+    "passiveName": "Six Secret Teachings",
+    "passiveText": "If this hero's HP is less than 65% , {triggerRate}% chance to trigger once. / Decrease the INT of all allies by 80% of target's INT increase. / Increase the INT of all allies by 50% of this hero's INT. / Increase the CHARGE of all allies by 200% of this hero's INT.",
+    "attributes": "China; Traditional"
+  },
+  "3010": {
+    "name": "Hanzo Hattori",
+    "faction": "SUZAKU",
+    "passiveName": "My Lord",
+    "passiveText": "If the total HP of all allies is less than 70% , {triggerRate}% chance to trigger once. / Heal all allies for 100% of Healing Coefficient.",
+    "attributes": "Covert; Sengoku"
+  },
+  "3011": {
+    "name": "Keiji Maeda",
+    "faction": "GENBU",
+    "passiveName": "Kabuki-mono",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the first enemy's highest PHY/INT/AGI by 20% of this hero's PHY. / Decrease the first enemy's highest PHY/INT/AGI by 20% of this hero's INT.",
+    "attributes": "Sengoku; Pole weapon"
+  },
+  "3012": {
+    "name": "Amakusa Shirō",
+    "faction": "BYAKKO",
+    "passiveName": "Shimabara Rebellion",
+    "passiveText": "If the total PHY/INT/AGI of this hero is less than 75% of its original value, {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 95% of target's PHY decrease. / Increase the INT of all allies by 95% of target's INT decrease. / Deal damage to this hero equal to 100% of the total PHY/INT/AGI decrease of this hero. / Increase the AGI of all allies by 95% of target's AGI decrease.",
+    "attributes": "Revolution; Edo; Faith"
+  },
+  "3013": {
+    "name": "Goemon Ishikawa",
+    "faction": "KOURYU",
+    "passiveName": "Thieves never die",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 30% of this hero's Max HP. / Deal damage to all enemies equal to 20% of this hero's PHY.",
+    "attributes": "Covert; Sengoku"
+  },
+  "3014": {
+    "name": "Naoe Kanetsugu",
+    "faction": "SEIRYU",
+    "passiveName": "Letter of challenge",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Confusion on the frontline enemy. / Decrease the frontline enemy's PHY by 5% of this hero's INT. 30% if affected by Confusion. / {successRate}% chance to inflict Fear on the midline enemy. / Decrease the midline enemy's PHY by 5% of this hero's INT. 30% if affected by Fear. / {successRate}% chance to inflict Stun on the backline enemy. / Decrease the backline enemy's INT by 5% of this hero's INT. 30% if affected by Stun.",
+    "attributes": "Sengoku"
+  },
+  "3015": {
+    "name": "Ivan the Terrible",
+    "faction": "SEIRYU",
+    "passiveName": "Tourism",
+    "passiveText": "If the total HP of all allies is less than 70% , {triggerRate}% chance to trigger once. / Deal damage to all allies equal to 15% of this hero's INT. / Increase the PHY of all allies by 20% of this hero's INT. / Increase the INT of all allies by 20% of this hero's INT. / Increase the PHY of all allies by 50% of target's PHY decrease. / Increase the INT of all allies by 50% of target's INT decrease.",
+    "attributes": "Russia; Pole weapon"
+  },
+  "3016": {
+    "name": "Matsuo Bashō",
+    "faction": "GENBU",
+    "passiveName": "The Narrow Road to the Deep North",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's AGI by 8% of this hero's AGI. / Increase the first ally's AGI by 8% of this hero's AGI.",
+    "attributes": "Soft Science; Journey; Edo"
+  },
+  "3017": {
+    "name": "Xuanzang",
+    "faction": "BYAKKO",
+    "passiveName": "Great Tang Records on the Western Regions",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 15% of this hero's INT.",
+    "attributes": "Soft Science; Journey; China; Faith"
+  },
+  "3018": {
+    "name": "Benkei",
+    "faction": "KOURYU",
+    "passiveName": "Standing beneath Benkei",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 100% of this hero's Max HP. / Decrease this hero's PHY by 100% of this hero's PHY. / Decrease this hero's INT by 100% of this hero's INT.",
+    "attributes": "Heian-Kamakura; Pole weapon"
+  },
+  "3019": {
+    "name": "Huang Zhong",
+    "faction": "GENBU",
+    "passiveName": "Shoot down the gods",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of this hero's PHY. / Decrease the AGI of the enemy with the highest PHY by 20% of this hero's INT. / {successRate}% chance to inflict Gravity on the enemy with the highest PHY.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Bow"
+  },
+  "3020": {
+    "name": "Diao Chan",
+    "faction": "KOURYU",
+    "passiveName": "Chaining scheme",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of all enemies by 10% of this hero's INT. / Decrease the INT of all enemies by 10% of this hero's INT.",
+    "attributes": "Female; Romance of the Three Kingdoms"
+  },
+  "3021": {
+    "name": "Saint Valentine",
+    "faction": "BYAKKO",
+    "passiveName": "Blessing of Valentinus",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the first ally for 10 ~ 20% of Healing Coefficient. / Heal the ally with the lowest HP for 10% of Healing Coefficient.",
+    "attributes": "Rome; Faith"
+  },
+  "3022": {
+    "name": "Pocahontas",
+    "faction": "GENBU",
+    "passiveName": "Princess Powhatan",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the first enemy for 15% of Healing Coefficient. / Decrease the AGI of all enemies by 15% of this hero's INT.",
+    "attributes": "Female; America"
+  },
+  "3023": {
+    "name": "Sun Jian",
+    "faction": "SUZAKU",
+    "passiveName": "Gangdong Fierce Tiger",
+    "passiveText": "If the total HP of all allies is less than 70% , {triggerRate}% chance to trigger once. / Deal damage to this hero equal to 50% of this hero's PHY. / Increase the PHY of all allies by 80% of target's PHY decrease. / Increase the AGI of all allies by 80% of target's AGI decrease. / Increase the PHY of all allies by 25% of this hero's PHY. / Increase the AGI of all allies by 15% of this hero's PHY.",
+    "attributes": "Romance of the Three Kingdoms; Wu"
+  },
+  "3024": {
+    "name": "Peter Paul Rubens",
+    "faction": "GENBU",
+    "passiveName": "Golden workshop",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 80% , {triggerRate}% chance to trigger. / Increase the AGI of all allies by 50% of target's AGI decrease. / Increase the AGI of all allies by 10% of this hero's AGI.",
+    "attributes": "Art; Poland"
+  },
+  "3025": {
+    "name": "Sanada Yukimura",
+    "faction": "SUZAKU",
+    "passiveName": "Sanada Maru",
+    "passiveText": "If the total HP of all allies is less than 80% , {triggerRate}% chance to trigger once. / Decrease the first enemy's PHY by 60% of this hero's PHY. / Decrease the first enemy's INT by 60% of this hero's PHY. / Decrease the midline enemy's PHY by 30% of this hero's PHY. / Decrease the midline enemy's INT by 30% of this hero's PHY. / Decrease this hero's AGI by 100% of this hero's AGI.",
+    "attributes": "Sengoku; Pole weapon"
+  },
+  "3026": {
+    "name": "Robin Hood",
+    "faction": "KOURYU",
+    "passiveName": "Green Hood Thief",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the highest HP equal to 30% of this hero's INT. 120% if affected by Decoy. / Heal the ally with the lowest HP for 30% of Healing Coefficient. / 100% chance to inflict Decoy on the enemy with the highest HP.",
+    "attributes": "England; Traditional; Bow"
+  },
+  "3027": {
+    "name": "Yang Duan He",
+    "faction": "SUZAKU",
+    "passiveName": "Majestic General",
+    "passiveText": "If the total HP of all allies is less than 55% , {triggerRate}% chance to trigger once. / Increase the AGI of all allies by 30 ~ 40% of this hero's PHY. / Increase the PHY of all allies by 40% of the total PHY increase of all enemies. / Increase the CHARGE of all allies by 100% of the total HP of all enemies.",
+    "attributes": "Qin; Mystery"
+  },
+  "3028": {
+    "name": "Claude Monet",
+    "faction": "GENBU",
+    "passiveName": "Water Lilies",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the first ally for 10% of this hero's Max HP. / {successRate}% chance to inflict Sleep on the enemy with the highest PHY.",
+    "attributes": "Art; France"
+  },
+  "3029": {
+    "name": "Mary Read",
+    "faction": "KOURYU",
+    "passiveName": "Flash of Cutlass",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 120% of this hero's PHY.",
+    "attributes": "Female; Sea; America; Axe; Blackbeard Pirates"
+  },
+  "3030": {
+    "name": "William Shakespeare",
+    "faction": "GENBU",
+    "passiveName": "Bard of Avon",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 20% of this hero's INT. / {successRate}% chance to inflict Sleep on all enemies. / {successRate}% chance to inflict Sleep on all allies. / Decrease this hero's INT by 100% of this hero's INT increase.",
+    "attributes": "Soft Science; England; Performing Arts"
+  },
+  "3031": {
+    "name": "Wyatt Earp",
+    "faction": "KOURYU",
+    "passiveName": "Invincible Gunman",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of the ally with the lowest HP by 10% of this hero's INT. 25% if affected by Fear. / Increase this hero's INT by 15% of this hero's HP decrease. / {successRate}% chance to inflict Fear on the enemy with the lowest INT.",
+    "attributes": "Firearms; Duel; Western"
+  },
+  "3032": {
+    "name": "Anne Bonny",
+    "faction": "BYAKKO",
+    "passiveName": "Precision of Musket",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the lowest HP equal to 150% of this hero's INT decrease. / Increase this hero's INT by 30% of this hero's INT. / Deal damage to the enemy with the lowest HP equal to 100% of this hero's INT.",
+    "attributes": "Female; Sea; Firearms; America; Blackbeard Pirates"
+  },
+  "3034": {
+    "name": "Percival",
+    "faction": "KOURYU",
+    "passiveName": "Explore the Holy Grail",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Heal the ally with the lowest HP for 60% of PHY Healing Coefficient. / Increase the AGI of all allies by 50% of healing dealt by this hero.",
+    "attributes": "Traditional; Celtic; Pole weapon; Knights of the Round Table"
+  },
+  "3035": {
+    "name": "Ono no Komachi",
+    "faction": "GENBU",
+    "passiveName": "Nanakomachi",
+    "passiveText": "If the total HP of all allies is less than 80% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 100% of target's PHY decrease. / Increase the INT of all allies by 100% of target's INT decrease.",
+    "attributes": "Soft Science; Female; Heian-Kamakura; Top three beauties of all times and places"
+  },
+  "3036": {
+    "name": "Belle Starr",
+    "faction": "KOURYU",
+    "passiveName": "Legend of the Sanzoku Queen",
+    "passiveText": "After an ally or enemy uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the highest INT equal to 70% of this hero's INT.",
+    "attributes": "Female; Firearms; Western"
+  },
+  "3037": {
+    "name": "Magellan",
+    "faction": "KOURYU",
+    "passiveName": "Around the World",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 50% of this hero's Max HP. / Increase the PHY of all allies by 25% of this hero's PHY.",
+    "attributes": "Sea; Journey; Mediterranean"
+  },
+  "3038": {
+    "name": "Sarutobi Sasuke",
+    "faction": "SUZAKU",
+    "passiveName": "Mine fire",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 20% of this hero's AGI.",
+    "attributes": "Covert; Japan"
+  },
+  "3039": {
+    "name": "Lakshmi Bai",
+    "faction": "SEIRYU",
+    "passiveName": "Main meri Jhansi nahi doongi",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of all allies by 15% of this hero's PHY. / Decrease the AGI of all enemies by 5% of this hero's PHY. / Decrease the PHY of all allies by 5% of this hero's PHY.",
+    "attributes": "Female; Animal; Asia; The world's three greatest Jeannes"
+  },
+  "3040": {
+    "name": "Gilgamesh",
+    "faction": "SUZAKU",
+    "passiveName": "Battle against Humbaba",
+    "passiveText": "If the total PHY/INT/AGI of all enemies is over 150% of its original value, {triggerRate}% chance to trigger once. / Deal damage to the enemy with the highest PHY equal to 100% of target's PHY increase. / Heal the ally with the lowest HP for 100% of PHY Healing Coefficient.",
+    "attributes": "Head; Politics; Animal; Grappling; Mediterranean"
+  },
+  "3041": {
+    "name": "Raffaello Santi",
+    "faction": "GENBU",
+    "passiveName": "Sistine Madonna",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 20% of this hero's AGI.",
+    "attributes": "Art; Italy"
+  },
+  "3042": {
+    "name": "Christopher Columbus",
+    "faction": "KOURYU",
+    "passiveName": "Dream of the westbound sea route",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Decrease the highest PHY/INT/AGI of all enemies by 70% of the total PHY/INT/AGI increase of target. / Decrease the highest PHY/INT/AGI of all allies by 70% of the total PHY/INT/AGI increase of target. / Heal all allies for 30% of Healing Coefficient.",
+    "attributes": "Sea; Journey; Mediterranean"
+  },
+  "3043": {
+    "name": "Isaac Newton",
+    "faction": "BYAKKO",
+    "passiveName": "Newton's law of universal gravitation",
+    "passiveText": "If the total HP of all allies is less than 80% , {triggerRate}% chance to trigger once. / Decrease the AGI of all allies by 100% of target's AGI increase. / Increase the AGI of all allies by 100% of target's AGI decrease. / Decrease the AGI of all enemies by 100% of target's AGI increase. / Increase the AGI of all enemies by 100% of target's AGI decrease. / {successRate}% chance to inflict Barrier on all allies.",
+    "attributes": "Hard Science; England; Universe"
+  },
+  "3044": {
+    "name": "Tokugawa Ieyasu",
+    "faction": "SEIRYU",
+    "passiveName": "Tōshō Daigongen",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Heal all allies for 100% of PHY Healing Coefficient.",
+    "attributes": "Head; Politics; Edo; Ruler over Sengoku"
+  },
+  "3045": {
+    "name": "Saitō Hajime",
+    "faction": "SEIRYU",
+    "passiveName": "Invincible Samurai Sword",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Prostration on the first enemy. / {successRate}% chance to inflict Prostration on the midline enemy. / Deal damage to the first enemy equal to 20 ~ 30% of this hero's PHY. / Deal damage to an ally or enemy equal to 30 ~ 50% of this hero's PHY.",
+    "attributes": "Duel; Bakumatsu; Shinsengumi"
+  },
+  "3046": {
+    "name": "Maria Theresa",
+    "faction": "SEIRYU",
+    "passiveName": "Seven Years' War",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Sleep on the enemy with the lowest HP. / Decrease the AGI of all allies by 3 ~ 7% of this hero's INT. / Decrease the AGI of all enemies by 7% of this hero's INT.",
+    "attributes": "Head; Politics; Female; Austria"
+  },
+  "3047": {
+    "name": "Attila",
+    "faction": "SEIRYU",
+    "passiveName": "King  of the Hunnic Empire",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 40% of damage taken. / Heal the midline ally for 20% of this hero's PHY.",
+    "attributes": "Head; Poland; Asia"
+  },
+  "3048": {
+    "name": "Ma Chao",
+    "faction": "GENBU",
+    "passiveName": "Five Tiger-General of the Left",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the higher PHY/INT of all allies by 20% of this hero's PHY. / Decrease the higher PHY/INT of all enemies by 40% of the total PHY/INT/AGI increase of target.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon"
+  },
+  "3049": {
+    "name": "Dong Zhuo",
+    "faction": "KOURYU",
+    "passiveName": "Prevalence of arbitrariness",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the AGI of the enemy with the highest AGI by 20 ~ 50% of target's AGI increase. / 100% chance to inflict Decoy on the ally with the highest HP. / 100% chance to inflict Decoy on the enemy with the lowest HP. / {successRate}% chance to inflict Fear on this hero.",
+    "attributes": "Head; Romance of the Three Kingdoms"
+  },
+  "3050": {
+    "name": "Medb",
+    "faction": "SUZAKU",
+    "passiveName": "Queen's Triskelion",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of target's PHY increase. / Decrease the AGI of the enemy with the highest AGI by 40% of target's AGI increase. / Heal this hero for 25% of Healing Coefficient.",
+    "attributes": "Female; Traditional; Celtic; Pole weapon"
+  },
+  "3051": {
+    "name": "Minamoto no Yoritomo",
+    "faction": "SEIRYU",
+    "passiveName": "Sei-i Tai Shōgun",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 100% of damage taken. / Increase the CHARGE of all allies by 500 ~ 1185% of this hero's PHY increase. / Deal damage to the enemy with the highest PHY equal to 50% of this hero's PHY increase.",
+    "attributes": "Politics; Animal; Heian-Kamakura"
+  },
+  "3054": {
+    "name": "DOURAN",
+    "faction": "SUZAKU",
+    "passiveName": "Oiran Courtesan Procession",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Charm on the enemy with the highest HP.",
+    "attributes": "Female; Journey; Performing Arts; OASYX"
+  },
+  "4001": {
+    "name": "Zhang Fei",
+    "faction": "GENBU",
+    "passiveName": "A Match for a Thousand Foes",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 50% of this hero's Max HP.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon; Oath of the Peach Garden"
+  },
+  "4002": {
+    "name": "Florence Nightingale",
+    "faction": "BYAKKO",
+    "passiveName": "Angel in White",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 60% , {triggerRate}% chance to trigger. / Heal all allies for 100% of Healing Coefficient.",
+    "attributes": "Hard Science; Female; England"
+  },
+  "4003": {
+    "name": "Ludwig van Beethoven",
+    "faction": "GENBU",
+    "passiveName": "Ode to Joy",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 25% of this hero's INT. / Decrease the INT of all enemies by 25% of this hero's INT. / Decrease the AGI of all enemies by 25% of this hero's INT.",
+    "attributes": "Music; Germany"
+  },
+  "4004": {
+    "name": "Kojiro Sasaki",
+    "faction": "KOURYU",
+    "passiveName": "Swallow's Blade",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's AGI by 10% of this hero's AGI. / Increase this hero's lower PHY/INT by 5 ~ 8% of this hero's AGI. / Decrease the midline enemy's higher PHY/INT by 5 ~ 8% of this hero's AGI.",
+    "attributes": "Duel; Edo"
+  },
+  "4005": {
+    "name": "Kaishu Katsu",
+    "faction": "SEIRYU",
+    "passiveName": "Bloodless Capture",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 60% , {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's INT. / Increase the INT of all allies by 30% of this hero's INT.",
+    "attributes": "Soft Science; Sea; Bakumatsu"
+  },
+  "4006": {
+    "name": "Billy the Kid",
+    "faction": "KOURYU",
+    "passiveName": "Bull's eye",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 40% of this hero's INT.",
+    "attributes": "Firearms; Duel; Western"
+  },
+  "4007": {
+    "name": "Thomas Edison",
+    "faction": "KOURYU",
+    "passiveName": "Edison Effect",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 30% of this hero's INT.",
+    "attributes": "Hard Science; America; Machine"
+  },
+  "4008": {
+    "name": "Marco Polo",
+    "faction": "KOURYU",
+    "passiveName": "The Travels of Marco Polo",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Heal all allies for 70% of Healing Coefficient. / Revive this hero with 30% of this hero's Max HP. / Decrease the PHY of the enemy with the highest PHY by 40% of target's PHY.",
+    "attributes": "Soft Science; Animal; Journey; Italy"
+  },
+  "4009": {
+    "name": "Masamune Date",
+    "faction": "SEIRYU",
+    "passiveName": "One-Eyed Dragon of Ohshu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 140% of this hero's INT. / Deal damage to the first enemy equal to 70% of this hero's INT decrease. / Decrease the midline enemy's highest PHY/INT/AGI by 30% of the total PHY/INT/AGI increase of all enemies. / Decrease the backline enemy's highest PHY/INT/AGI by 30% of the total PHY/INT/AGI increase of all enemies.",
+    "attributes": "Sengoku; One-eyed"
+  },
+  "4010": {
+    "name": "Wang Ki",
+    "faction": "SUZAKU",
+    "passiveName": "The generalissimo",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 70% of this hero's PHY. / Increase the CHARGE of all allies by 250% of target's PHY.",
+    "attributes": "Qin; Pole weapon"
+  },
+  "4011": {
+    "name": "Karl Marx",
+    "faction": "BYAKKO",
+    "passiveName": "Das Kapital",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the INT of all allies by 20 ~ 30% of this hero's INT. / {successRate}% chance to inflict Sleep on all enemies. / Revive this hero with 10% of this hero's Max HP.",
+    "attributes": "Soft Science; Revolution; Germany"
+  },
+  "4012": {
+    "name": "Soji Okita",
+    "faction": "SEIRYU",
+    "passiveName": "Three Stage Thrust",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / [3 times]Deal damage to the first enemy equal to 50% of this hero's PHY.",
+    "attributes": "Bakumatsu; Shinsengumi"
+  },
+  "4013": {
+    "name": "Pyotr Tchaikovsky",
+    "faction": "GENBU",
+    "passiveName": "Swan Lake",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 20% of this hero's Max HP. / Increase this hero's AGI by 30% of this hero's INT.",
+    "attributes": "Music; Animal; Russia"
+  },
+  "4014": {
+    "name": "Marie Antoinette",
+    "faction": "GENBU",
+    "passiveName": "Brioche shoot",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to all enemies equal to 25% of this hero's INT. / Heal this hero for 30% of damage dealt. / {successRate}% chance to inflict Poison on this hero.",
+    "attributes": "Politics; Female; France"
+  },
+  "4015": {
+    "name": "Yang Guifei",
+    "faction": "GENBU",
+    "passiveName": "Imperial consort",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the AGI of the enemy with the lowest INT by 130% of this hero's INT. / Increase the AGI of the enemy with the lowest INT by 40% of target's INT.",
+    "attributes": "Music; Female; China; Performing Arts; Top three beauties of all times and places"
+  },
+  "4016": {
+    "name": "Lü Bu",
+    "faction": "KOURYU",
+    "passiveName": "Kingslayer",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase this hero's PHY by 10% of this hero's PHY. / Deal damage to the first enemy equal to 60% of this hero's PHY. / {successRate}% chance to inflict Fear on all enemies.",
+    "attributes": "Romance of the Three Kingdoms; Pole weapon"
+  },
+  "4017": {
+    "name": "Marie Curie",
+    "faction": "KOURYU",
+    "passiveName": "Petit Curie",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 10 ~ 15% of this hero's INT. / Heal all allies for 25% of Healing Coefficient. / Set the SHIELD of all allies to 100% of target's PHY if higher.",
+    "attributes": "Hard Science; Female; Poland"
+  },
+  "4018": {
+    "name": "Sun Quan",
+    "faction": "SUZAKU",
+    "passiveName": "Young successor",
+    "passiveText": "If the total HP of all enemies is less than 50% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 20% of this hero's PHY. / Increase this hero's INT by 20% of this hero's INT. / Increase this hero's AGI by 20% of this hero's AGI. / {successRate}% chance to inflict Barrier on this hero. / 100% chance to inflict Decoy on this hero.",
+    "attributes": "Head; Romance of the Three Kingdoms; Wu"
+  },
+  "4019": {
+    "name": "Kamehameha I",
+    "faction": "GENBU",
+    "passiveName": "Mamalahoe Kanawai",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Heal this hero for 70% of damage taken. / Set this hero's SHIELD to 150 ~ 250 if higher.",
+    "attributes": "Head; Politics; America; Pole weapon"
+  },
+  "4020": {
+    "name": "Calamity Jane",
+    "faction": "KOURYU",
+    "passiveName": "Court Calamity",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 15% of this hero's INT. / Decrease the INT of the enemy with the highest INT by 15% of this hero's INT. / Decrease the AGI of the enemy with the highest AGI by 10% of this hero's INT.",
+    "attributes": "Female; Firearms; Duel; Western"
+  },
+  "4021": {
+    "name": "Vincent van Gogh",
+    "faction": "GENBU",
+    "passiveName": "Sunflowers",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 30% of this hero's INT. / {successRate}% chance to inflict Confusion on this hero.",
+    "attributes": "Art; Poland"
+  },
+  "4022": {
+    "name": "Tomoe Gozen",
+    "faction": "SUZAKU",
+    "passiveName": "My last job",
+    "passiveText": "If this hero's HP is less than 30% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the highest INT equal to 160% of this hero's PHY. / Deal damage to this hero equal to 20 ~ 40% of this hero's PHY.",
+    "attributes": "Female; Heian-Kamakura; Pole weapon"
+  },
+  "4023": {
+    "name": "Zhao Yun",
+    "faction": "GENBU",
+    "passiveName": "Tiger general",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the INT of all enemies by 50% of target's INT increase. / Decrease the AGI of the enemy with the highest AGI by 50% of target's AGI increase.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon"
+  },
+  "4024": {
+    "name": "Yue Fei",
+    "faction": "SUZAKU",
+    "passiveName": "Show the flag",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 60 ~ 70% of the total PHY/INT/AGI increase of this hero. / Heal this hero for 60 ~ 70% of the total PHY/INT/AGI increase of this hero.",
+    "attributes": "Tactics; China; Pole weapon"
+  },
+  "4025": {
+    "name": "Takeda Shingen",
+    "faction": "SEIRYU",
+    "passiveName": "Furinkazan",
+    "passiveText": "If this hero's HP is less than 40% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 10 ~ 25% of this hero's Max HP. / Increase the AGI of all allies by 10 ~ 25% of this hero's Max HP.",
+    "attributes": "Tactics; Sengoku"
+  },
+  "4026": {
+    "name": "Julius Caesar",
+    "faction": "SEIRYU",
+    "passiveName": "I came I saw I conquered",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 20 ~ 30% of this hero's PHY. / Decrease the INT of all enemies by 25 ~ 35% of this hero's PHY. / Deal damage to the first enemy equal to 20 ~ 40% of the total INT decrease of all enemies.",
+    "attributes": "Head; Politics; Soft Science; Rome"
+  },
+  "4027": {
+    "name": "Hijikata Toshizo",
+    "faction": "SEIRYU",
+    "passiveName": "Hard‐hearted Vice captain",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the first enemy's AGI by 15% of this hero's PHY. / Increase the PHY of the ally with the lowest HP by 30% of this hero's PHY.",
+    "attributes": "Bakumatsu; Shinsengumi"
+  },
+  "4028": {
+    "name": "Charles Darwin",
+    "faction": "KOURYU",
+    "passiveName": "On the Origin of Species",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of all enemies by 85% of target's PHY increase. / Decrease the AGI of all enemies by 85% of target's AGI increase.",
+    "attributes": "Hard Science; Animal; England"
+  },
+  "4029": {
+    "name": "Yamato Takeru",
+    "faction": "SEIRYU",
+    "passiveName": "Three Sacred Treasures",
+    "passiveText": "After the last enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase the lowest PHY/INT/AGI of all enemies by 40% of the total PHY/INT/AGI increase of target. / Decrease the highest PHY/INT/AGI of all enemies by 30% of the total PHY/INT/AGI increase of target.",
+    "attributes": "Japan; Traditional"
+  },
+  "4030": {
+    "name": "Wolfgang Amadeus Mozart",
+    "faction": "GENBU",
+    "passiveName": "Eine kleine Nachtmusik",
+    "passiveText": "If the total PHY/INT/AGI of this hero is less than 70% of its original value, {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 40% of the total PHY/INT/AGI decrease of this hero. / Decrease the INT of all enemies by 40% of the total PHY/INT/AGI decrease of this hero. / Decrease the AGI of all enemies by 40% of the total PHY/INT/AGI decrease of this hero.",
+    "attributes": "Music; Austria"
+  },
+  "4031": {
+    "name": "Taira no Masakado",
+    "faction": "SEIRYU",
+    "passiveName": "Legend of Kubizuka",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 70% of this hero's PHY. / {successRate}% chance to inflict Fear on all enemies.",
+    "attributes": "Heian-Kamakura; Curse"
+  },
+  "4032": {
+    "name": "Uesugi Kenshin",
+    "faction": "SUZAKU",
+    "passiveName": "Incarnation of Bashamon",
+    "passiveText": "If this hero's HP is less than 40% , {triggerRate}% chance to trigger once. / Increase the INT of all allies by 10 ~ 25% of this hero's Max HP. / Increase the AGI of all allies by 10 ~ 25% of this hero's Max HP.",
+    "attributes": "Sengoku"
+  },
+  "4033": {
+    "name": "Abraham Lincoln",
+    "faction": "SEIRYU",
+    "passiveName": "Emancipation Proclamation",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Heal all allies for 50% of Healing Coefficient. / Deal damage to all enemies equal to 40 ~ 50% of this hero's INT.",
+    "attributes": "Politics; America; American Dream"
+  },
+  "4034": {
+    "name": "SATOSHI・NAKAMOTO OMEGA CC",
+    "faction": "BYAKKO",
+    "passiveName": "Mining OMEGA CC",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the last ally's PHY by 25 ~ 30% of this hero's PHY. / Increase the last ally's AGI by 25 ~ 30% of this hero's PHY.",
+    "attributes": "Hard Science; Mystery"
+  },
+  "4035": {
+    "name": "Kondo Isami",
+    "faction": "SEIRYU",
+    "passiveName": "Nagasone Konetsu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's PHY. / {successRate}% chance to inflict Confusion on this hero.",
+    "attributes": "Bakumatsu; Shinsengumi"
+  },
+  "4036": {
+    "name": "Blackbeard",
+    "faction": "BYAKKO",
+    "passiveName": "Queen Anne's Revenge",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the last enemy's AGI by 10 ~ 20% of this hero's AGI. / Increase this hero's AGI by 10 ~ 20% of this hero's AGI. / Heal this hero for 10 ~ 20% of this hero's AGI.",
+    "attributes": "Sea; Firearms; America; Blackbeard Pirates"
+  },
+  "4037": {
+    "name": "Guan Yu",
+    "faction": "GENBU",
+    "passiveName": "after crossing five passes and slaying six generals",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to this hero equal to 5 ~ 10% of this hero's Max HP. / Increase this hero's PHY by 20% of this hero's HP decrease. / Deal damage to the first enemy equal to 40 ~ 50% of this hero's PHY. / Decrease this hero's PHY by 15% of this hero's HP decrease.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon; Oath of the Peach Garden"
+  },
+  "4038": {
+    "name": "Brunhild",
+    "faction": "SUZAKU",
+    "passiveName": "Brynhild's Hel-Ride",
+    "passiveText": "If this hero's HP is less than 25% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 500% of this hero's PHY. / Increase this hero's AGI by 500% of this hero's AGI. / Heal this hero for 40% of this hero's Max HP.",
+    "attributes": "Female; Germany; Traditional"
+  },
+  "4039": {
+    "name": "Saigō Takamori",
+    "faction": "SEIRYU",
+    "passiveName": "Tabaru Slope",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the INT of all enemies by 30 ~ 40% of target's INT. / {successRate}% chance to inflict Sleep on all enemies.",
+    "attributes": "Animal; Bakumatsu"
+  },
+  "4040": {
+    "name": "Han Xin",
+    "faction": "SUZAKU",
+    "passiveName": "Kokushimuso",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 120% of this hero's PHY.",
+    "attributes": "Qin; Pole weapon"
+  },
+  "4041": {
+    "name": "Nikola Tesla",
+    "faction": "KOURYU",
+    "passiveName": "Tesla coil",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's PHY. / {successRate}% chance to remove Confusion from all allies.",
+    "attributes": "Hard Science; Poland; Machine"
+  },
+  "4044": {
+    "name": "Jean-Henri Fabre",
+    "faction": "KOURYU",
+    "passiveName": "ethology",
+    "passiveText": "If this hero's HP is less than 80% , {triggerRate}% chance to trigger once. / Decrease this hero's INT by 100% of this hero's INT. / Increase the PHY of the ally with the highest PHY by 75% of this hero's INT decrease. / Heal all allies for 45% of this hero's INT decrease.",
+    "attributes": "Hard Science; France"
+  },
+  "4045": {
+    "name": "Lancelot",
+    "faction": "KOURYU",
+    "passiveName": "Lancelot of the Lake",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 15% of damage taken. / Increase the AGI of the ally with the lowest AGI by 20% of damage taken. / Increase the AGI of the ally with the highest AGI by 20% of damage taken.",
+    "attributes": "Traditional; Celtic; Pole weapon; Knights of the Round Table"
+  },
+  "4046": {
+    "name": "Grigori Rasputin",
+    "faction": "BYAKKO",
+    "passiveName": "Russia’s Mad Monk",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the lowest PHY equal to 33% of the total INT increase of all enemies. / Deal damage to the enemy with the lowest INT equal to 33% of the total PHY increase of all enemies. / Heal all allies for 13% of the total INT increase of all enemies. / Heal all allies for 13% of the total PHY increase of all enemies.",
+    "attributes": "Politics; Occult; Russia"
+  },
+  "4047": {
+    "name": "Hannibal",
+    "faction": "SUZAKU",
+    "passiveName": "Fertility god Baal's Lightning",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the lowest HP equal to 100% of the total AGI decrease of all allies. / Deal damage to all allies equal to 80% of the total AGI decrease of all enemies.",
+    "attributes": "Head; Tactics; Mediterranean; One-eyed"
+  },
+  "4048": {
+    "name": "Zhou Yu",
+    "faction": "SUZAKU",
+    "passiveName": "Battle of Red Cliffs",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase the higher PHY/INT of all allies by 20 ~ 25% of this hero's INT. / {successRate}% chance to inflict Fear on this hero.",
+    "attributes": "Tactics; Politics; Romance of the Three Kingdoms; Wu"
+  },
+  "4049": {
+    "name": "Xiahou Dun",
+    "faction": "BYAKKO",
+    "passiveName": "One-eyed great man",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / [4 times]Deal damage to the last enemy equal to 35% of this hero's INT.",
+    "attributes": "Politics; Romance of the Three Kingdoms; Wei; One-eyed"
+  },
+  "4050": {
+    "name": "Sima Yi Zhongda",
+    "faction": "BYAKKO",
+    "passiveName": "Five essentials to war",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Increase the AGI of all allies by 130% of this hero's AGI increase. / Increase the AGI of all allies by 130% of this hero's AGI decrease. / Increase the AGI of all allies by 5 ~ 10% of this hero's AGI.",
+    "attributes": "Tactics; Romance of the Three Kingdoms; Wei"
+  },
+  "4051": {
+    "name": "Rama",
+    "faction": "BYAKKO",
+    "passiveName": "Maha avatara",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 25% of this hero's AGI. / Decrease the INT of all enemies by 25% of this hero's AGI. / Decrease the AGI of all enemies by 25% of this hero's AGI.",
+    "attributes": "Journey; Traditional; Bow; Asia"
+  },
+  "4052": {
+    "name": "Francis Drake",
+    "faction": "KOURYU",
+    "passiveName": "Pirates under the Queen",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of all allies by 40% of target's PHY. / Increase the AGI of all allies by 40% of target's INT. / Increase the AGI of all enemies by 40% of target's PHY. / Increase the AGI of all enemies by 40% of target's INT.",
+    "attributes": "Sea; Firearms; Journey; England"
+  },
+  "4053": {
+    "name": "William Tell",
+    "faction": "BYAKKO",
+    "passiveName": "The Arrow of Liberation",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 60% of damage taken. / Decrease this hero's AGI by 10% of this hero's INT increase. / Deal damage to the first enemy equal to 100% of this hero's INT.",
+    "attributes": "Poland; Traditional; Bow"
+  },
+  "4054": {
+    "name": "Sugawara no Michizane",
+    "faction": "BYAKKO",
+    "passiveName": "Tenjin",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Curse on all enemies. / Deal damage to the enemy with the lowest HP equal to 110% of this hero's INT.",
+    "attributes": "Politics; Heian-Kamakura; Curse"
+  },
+  "4055": {
+    "name": "Honda Tadakatsu",
+    "faction": "SUZAKU",
+    "passiveName": "Vogue and Valor",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 100% of the total PHY increase of all allies. / Increase this hero's AGI by 100% of the total AGI increase of all allies. / {successRate}% chance to inflict Barrier on this hero.",
+    "attributes": "Sengoku; Pole weapon"
+  },
+  "4056": {
+    "name": "Natsume Sōseki",
+    "faction": "GENBU",
+    "passiveName": "Quietness of Ten vigintillion ",
+    "passiveText": "If the total PHY/INT/AGI of this hero is less than 65% of its original value, {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 100 ~ 150% of target's PHY decrease. / Increase the INT of all allies by 100 ~ 150% of target's INT decrease. / Increase the AGI of all allies by 100 ~ 150% of target's AGI decrease.",
+    "attributes": "Soft Science; Animal; Japan"
+  },
+  "4057": {
+    "name": "Boudica",
+    "faction": "SUZAKU",
+    "passiveName": "Queen of the Iceni",
+    "passiveText": "If this hero's HP is less than 70% , {triggerRate}% chance to trigger once. / Decrease the highest PHY/INT/AGI of all enemies by 100% of the total PHY/INT/AGI increase of this hero. / Decrease the highest PHY/INT/AGI of all allies by 100% of the total PHY/INT/AGI increase of this hero.",
+    "attributes": "Head; Female; Celtic; Pole weapon"
+  },
+  "4060": {
+    "name": "SUZUISHI",
+    "faction": "SEIRYU",
+    "passiveName": "Clear Reverberant",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 45% , {triggerRate}% chance to trigger. / Increase this hero's PHY by 80% of this hero's AGI. 140% if affected by Decoy. / Deal damage to the enemy with the highest PHY equal to 30% of this hero's PHY. / Increase this hero's CHARGE by 80 ~ 200% of this hero's PHY. / Decrease this hero's PHY by 75% of this hero's AGI.",
+    "attributes": "Female; Duel; Grappling; OASYX"
+  },
+  "5001": {
+    "name": "Nobunaga Oda",
+    "faction": "SEIRYU",
+    "passiveName": "Rule the Empire by Force",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 150 ~ 200% of this hero's PHY.",
+    "attributes": "Head; Firearms; Sengoku; Honnō-ji Incident; Ruler over Sengoku"
+  },
+  "5002": {
+    "name": "Napoleon Bonaparte",
+    "faction": "KOURYU",
+    "passiveName": "The Demon of Corsica",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 150 ~ 200% of this hero's INT.",
+    "attributes": "Head; Tactics; Animal; Revolution; France"
+  },
+  "5003": {
+    "name": "Cao Cao",
+    "faction": "BYAKKO",
+    "passiveName": "A Cunning Hero in Chaotic Times",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of the ally with the highest PHY by 10% of this hero's PHY. / Increase this hero's PHY by 15% of this hero's PHY. / Heal this hero for 30% of this hero's PHY.",
+    "attributes": "Head; Romance of the Three Kingdoms; Wei"
+  },
+  "5004": {
+    "name": "George Washington",
+    "faction": "SEIRYU",
+    "passiveName": "First President",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 30% of this hero's INT. / Increase the AGI of all allies by 30% of this hero's INT.",
+    "attributes": "Head; Politics; America; American Dream"
+  },
+  "5005": {
+    "name": "Leonardo da Vinci",
+    "faction": "KOURYU",
+    "passiveName": "Mona Lisa",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 80% of this hero's INT.",
+    "attributes": "Art; Soft Science; Hard Science; Italy"
+  },
+  "5006": {
+    "name": "King Arthur",
+    "faction": "BYAKKO",
+    "passiveName": "Excalibur",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 50% of this hero's PHY. / Heal this hero for 30% of Healing Coefficient.",
+    "attributes": "Head; Traditional; Celtic; Knights of the Round Table"
+  },
+  "5007": {
+    "name": "Joan of Arc",
+    "faction": "BYAKKO",
+    "passiveName": "The Maid of Orleans",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 10 ~ 25% of this hero's INT. / Decrease the AGI of all enemies by 5% of this hero's PHY. / 100% chance to inflict Decoy on the first ally.",
+    "attributes": "Female; France; Faith; Pole weapon; The world's three greatest Jeannes"
+  },
+  "5008": {
+    "name": "Ryoma Sakamoto",
+    "faction": "SEIRYU",
+    "passiveName": "Kaientai",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 20% of this hero's INT. / Heal all allies for 40% of Healing Coefficient. / Increase the INT of all allies by 10% of this hero's INT.",
+    "attributes": "Firearms; Bakumatsu"
+  },
+  "5009": {
+    "name": "Liu Bei ",
+    "faction": "GENBU",
+    "passiveName": "Three Visits",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of the ally with the lowest HP by 35% of this hero's INT. / Increase the INT of the ally with the lowest HP by 35% of this hero's INT. / Increase the AGI of the ally with the lowest HP by 25% of this hero's INT.",
+    "attributes": "Head; Romance of the Three Kingdoms; Shu; Oath of the Peach Garden"
+  },
+  "5010": {
+    "name": "Albert Einstein",
+    "faction": "KOURYU",
+    "passiveName": "Theory of Relativity",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's INT. / Increase the AGI of all allies by 30% of this hero's INT.",
+    "attributes": "Hard Science; Germany; Universe"
+  },
+  "5011": {
+    "name": "Himiko",
+    "faction": "BYAKKO",
+    "passiveName": "Kido",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of all enemies by 50% of this hero's INT. / Decrease the INT of all allies by 50% of this hero's INT.",
+    "attributes": "Head; Female; Occult; Japan; Performing Arts"
+  },
+  "5012": {
+    "name": "Johann Sebastian Bach",
+    "faction": "GENBU",
+    "passiveName": "Baroque",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 15% of this hero's INT. / Increase the INT of all allies by 15% of this hero's INT. / Increase the AGI of all allies by 10% of this hero's INT.",
+    "attributes": "Music; Germany"
+  },
+  "5013": {
+    "name": "Genghis Khan",
+    "faction": "SUZAKU",
+    "passiveName": "Blue wolf",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 40% of this hero's PHY. / Increase this hero's CHARGE by 25 ~ 35% of the total AGI increase of all enemies.",
+    "attributes": "Head; Animal; Asia"
+  },
+  "5014": {
+    "name": "Charles the Great",
+    "faction": "SEIRYU",
+    "passiveName": "King of Heart",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 30% of this hero's INT. / Decrease the INT of the enemy with the highest INT by 30% of target's INT. / Deal damage to the enemy with the highest INT equal to 40 ~ 60% of this hero's INT increase.",
+    "attributes": "Head; Tactics; Politics; Rome; Faith"
+  },
+  "5015": {
+    "name": "Zhuge Liang",
+    "faction": "GENBU",
+    "passiveName": "This is Zhuge Liang's trap!",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 55% of the total PHY/INT/AGI increase of all enemies. / Decrease the PHY of all enemies by 120% of target's PHY increase. / Decrease the INT of all enemies by 120% of target's INT increase. / Decrease the AGI of all enemies by 120% of target's AGI increase. / {successRate}% chance to inflict Bind on all enemies.",
+    "attributes": "Tactics; Politics; Romance of the Three Kingdoms; Shu"
+  },
+  "5016": {
+    "name": "Cleopatra",
+    "faction": "GENBU",
+    "passiveName": "Hypnotic Beauty",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Charm on the enemy with the highest AGI. / Decrease the AGI of the enemy with the highest AGI by 25% of damage taken.",
+    "attributes": "Head; Female; Pole weapon; Mediterranean; Top three beauties of all times and places"
+  },
+  "5017": {
+    "name": "Alexander the Great",
+    "faction": "SUZAKU",
+    "passiveName": "King of Conqueror",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the first ally's PHY by 120 ~ 140% of this hero's PHY. / Increase the first ally's INT by 120 ~ 140% of this hero's INT. / Increase the first ally's AGI by 120 ~ 140% of this hero's AGI.",
+    "attributes": "Head; Greece; Mediterranean"
+  },
+  "5018": {
+    "name": "Qin Shi Huang",
+    "faction": "KOURYU",
+    "passiveName": "Unified All of China",
+    "passiveText": "If the total HP of all allies is less than 55% , {triggerRate}% chance to trigger once. / Decrease the AGI of all enemies by 100% of target's AGI. / Decrease the AGI of all allies by 100% of target's AGI. / Increase this hero's AGI by 100% of this hero's AGI decrease.",
+    "attributes": "Head; Qin"
+  },
+  "5019": {
+    "name": "Minamoto no Yoshitsune",
+    "faction": "SUZAKU",
+    "passiveName": "Genpei Downhill Rush",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's AGI by 20% of this hero's AGI. / Decrease the PHY of the enemy with the highest INT by 20% of this hero's PHY. / {successRate}% chance to inflict Fear on the enemy with the highest INT.",
+    "attributes": "Heian-Kamakura; Pole weapon"
+  },
+  "5020": {
+    "name": "Tutankhamun",
+    "faction": "KOURYU",
+    "passiveName": "Curse of the pharaohs",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 80% of this hero's PHY.",
+    "attributes": "Occult; Mediterranean; Curse"
+  },
+  "5021": {
+    "name": "Abe no Seimei",
+    "faction": "BYAKKO",
+    "passiveName": "Kyukyunyoritsuryo",
+    "passiveText": "After the last enemy uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the highest INT by 20% of target's INT. / {successRate}% chance to inflict Sleep on the enemy with the highest INT. / Heal the ally with the lowest HP for 15 ~ 20% of this hero's Max HP.",
+    "attributes": "Occult; Heian-Kamakura"
+  },
+  "5022": {
+    "name": "Consort Yu",
+    "faction": "GENBU",
+    "passiveName": "Chu song from four sides",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of all enemies by 50% of this hero's PHY. / Decrease the PHY of all allies by 50% of this hero's PHY.",
+    "attributes": "Female; Qin; Chu Song from Four Sides"
+  },
+  "5023": {
+    "name": "Richard I",
+    "faction": "SEIRYU",
+    "passiveName": "Star of Chivalry",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 30% of this hero's PHY. / Decrease the PHY of the enemy with the highest AGI by 30% of target's AGI. / {successRate}% chance to inflict Bleed on the enemy with the highest AGI.",
+    "attributes": "Head; England"
+  },
+  "5024": {
+    "name": "Hokusai",
+    "faction": "GENBU",
+    "passiveName": "Thirty-six Views of Mount Fuji",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 15% of damage taken. / Increase the INT of all allies by 80 ~ 90% of damage taken. / Heal all allies for 5% of Healing Coefficient.",
+    "attributes": "Art; Edo"
+  },
+  "5025": {
+    "name": "Xiang Yu",
+    "faction": "SUZAKU",
+    "passiveName": "Hegemon-King of Western Chu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 80% of target's PHY decrease. / Increase the INT of all allies by 80% of target's INT decrease. / Decrease the PHY of the enemy with the lowest INT by 30% of target's PHY. / Deal damage to the enemy with the lowest INT equal to 100% of the total PHY decrease of all enemies.",
+    "attributes": "Qin; Chu Song from Four Sides"
+  },
+  "5026": {
+    "name": "Liu Bang",
+    "faction": "SEIRYU",
+    "passiveName": "Emperor Gaozu of Han",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Decrease the AGI of all enemies by 100% of target's PHY increase. / Decrease the AGI of all enemies by 100% of target's INT increase. / Increase this hero's CHARGE by 200% of the total AGI decrease of all allies.",
+    "attributes": "Head; Qin; Chu Song from Four Sides"
+  },
+  "5027": {
+    "name": "Galileo Galilei",
+    "faction": "BYAKKO",
+    "passiveName": "Dialogue Concerning the Two Chief World Systems",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 100% of this hero's INT. / Increase the last ally's INT by 80% of target's INT decrease. / Deal damage to all allies equal to 20% of this hero's PHY.",
+    "attributes": "Hard Science; Italy; Universe"
+  },
+  "5028": {
+    "name": "Nasu no Yoichi",
+    "faction": "SUZAKU",
+    "passiveName": "Namu Hachiman Dai-Bosatsu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 70% of this hero's PHY decrease. / Heal the first ally for 50% of this hero's PHY. / {successRate}% chance to inflict Stun on the last enemy.",
+    "attributes": "Heian-Kamakura; Bow"
+  },
+  "5029": {
+    "name": "Edward the Black Prince",
+    "faction": "SUZAKU",
+    "passiveName": "Battle of Poitiers",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 20% of this hero's PHY. / Deal damage to the last enemy equal to 60% of this hero's PHY. / Increase the AGI of all allies by 30 ~ 35% of this hero's HP decrease.",
+    "attributes": "Head; Tactics; England"
+  },
+  "5030": {
+    "name": "Wu Zetian",
+    "faction": "BYAKKO",
+    "passiveName": "Seishin-Koutei",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to remove Bleed from all allies. / Increase the first ally's INT by 40% of this hero's INT. / {successRate}% chance to inflict Barrier on the ally with the highest AGI.",
+    "attributes": "Head; Politics; Female; China"
+  },
+  "5031": {
+    "name": "Scipio Africanus",
+    "faction": "SUZAKU",
+    "passiveName": "Quaint Cantus",
+    "passiveText": "After the midline ally uses an Active Skill, {triggerRate}% chance to trigger. / 100% chance to inflict Decoy on this hero. / {successRate}% chance to inflict Barrier on this hero. / Decrease this hero's AGI by 15% of this hero's AGI.",
+    "attributes": "Tactics; Politics; Mediterranean"
+  },
+  "5032": {
+    "name": "Miyamoto Musashi",
+    "faction": "KOURYU",
+    "passiveName": "Niten Ichi-ryū",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's CHARGE by 2001.",
+    "attributes": "Duel; Edo"
+  },
+  "5033": {
+    "name": "YATAGARASU",
+    "faction": "KOURYU",
+    "passiveName": "Mind's Eye Slashing",
+    "passiveText": "After an enemy uses an Active Skill, If it has a status effect, {triggerRate}% chance to trigger. / Deal damage to all enemies equal to 35% of this hero's PHY. / Deal damage to all enemies equal to 35% of this hero's INT. / Increase this hero's CHARGE by 100% of the total HP of all enemies. / Decrease this hero's CHARGE by 200% of damage dealt.",
+    "attributes": "Duel; One-eyed; OASYX"
+  },
+  "10001": {
+    "name": "MCH Warrior",
+    "faction": "SUZAKU",
+    "passiveName": "Crypto Slash",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 120% of this hero's PHY.",
+    "attributes": ""
+  },
+  "10002": {
+    "name": "MCH Tactician",
+    "faction": "SEIRYU",
+    "passiveName": "Crypto Tactics",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 120% of this hero's INT.",
+    "attributes": ""
+  },
+  "10003": {
+    "name": "MCH Artist",
+    "faction": "GENBU",
+    "passiveName": "Crypto Art",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Heal all allies for 70% of Healing Coefficient.",
+    "attributes": ""
+  },
+  "10004": {
+    "name": "Fukuzawa Yukichi",
+    "faction": "GENBU",
+    "passiveName": "KO univ",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the INT of all allies by 20% of this hero's INT.",
+    "attributes": ""
+  },
+  "10005": {
+    "name": "Sun Shangxiang",
+    "faction": "SUZAKU",
+    "passiveName": "Archery princess",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 15% of this hero's PHY.",
+    "attributes": ""
+  },
+  "10006": {
+    "name": "Blaise Pascal",
+    "faction": "GENBU",
+    "passiveName": "Thinking reed",
+    "passiveText": "If this hero's HP is less than 70% , {triggerRate}% chance to trigger once. / Increase the INT of all allies by 10% of this hero's INT. / Heal all allies for 10% of Healing Coefficient.",
+    "attributes": ""
+  },
+  "10007": {
+    "name": "David",
+    "faction": "SUZAKU",
+    "passiveName": "Giant killing",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 30% of this hero's PHY.",
+    "attributes": ""
+  },
+  "10008": {
+    "name": "Raiden Tameemon",
+    "faction": "SUZAKU",
+    "passiveName": "Hand Cannon",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase this hero's PHY by 30% of this hero's PHY.",
+    "attributes": ""
+  },
+  "11001": {
+    "name": "Arthur Conan Doyle",
+    "faction": "GENBU",
+    "passiveName": "Sherlock Holmes",
+    "passiveText": "If this hero's HP is less than 70% , {triggerRate}% chance to trigger once. / Increase the first ally's INT by 30% of this hero's INT.",
+    "attributes": "Soft Science; England; Mystery"
+  },
+  "11002": {
+    "name": "Kaihime",
+    "faction": "SUZAKU",
+    "passiveName": "Namikiri",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the first ally's PHY by 15% of this hero's PHY. / Deal damage to the first enemy equal to 50% of this hero's PHY.",
+    "attributes": "Female; Sengoku; Pole weapon"
+  },
+  "11003": {
+    "name": "Zhang Liao",
+    "faction": "BYAKKO",
+    "passiveName": "Zhang Liao is coming!",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 20% of this hero's PHY.",
+    "attributes": "Romance of the Three Kingdoms; Wei; Axe"
+  },
+  "11004": {
+    "name": "Ernest Thompson Seton",
+    "faction": "GENBU",
+    "passiveName": "Lobo the King of Currumpaw",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Deal damage to the enemy with the highest PHY equal to 40% of this hero's INT. / {successRate}% chance to inflict Bleed on the enemy with the highest PHY.",
+    "attributes": "Soft Science; Animal; England"
+  },
+  "11005": {
+    "name": "Inō Tadataka",
+    "faction": "KOURYU",
+    "passiveName": "Dai Nihon Enkai Yochi Zenzu",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the INT of all allies by 25 ~ 30% of this hero's AGI.",
+    "attributes": "Soft Science; Journey; Edo"
+  },
+  "11006": {
+    "name": "Pythagoras",
+    "faction": "SEIRYU",
+    "passiveName": "Tetractys",
+    "passiveText": "If this hero's HP is less than 40% , {triggerRate}% chance to trigger once. / Increase the PHY of the ally with the highest PHY by 28% of this hero's INT. / Increase the INT of the ally with the highest INT by 28% of this hero's PHY.",
+    "attributes": "Soft Science; Hard Science; Greece"
+  },
+  "11007": {
+    "name": "Jang-geum",
+    "faction": "BYAKKO",
+    "passiveName": "Joseon dynasty's Uinyeo",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the ally with the lowest HP for 15% of Healing Coefficient.",
+    "attributes": "Hard Science; Female"
+  },
+  "11008": {
+    "name": "John L. Sullivan",
+    "faction": "SUZAKU",
+    "passiveName": "Boston Strong Boy",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's CHARGE by 100 ~ 250% of this hero's HP decrease.",
+    "attributes": "Duel; America; Grappling"
+  },
+  "12001": {
+    "name": "Wright Brothers",
+    "faction": "KOURYU",
+    "passiveName": "Wright Flyer",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of all allies by 10% of this hero's INT.",
+    "attributes": "Hard Science; America; Duo; Machine"
+  },
+  "12002": {
+    "name": "Spartacus",
+    "faction": "SUZAKU",
+    "passiveName": "Gladiator War",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 100% of the total INT increase of all enemies. / [2 times]Deal damage to the enemy with the highest INT equal to 30 ~ 50% of this hero's PHY. / Decrease this hero's PHY by 100% of the total INT increase of all enemies.",
+    "attributes": "Duel; Rome"
+  },
+  "12003": {
+    "name": "Jack the Ripper",
+    "faction": "KOURYU",
+    "passiveName": "Langer's Line",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 80% of this hero's PHY decrease. / Deal damage to the last enemy equal to 20% of this hero's PHY. / Decrease the midline ally's PHY by 20% of this hero's INT. / Increase this hero's AGI by 5% of this hero's AGI.",
+    "attributes": "Covert; Occult; England"
+  },
+  "12004": {
+    "name": "Franz Schubert ",
+    "faction": "GENBU",
+    "passiveName": "Erlkönig",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Sleep on all enemies. / Revive this hero with 5 ~ 15% of this hero's Max HP. / Decrease this hero's AGI by 100% of the total HP of all enemies.",
+    "attributes": "Music; Austria"
+  },
+  "12005": {
+    "name": "Brothers Grimm",
+    "faction": "GENBU",
+    "passiveName": "Town Musicians of Bremen",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Heal this hero for 10% of Healing Coefficient. / {successRate}% chance to inflict Confusion on the first enemy.",
+    "attributes": "Soft Science; Animal; Germany; Duo; Fairy tale"
+  },
+  "12006": {
+    "name": "Archimedes",
+    "faction": "KOURYU",
+    "passiveName": "Eureka!Eureka!",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Set this hero's SHIELD to 100% of target's Max HP if higher.",
+    "attributes": "Hard Science; Greece"
+  },
+  "12007": {
+    "name": "Santa Claus",
+    "faction": "SUZAKU",
+    "passiveName": "Present for you",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / [3 times]Heal the ally with the lowest HP for 12 ~ 25% of Healing Coefficient.",
+    "attributes": "Animal; Rome; Faith"
+  },
+  "12008": {
+    "name": "Erwin Schrödinger",
+    "faction": "KOURYU",
+    "passiveName": "Schrödinger's Cat",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 30% of this hero's Max HP. / Increase this hero's INT by 20% of this hero's INT. / Increase this hero's AGI by 20% of this hero's AGI.",
+    "attributes": "Hard Science; Animal; Austria"
+  },
+  "12009": {
+    "name": "Mori Ranmaru",
+    "faction": "SUZAKU",
+    "passiveName": "Messenger of the Amenor",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase the AGI of the enemy with the highest AGI by 25% of this hero's Max HP. / Decrease the AGI of the enemy with the highest AGI by 40% of target's AGI. / {successRate}% chance to inflict Bind on the enemy with the highest AGI.",
+    "attributes": "Sengoku; Honnō-ji Incident"
+  },
+  "12010": {
+    "name": "Franz Kafka",
+    "faction": "GENBU",
+    "passiveName": "The Metamorphosis",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Heal all allies for 30% of Healing Coefficient. / Increase the AGI of all allies by 10% of this hero's AGI.",
+    "attributes": "Soft Science; Poland"
+  },
+  "12011": {
+    "name": "Sun Tzu",
+    "faction": "BYAKKO",
+    "passiveName": "A military operation involves deception.",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the AGI of all enemies by 15 ~ 20% of this hero's INT. / Decrease the AGI of all allies by 10% of this hero's INT.",
+    "attributes": "Soft Science; China"
+  },
+  "12012": {
+    "name": "Ishida Mitsunari",
+    "faction": "SEIRYU",
+    "passiveName": "Pull together",
+    "passiveText": "If the total PHY/INT/AGI of all enemies is over 115% of its original value, {triggerRate}% chance to trigger once. / Increase the first ally's PHY by 20% of the total INT increase of all enemies. / Decrease the first enemy's INT by 120 ~ 140% of target's INT increase.",
+    "attributes": "Politics; Sengoku"
+  },
+  "12013": {
+    "name": "Xu Chu",
+    "faction": "BYAKKO",
+    "passiveName": "Sense of Tiger",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 45% of this hero's INT decrease. / Increase this hero's PHY by 200% of this hero's INT decrease. / Increase this hero's AGI by 100% of this hero's INT decrease. / Decrease this hero's INT by 70.",
+    "attributes": "Romance of the Three Kingdoms; Wei; Axe"
+  },
+  "12014": {
+    "name": "Tokugawa Yoshinobu",
+    "faction": "SEIRYU",
+    "passiveName": "Taisei hokan",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 30% of this hero's INT decrease. / Decrease the PHY of all enemies by 15% of this hero's INT. / Decrease the INT of all enemies by 15% of this hero's INT. / Decrease this hero's INT by 40% of this hero's INT.",
+    "attributes": "Politics; Edo; Machine"
+  },
+  "12015": {
+    "name": "Montesquieu",
+    "faction": "BYAKKO",
+    "passiveName": "The Spirit of the Laws",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the highest INT by 30% of this hero's INT. / Increase the INT of the enemy with the lowest INT by 20% of target's INT. / Increase this hero's INT by 5% of this hero's INT. / Increase this hero's AGI by 5% of this hero's INT.",
+    "attributes": "Soft Science; France"
+  },
+  "12016": {
+    "name": "Anastasia",
+    "faction": "SEIRYU",
+    "passiveName": "Phantom Survivor",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the INT of all enemies by 30 ~ 40% of this hero's INT. / Deal damage to all enemies equal to 50% of target's INT decrease. / Decrease the PHY of all allies by 20% of this hero's INT.",
+    "attributes": "Politics; Female; Occult; Russia"
+  },
+  "12017": {
+    "name": "Geronimo",
+    "faction": "SUZAKU",
+    "passiveName": "Revenge of the Wilderness",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Decrease the first enemy's INT by 15% of this hero's PHY. / Decrease the INT of the enemy with the highest INT by 30% of the total PHY decrease of all allies. / Decrease this hero's INT by 15% of this hero's INT.",
+    "attributes": "America; Faith; Axe"
+  },
+  "12018": {
+    "name": "Lady Chacha",
+    "faction": "GENBU",
+    "passiveName": "Mistress of Osaka Castle",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 30% of this hero's INT. / Set the SHIELD of all allies to 70% of this hero's INT if higher.",
+    "attributes": "Female; Sengoku; Pole weapon"
+  },
+  "12019": {
+    "name": "Kintaro",
+    "faction": "SUZAKU",
+    "passiveName": "Bear and Sumo",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the first enemy's PHY by 20% of target's PHY. / Increase this hero's PHY by 40% of this hero's PHY.",
+    "attributes": "Animal; Japan; Axe"
+  },
+  "12020": {
+    "name": "Akechi Mitsuhide",
+    "faction": "SEIRYU",
+    "passiveName": "Honno-ji Incident",
+    "passiveText": "If this hero's HP is less than 30% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the highest PHY equal to 80% of this hero's INT. / {successRate}% chance to inflict Confusion on the enemy with the highest PHY.",
+    "attributes": "Revolution; Sengoku; Honnō-ji Incident"
+  },
+  "12021": {
+    "name": "Takasugi Shinsaku",
+    "faction": "KOURYU",
+    "passiveName": "Kiheitai",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Barrier on this hero. / 100% chance to inflict Decoy on this hero.",
+    "attributes": "Tactics; Bakumatsu"
+  },
+  "12022": {
+    "name": "Hans Christian Andersen",
+    "faction": "GENBU",
+    "passiveName": "The Little Match Girl",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 35 ~ 55% of this hero's INT.",
+    "attributes": "Soft Science; Poland; Duo; Fairy tale"
+  },
+  "12023": {
+    "name": "Michelangelo",
+    "faction": "GENBU",
+    "passiveName": "The Awakening of David",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase this hero's INT by 50.",
+    "attributes": "Art; Italy"
+  },
+  "12024": {
+    "name": "Salome",
+    "faction": "SUZAKU",
+    "passiveName": "Daughter of Herodias",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 5% of this hero's PHY. / Heal the ally with the lowest HP for 25% of damage taken. / {successRate}% chance to inflict Fear on the first enemy.",
+    "attributes": "Female; Occult; Performing Arts; Mediterranean"
+  },
+  "12025": {
+    "name": "SATOSHI・NAKAMOTO ALPHA CC",
+    "faction": "GENBU",
+    "passiveName": "Mining ALPHA CC",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the last ally's PHY by 10% of this hero's PHY. / Increase the last ally's AGI by 10% of this hero's PHY.",
+    "attributes": "Hard Science; Mystery"
+  },
+  "12026": {
+    "name": "Toyotomi Hideyoshi",
+    "faction": "SEIRYU",
+    "passiveName": "Monkey Success Story",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of the ally with the highest PHY by 20% of this hero's AGI.",
+    "attributes": "Head; Animal; Sengoku; Ruler over Sengoku"
+  },
+  "12027": {
+    "name": "Aesop",
+    "faction": "GENBU",
+    "passiveName": "The Tortoise and the Hare",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Decrease the AGI of the enemy with the highest INT by 100% of target's AGI. / Increase the AGI of the enemy with the highest INT by 30% of this hero's AGI.",
+    "attributes": "Soft Science; Animal; Greece; Fairy tale"
+  },
+  "12028": {
+    "name": "Trưng Sisters",
+    "faction": "SEIRYU",
+    "passiveName": "Sister Rebellion",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 70 ~ 100% of this hero's PHY decrease. / Deal damage to the last enemy equal to 70 ~ 100% of this hero's INT decrease.",
+    "attributes": "Female; Animal; Asia; Duo; The world's three greatest Jeannes"
+  },
+  "12029": {
+    "name": "Ikkyu",
+    "faction": "KOURYU",
+    "passiveName": "Happy and Unhappy",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 20% of this hero's Max HP. / Deal damage to the last enemy equal to 30 ~ 50% of this hero's INT.",
+    "attributes": "Sengoku; Faith; Mystery"
+  },
+  "12030": {
+    "name": "Izumo no Okuni",
+    "faction": "GENBU",
+    "passiveName": "Yayako-Dance",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 35 ~ 55% of this hero's PHY.",
+    "attributes": "Female; Sengoku; Performing Arts"
+  },
+  "12031": {
+    "name": "Bismarck",
+    "faction": "SEIRYU",
+    "passiveName": "Blood and Iron speech",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Fear on the midline enemy. / {successRate}% chance to inflict Fear on the last enemy.",
+    "attributes": "Head; Politics; Germany"
+  },
+  "12032": {
+    "name": "Montgomery",
+    "faction": "SUZAKU",
+    "passiveName": "Green Gables",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 30% of this hero's INT. / Deal damage to the last enemy equal to 50% of this hero's INT decrease.",
+    "attributes": "Soft Science; Female; America"
+  },
+  "12033": {
+    "name": "Goethe",
+    "faction": "BYAKKO",
+    "passiveName": "The Sorrows of Young Werther",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Decrease the first enemy's PHY by 100% of target's PHY. / Increase the first enemy's PHY by 30% of this hero's PHY. / {successRate}% chance to inflict Bind on all enemies.",
+    "attributes": "Politics; Soft Science; Hard Science; Germany"
+  },
+  "12034": {
+    "name": "Plato",
+    "faction": "BYAKKO",
+    "passiveName": "Theory of Ideas",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of this hero's PHY. / Increase the PHY of the enemy with the lowest PHY by 20% of target's PHY. / Increase this hero's PHY by 5% of this hero's PHY. / Increase this hero's AGI by 5% of this hero's PHY.",
+    "attributes": "Soft Science; Greece"
+  },
+  "12035": {
+    "name": "Sarutahiko",
+    "faction": "KOURYU",
+    "passiveName": "AD 3344 years",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the first enemy's INT by 20% of this hero's PHY. / Increase this hero's INT by 20 ~ 30% of this hero's INT.",
+    "attributes": "Hard Science; Japan; Traditional; TEZUKA"
+  },
+  "12036": {
+    "name": "Higuchi Ichiyō",
+    "faction": "BYAKKO",
+    "passiveName": "Takekurabe",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the AGI of the enemy with the highest Max HP by 30% of target's AGI. / Decrease the first ally's INT by 100% of this hero's INT. / Increase the first ally's INT by 80% of this hero's INT.",
+    "attributes": "Soft Science; Female; Japan"
+  },
+  "12037": {
+    "name": "Sun Ce",
+    "faction": "SUZAKU",
+    "passiveName": "Prince Huan of Changsha",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 25% of this hero's PHY. / [5 times]Deal damage to the enemy with the lowest HP equal to 15% of this hero's PHY. / Decrease this hero's PHY by 20% of this hero's PHY.",
+    "attributes": "Romance of the Three Kingdoms; Wu"
+  },
+  "12038": {
+    "name": "Taira no Kiyomori",
+    "faction": "SEIRYU",
+    "passiveName": "Political Change in Jicho 3",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 30 ~ 40% of this hero's PHY. / Deal damage to all enemies equal to 50% of target's PHY decrease. / Decrease the INT of all allies by 20% of this hero's PHY.",
+    "attributes": "Politics; Revolution; Heian-Kamakura"
+  },
+  "12039": {
+    "name": "Fyodor Dostoevsky",
+    "faction": "SEIRYU",
+    "passiveName": "The Brothers Karamazov",
+    "passiveText": "If the total HP of all allies is less than 75% , {triggerRate}% chance to trigger once. / Decrease this hero's PHY by 100% of this hero's INT. / Increase the INT of all allies by 60% of this hero's PHY decrease. / Increase the AGI of all allies by 30% of this hero's PHY decrease.",
+    "attributes": "Soft Science; Revolution; Russia"
+  },
+  "12040": {
+    "name": "Hua Mulan",
+    "faction": "SUZAKU",
+    "passiveName": "Three principles and five virtues",
+    "passiveText": "If the total HP of all enemies is less than 65% , {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Barrier on all allies.",
+    "attributes": "Female; China"
+  },
+  "12041": {
+    "name": "Benjamin Franklin",
+    "faction": "KOURYU",
+    "passiveName": "Kite and Leyden jar lightning experiment",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the PHY of the ally with the highest PHY by 100% of this hero's PHY. / Increase the INT of the ally with the highest INT by 100% of this hero's INT.",
+    "attributes": "Politics; Soft Science; Hard Science; America; American Dream"
+  },
+  "12042": {
+    "name": "Vasco da Gama",
+    "faction": "KOURYU",
+    "passiveName": "Sao Gabriel",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / 100% chance to inflict Decoy on this hero. / Increase this hero's AGI by 5% of this hero's AGI.",
+    "attributes": "Sea; Journey; Mediterranean"
+  },
+  "12043": {
+    "name": "Kirigakure Saizō",
+    "faction": "BYAKKO",
+    "passiveName": "Ninjutsu-Dokugiri",
+    "passiveText": "If this hero's HP is less than 80% , {triggerRate}% chance to trigger once. / Increase this hero's INT by 90% of this hero's PHY. / {successRate}% chance to inflict Poison on all allies. / {successRate}% chance to inflict Poison on all enemies. / Decrease the last enemy's PHY by 5% of this hero's INT. 15% if affected by Poison.",
+    "attributes": "Covert; Japan"
+  },
+  "12044": {
+    "name": "Socrates",
+    "faction": "BYAKKO",
+    "passiveName": "Arete",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of all allies by 60% of target's INT increase. / Decrease the INT of all enemies by 60% of target's INT increase. / Increase the INT of all allies by 30% of target's INT. / Increase the INT of all enemies by 30% of target's INT.",
+    "attributes": "Soft Science; Greece"
+  },
+  "12045": {
+    "name": "Bodhidharma",
+    "faction": "BYAKKO",
+    "passiveName": "Treatise on the Two Entrances and Four Practices",
+    "passiveText": "If the total HP of all enemies is less than 65% , {triggerRate}% chance to trigger once. / Decrease the AGI of all enemies by 15 ~ 25% of target's Max HP. / Increase the AGI of all enemies by 10 ~ 15% of target's PHY. / Increase the AGI of all enemies by 10 ~ 15% of target's INT.",
+    "attributes": "China; Faith; Grappling"
+  },
+  "12046": {
+    "name": "Hōjō Masako",
+    "faction": "SEIRYU",
+    "passiveName": "Nun Shogun",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the last enemy's higher PHY/INT by 5 ~ 10% of this hero's PHY. / Increase this hero's PHY by 10 ~ 30% of the total PHY/INT/AGI decrease of all enemies.",
+    "attributes": "Head; Politics; Female; Heian-Kamakura; Faith"
+  },
+  "12047": {
+    "name": "Aristotle",
+    "faction": "BYAKKO",
+    "passiveName": "Aether",
+    "passiveText": "If this hero's HP is less than 55% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the lowest HP equal to 45% of this hero's INT. / Deal damage to the enemy with the lowest HP equal to 25 ~ 35% of this hero's HP decrease.",
+    "attributes": "Soft Science; Greece; Universe"
+  },
+  "12048": {
+    "name": "Pierre-Auguste Renoir",
+    "faction": "GENBU",
+    "passiveName": "Bal du moulin de la Galette",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the higher PHY/INT of all enemies by 10% of target's Max HP. / Decrease the lower PHY/INT of all allies by 10% of target's Max HP. / Deal damage to the enemy with the lowest INT equal to 20% of this hero's INT.",
+    "attributes": "Art; France"
+  },
+  "12049": {
+    "name": "Frédéric Chopin",
+    "faction": "GENBU",
+    "passiveName": "Valse de l'adieu",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Sleep on the enemy with the highest Max HP. / Decrease the AGI of the enemy with the highest Max HP by 10% of target's AGI. 60% if affected by Decoy.",
+    "attributes": "Music; Poland"
+  },
+  "13001": {
+    "name": "ETHEREMON-RED",
+    "faction": "SUZAKU",
+    "passiveName": "Kyari Slash",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 70% of this hero's PHY decrease. / Deal damage to the first enemy equal to 70% of this hero's PHY.",
+    "attributes": "Duel; Etheremon"
+  },
+  "13002": {
+    "name": "D'Artagnan",
+    "faction": "SUZAKU",
+    "passiveName": "One for all/ All for one",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 10% of this hero's INT. / Increase the INT of all allies by 10% of this hero's INT.",
+    "attributes": "Firearms; France"
+  },
+  "13003": {
+    "name": "Gennai Hiraga",
+    "faction": "BYAKKO",
+    "passiveName": "The Elekiter",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase this hero's INT by 90% of this hero's INT decrease. / Deal damage to all enemies equal to 40% of this hero's INT.",
+    "attributes": "Hard Science; Edo; Machine"
+  },
+  "13004": {
+    "name": "Mata Hari",
+    "faction": "BYAKKO",
+    "passiveName": "Eye of the day",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the lowest INT by 10% of this hero's INT. / Deal damage to the enemy with the lowest INT equal to 20% of this hero's INT. / {successRate}% chance to inflict Bind on the enemy with the lowest INT.",
+    "attributes": "Female; Covert; Poland"
+  },
+  "13005": {
+    "name": "ETHEREMON-BLUE",
+    "faction": "SEIRYU",
+    "passiveName": "Omnom Tactics",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 75% , {triggerRate}% chance to trigger. / Increase this hero's INT by 50% of this hero's INT decrease. / Increase this hero's AGI by 50% of this hero's AGI decrease. / Deal damage to the first enemy equal to 50% of this hero's INT.",
+    "attributes": "Tactics; Etheremon"
+  },
+  "13006": {
+    "name": "ETHEREMON-GREEN",
+    "faction": "GENBU",
+    "passiveName": "Mintol Art",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 50% of target's PHY decrease. / Increase the INT of all allies by 50% of target's INT decrease. / Heal all allies for 30% of Healing Coefficient.",
+    "attributes": "Music; Etheremon"
+  },
+  "13007": {
+    "name": "Emperor Nero",
+    "faction": "SEIRYU",
+    "passiveName": "The Tyrant",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 50% of damage taken. / Heal this hero for 40% of this hero's INT. / Decrease the PHY of all allies by 30% of this hero's INT.",
+    "attributes": "Head; Politics; Rome; Pole weapon; Performing Arts"
+  },
+  "13008": {
+    "name": "Michel Nostradamus",
+    "faction": "BYAKKO",
+    "passiveName": "Les Propheties",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Confusion on all enemies. / Decrease the highest PHY/INT/AGI of all enemies by 100% of the total PHY/INT/AGI increase of target.",
+    "attributes": "Hard Science; Occult; France"
+  },
+  "13009": {
+    "name": "Jiang Ziya",
+    "faction": "BYAKKO",
+    "passiveName": "Six Secret Teachings",
+    "passiveText": "If this hero's HP is less than 65% , {triggerRate}% chance to trigger once. / Decrease the INT of all allies by 80% of target's INT increase. / Increase the INT of all allies by 50% of this hero's INT. / Increase the CHARGE of all allies by 200% of this hero's INT.",
+    "attributes": "China; Traditional"
+  },
+  "13010": {
+    "name": "Hanzo Hattori",
+    "faction": "SUZAKU",
+    "passiveName": "My Lord",
+    "passiveText": "If the total HP of all allies is less than 70% , {triggerRate}% chance to trigger once. / Heal all allies for 100% of Healing Coefficient.",
+    "attributes": "Covert; Sengoku"
+  },
+  "13011": {
+    "name": "Keiji Maeda",
+    "faction": "GENBU",
+    "passiveName": "Kabuki-mono",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the first enemy's highest PHY/INT/AGI by 20% of this hero's PHY. / Decrease the first enemy's highest PHY/INT/AGI by 20% of this hero's INT.",
+    "attributes": "Sengoku; Pole weapon"
+  },
+  "13012": {
+    "name": "Amakusa Shirō",
+    "faction": "BYAKKO",
+    "passiveName": "Shimabara Rebellion",
+    "passiveText": "If the total PHY/INT/AGI of this hero is less than 75% of its original value, {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 95% of target's PHY decrease. / Increase the INT of all allies by 95% of target's INT decrease. / Deal damage to this hero equal to 100% of the total PHY/INT/AGI decrease of this hero. / Increase the AGI of all allies by 95% of target's AGI decrease.",
+    "attributes": "Revolution; Edo; Faith"
+  },
+  "13013": {
+    "name": "Goemon Ishikawa",
+    "faction": "KOURYU",
+    "passiveName": "Thieves never die",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 30% of this hero's Max HP. / Deal damage to all enemies equal to 20% of this hero's PHY.",
+    "attributes": "Covert; Sengoku"
+  },
+  "13014": {
+    "name": "Naoe Kanetsugu",
+    "faction": "SEIRYU",
+    "passiveName": "Letter of challenge",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Confusion on the frontline enemy. / Decrease the frontline enemy's PHY by 5% of this hero's INT. 30% if affected by Confusion. / {successRate}% chance to inflict Fear on the midline enemy. / Decrease the midline enemy's PHY by 5% of this hero's INT. 30% if affected by Fear. / {successRate}% chance to inflict Stun on the backline enemy. / Decrease the backline enemy's INT by 5% of this hero's INT. 30% if affected by Stun.",
+    "attributes": "Sengoku"
+  },
+  "13015": {
+    "name": "Ivan the Terrible",
+    "faction": "SEIRYU",
+    "passiveName": "Tourism",
+    "passiveText": "If the total HP of all allies is less than 70% , {triggerRate}% chance to trigger once. / Deal damage to all allies equal to 15% of this hero's INT. / Increase the PHY of all allies by 20% of this hero's INT. / Increase the INT of all allies by 20% of this hero's INT. / Increase the PHY of all allies by 50% of target's PHY decrease. / Increase the INT of all allies by 50% of target's INT decrease.",
+    "attributes": "Russia; Pole weapon"
+  },
+  "13016": {
+    "name": "Matsuo Bashō",
+    "faction": "GENBU",
+    "passiveName": "The Narrow Road to the Deep North",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's AGI by 8% of this hero's AGI. / Increase the first ally's AGI by 8% of this hero's AGI.",
+    "attributes": "Soft Science; Journey; Edo"
+  },
+  "13017": {
+    "name": "Xuanzang",
+    "faction": "BYAKKO",
+    "passiveName": "Great Tang Records on the Western Regions",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 15% of this hero's INT.",
+    "attributes": "Soft Science; Journey; China; Faith"
+  },
+  "13018": {
+    "name": "Benkei",
+    "faction": "KOURYU",
+    "passiveName": "Standing beneath Benkei",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 100% of this hero's Max HP. / Decrease this hero's PHY by 100% of this hero's PHY. / Decrease this hero's INT by 100% of this hero's INT.",
+    "attributes": "Heian-Kamakura; Pole weapon"
+  },
+  "13019": {
+    "name": "Huang Zhong",
+    "faction": "GENBU",
+    "passiveName": "Shoot down the gods",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of this hero's PHY. / Decrease the AGI of the enemy with the highest PHY by 20% of this hero's INT. / {successRate}% chance to inflict Gravity on the enemy with the highest PHY.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Bow"
+  },
+  "13020": {
+    "name": "Diao Chan",
+    "faction": "KOURYU",
+    "passiveName": "Chaining scheme",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of all enemies by 10% of this hero's INT. / Decrease the INT of all enemies by 10% of this hero's INT.",
+    "attributes": "Female; Romance of the Three Kingdoms"
+  },
+  "13021": {
+    "name": "Saint Valentine",
+    "faction": "BYAKKO",
+    "passiveName": "Blessing of Valentinus",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the first ally for 10 ~ 20% of Healing Coefficient. / Heal the ally with the lowest HP for 10% of Healing Coefficient.",
+    "attributes": "Rome; Faith"
+  },
+  "13022": {
+    "name": "Pocahontas",
+    "faction": "GENBU",
+    "passiveName": "Princess Powhatan",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the first enemy for 15% of Healing Coefficient. / Decrease the AGI of all enemies by 15% of this hero's INT.",
+    "attributes": "Female; America"
+  },
+  "13023": {
+    "name": "Sun Jian",
+    "faction": "SUZAKU",
+    "passiveName": "Gangdong Fierce Tiger",
+    "passiveText": "If the total HP of all allies is less than 70% , {triggerRate}% chance to trigger once. / Deal damage to this hero equal to 50% of this hero's PHY. / Increase the PHY of all allies by 80% of target's PHY decrease. / Increase the AGI of all allies by 80% of target's AGI decrease. / Increase the PHY of all allies by 25% of this hero's PHY. / Increase the AGI of all allies by 15% of this hero's PHY.",
+    "attributes": "Romance of the Three Kingdoms; Wu"
+  },
+  "13024": {
+    "name": "Peter Paul Rubens",
+    "faction": "GENBU",
+    "passiveName": "Golden workshop",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 80% , {triggerRate}% chance to trigger. / Increase the AGI of all allies by 50% of target's AGI decrease. / Increase the AGI of all allies by 10% of this hero's AGI.",
+    "attributes": "Art; Poland"
+  },
+  "13025": {
+    "name": "Sanada Yukimura",
+    "faction": "SUZAKU",
+    "passiveName": "Sanada Maru",
+    "passiveText": "If the total HP of all allies is less than 80% , {triggerRate}% chance to trigger once. / Decrease the first enemy's PHY by 60% of this hero's PHY. / Decrease the first enemy's INT by 60% of this hero's PHY. / Decrease the midline enemy's PHY by 30% of this hero's PHY. / Decrease the midline enemy's INT by 30% of this hero's PHY. / Decrease this hero's AGI by 100% of this hero's AGI.",
+    "attributes": "Sengoku; Pole weapon"
+  },
+  "13026": {
+    "name": "Robin Hood",
+    "faction": "KOURYU",
+    "passiveName": "Green Hood Thief",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the highest HP equal to 30% of this hero's INT. 120% if affected by Decoy. / Heal the ally with the lowest HP for 30% of Healing Coefficient. / 100% chance to inflict Decoy on the enemy with the highest HP.",
+    "attributes": "England; Traditional; Bow"
+  },
+  "13027": {
+    "name": "Yang Duan He",
+    "faction": "SUZAKU",
+    "passiveName": "Majestic General",
+    "passiveText": "If the total HP of all allies is less than 55% , {triggerRate}% chance to trigger once. / Increase the AGI of all allies by 30 ~ 40% of this hero's PHY. / Increase the PHY of all allies by 40% of the total PHY increase of all enemies. / Increase the CHARGE of all allies by 100% of the total HP of all enemies.",
+    "attributes": "Qin; Mystery"
+  },
+  "13028": {
+    "name": "Claude Monet",
+    "faction": "GENBU",
+    "passiveName": "Water Lilies",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Heal the first ally for 10% of this hero's Max HP. / {successRate}% chance to inflict Sleep on the enemy with the highest PHY.",
+    "attributes": "Art; France"
+  },
+  "13029": {
+    "name": "Mary Read",
+    "faction": "KOURYU",
+    "passiveName": "Flash of Cutlass",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 120% of this hero's PHY.",
+    "attributes": "Female; Sea; America; Axe; Blackbeard Pirates"
+  },
+  "13030": {
+    "name": "William Shakespeare",
+    "faction": "GENBU",
+    "passiveName": "Bard of Avon",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 20% of this hero's INT. / {successRate}% chance to inflict Sleep on all enemies. / {successRate}% chance to inflict Sleep on all allies. / Decrease this hero's INT by 100% of this hero's INT increase.",
+    "attributes": "Soft Science; England; Performing Arts"
+  },
+  "13031": {
+    "name": "Wyatt Earp",
+    "faction": "KOURYU",
+    "passiveName": "Invincible Gunman",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of the ally with the lowest HP by 10% of this hero's INT. 25% if affected by Fear. / Increase this hero's INT by 15% of this hero's HP decrease. / {successRate}% chance to inflict Fear on the enemy with the lowest INT.",
+    "attributes": "Firearms; Duel; Western"
+  },
+  "13032": {
+    "name": "Anne Bonny",
+    "faction": "BYAKKO",
+    "passiveName": "Precision of Musket",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the lowest HP equal to 150% of this hero's INT decrease. / Increase this hero's INT by 30% of this hero's INT. / Deal damage to the enemy with the lowest HP equal to 100% of this hero's INT.",
+    "attributes": "Female; Sea; Firearms; America; Blackbeard Pirates"
+  },
+  "13034": {
+    "name": "Percival",
+    "faction": "KOURYU",
+    "passiveName": "Explore the Holy Grail",
+    "passiveText": "If the total HP of all allies is less than 60% , {triggerRate}% chance to trigger once. / Heal the ally with the lowest HP for 60% of PHY Healing Coefficient. / Increase the AGI of all allies by 50% of healing dealt by this hero.",
+    "attributes": "Traditional; Celtic; Pole weapon; Knights of the Round Table"
+  },
+  "13035": {
+    "name": "Ono no Komachi",
+    "faction": "GENBU",
+    "passiveName": "Nanakomachi",
+    "passiveText": "If the total HP of all allies is less than 80% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 100% of target's PHY decrease. / Increase the INT of all allies by 100% of target's INT decrease.",
+    "attributes": "Soft Science; Female; Heian-Kamakura; Top three beauties of all times and places"
+  },
+  "13036": {
+    "name": "Belle Starr",
+    "faction": "KOURYU",
+    "passiveName": "Legend of the Sanzoku Queen",
+    "passiveText": "After an ally or enemy uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the highest INT equal to 70% of this hero's INT.",
+    "attributes": "Female; Firearms; Western"
+  },
+  "13037": {
+    "name": "Magellan",
+    "faction": "KOURYU",
+    "passiveName": "Around the World",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 50% of this hero's Max HP. / Increase the PHY of all allies by 25% of this hero's PHY.",
+    "attributes": "Sea; Journey; Mediterranean"
+  },
+  "13038": {
+    "name": "Sarutobi Sasuke",
+    "faction": "SUZAKU",
+    "passiveName": "Mine fire",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 20% of this hero's AGI.",
+    "attributes": "Covert; Japan"
+  },
+  "13039": {
+    "name": "Lakshmi Bai",
+    "faction": "SEIRYU",
+    "passiveName": "Main meri Jhansi nahi doongi",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of all allies by 15% of this hero's PHY. / Decrease the AGI of all enemies by 5% of this hero's PHY. / Decrease the PHY of all allies by 5% of this hero's PHY.",
+    "attributes": "Female; Animal; Asia; The world's three greatest Jeannes"
+  },
+  "13040": {
+    "name": "Gilgamesh",
+    "faction": "SUZAKU",
+    "passiveName": "Battle against Humbaba",
+    "passiveText": "If the total PHY/INT/AGI of all enemies is over 150% of its original value, {triggerRate}% chance to trigger once. / Deal damage to the enemy with the highest PHY equal to 100% of target's PHY increase. / Heal the ally with the lowest HP for 100% of PHY Healing Coefficient.",
+    "attributes": "Head; Politics; Animal; Grappling; Mediterranean"
+  },
+  "13041": {
+    "name": "Raffaello Santi",
+    "faction": "GENBU",
+    "passiveName": "Sistine Madonna",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 20% of this hero's AGI.",
+    "attributes": "Art; Italy"
+  },
+  "13042": {
+    "name": "Christopher Columbus",
+    "faction": "KOURYU",
+    "passiveName": "Dream of the westbound sea route",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Decrease the highest PHY/INT/AGI of all enemies by 70% of the total PHY/INT/AGI increase of target. / Decrease the highest PHY/INT/AGI of all allies by 70% of the total PHY/INT/AGI increase of target. / Heal all allies for 30% of Healing Coefficient.",
+    "attributes": "Sea; Journey; Mediterranean"
+  },
+  "13043": {
+    "name": "Isaac Newton",
+    "faction": "BYAKKO",
+    "passiveName": "Newton's law of universal gravitation",
+    "passiveText": "If the total HP of all allies is less than 80% , {triggerRate}% chance to trigger once. / Decrease the AGI of all allies by 100% of target's AGI increase. / Increase the AGI of all allies by 100% of target's AGI decrease. / Decrease the AGI of all enemies by 100% of target's AGI increase. / Increase the AGI of all enemies by 100% of target's AGI decrease. / {successRate}% chance to inflict Barrier on all allies.",
+    "attributes": "Hard Science; England; Universe"
+  },
+  "13044": {
+    "name": "Tokugawa Ieyasu",
+    "faction": "SEIRYU",
+    "passiveName": "Tōshō Daigongen",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Heal all allies for 100% of PHY Healing Coefficient.",
+    "attributes": "Head; Politics; Edo; Ruler over Sengoku"
+  },
+  "13045": {
+    "name": "Saitō Hajime",
+    "faction": "SEIRYU",
+    "passiveName": "Invincible Samurai Sword",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Prostration on the first enemy. / {successRate}% chance to inflict Prostration on the midline enemy. / Deal damage to the first enemy equal to 20 ~ 30% of this hero's PHY. / Deal damage to an ally or enemy equal to 30 ~ 50% of this hero's PHY.",
+    "attributes": "Duel; Bakumatsu; Shinsengumi"
+  },
+  "13046": {
+    "name": "Maria Theresa",
+    "faction": "SEIRYU",
+    "passiveName": "Seven Years' War",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Sleep on the enemy with the lowest HP. / Decrease the AGI of all allies by 3 ~ 7% of this hero's INT. / Decrease the AGI of all enemies by 7% of this hero's INT.",
+    "attributes": "Head; Politics; Female; Austria"
+  },
+  "13047": {
+    "name": "Attila",
+    "faction": "SEIRYU",
+    "passiveName": "King  of the Hunnic Empire",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 40% of damage taken. / Heal the midline ally for 20% of this hero's PHY.",
+    "attributes": "Head; Poland; Asia"
+  },
+  "13048": {
+    "name": "Ma Chao",
+    "faction": "GENBU",
+    "passiveName": "Five Tiger-General of the Left",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the higher PHY/INT of all allies by 20% of this hero's PHY. / Decrease the higher PHY/INT of all enemies by 40% of the total PHY/INT/AGI increase of target.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon"
+  },
+  "13049": {
+    "name": "Dong Zhuo",
+    "faction": "KOURYU",
+    "passiveName": "Prevalence of arbitrariness",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the AGI of the enemy with the highest AGI by 20 ~ 50% of target's AGI increase. / 100% chance to inflict Decoy on the ally with the highest HP. / 100% chance to inflict Decoy on the enemy with the lowest HP. / {successRate}% chance to inflict Fear on this hero.",
+    "attributes": "Head; Romance of the Three Kingdoms"
+  },
+  "13050": {
+    "name": "Medb",
+    "faction": "SUZAKU",
+    "passiveName": "Queen's Triskelion",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of target's PHY increase. / Decrease the AGI of the enemy with the highest AGI by 40% of target's AGI increase. / Heal this hero for 25% of Healing Coefficient.",
+    "attributes": "Female; Traditional; Celtic; Pole weapon"
+  },
+  "13051": {
+    "name": "Minamoto no Yoritomo",
+    "faction": "SEIRYU",
+    "passiveName": "Sei-i Tai Shōgun",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 100% of damage taken. / Increase the CHARGE of all allies by 500 ~ 1185% of this hero's PHY increase. / Deal damage to the enemy with the highest PHY equal to 50% of this hero's PHY increase.",
+    "attributes": "Politics; Animal; Heian-Kamakura"
+  },
+  "14001": {
+    "name": "Zhang Fei",
+    "faction": "GENBU",
+    "passiveName": "A Match for a Thousand Foes",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 50% of this hero's Max HP.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon; Oath of the Peach Garden"
+  },
+  "14002": {
+    "name": "Florence Nightingale",
+    "faction": "BYAKKO",
+    "passiveName": "Angel in White",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 60% , {triggerRate}% chance to trigger. / Heal all allies for 100% of Healing Coefficient.",
+    "attributes": "Hard Science; Female; England"
+  },
+  "14003": {
+    "name": "Ludwig van Beethoven",
+    "faction": "GENBU",
+    "passiveName": "Ode to Joy",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 25% of this hero's INT. / Decrease the INT of all enemies by 25% of this hero's INT. / Decrease the AGI of all enemies by 25% of this hero's INT.",
+    "attributes": "Music; Germany"
+  },
+  "14004": {
+    "name": "Kojiro Sasaki",
+    "faction": "KOURYU",
+    "passiveName": "Swallow's Blade",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's AGI by 10% of this hero's AGI. / Increase this hero's lower PHY/INT by 5 ~ 8% of this hero's AGI. / Decrease the midline enemy's higher PHY/INT by 5 ~ 8% of this hero's AGI.",
+    "attributes": "Duel; Edo"
+  },
+  "14005": {
+    "name": "Kaishu Katsu",
+    "faction": "SEIRYU",
+    "passiveName": "Bloodless Capture",
+    "passiveText": "After this hero uses an Active Skill, If this hero's HP is less than 60% , {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's INT. / Increase the INT of all allies by 30% of this hero's INT.",
+    "attributes": "Soft Science; Sea; Bakumatsu"
+  },
+  "14006": {
+    "name": "Billy the Kid",
+    "faction": "KOURYU",
+    "passiveName": "Bull's eye",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 40% of this hero's INT.",
+    "attributes": "Firearms; Duel; Western"
+  },
+  "14007": {
+    "name": "Thomas Edison",
+    "faction": "KOURYU",
+    "passiveName": "Edison Effect",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 30% of this hero's INT.",
+    "attributes": "Hard Science; America; Machine"
+  },
+  "14008": {
+    "name": "Marco Polo",
+    "faction": "KOURYU",
+    "passiveName": "The Travels of Marco Polo",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Heal all allies for 70% of Healing Coefficient. / Revive this hero with 30% of this hero's Max HP. / Decrease the PHY of the enemy with the highest PHY by 40% of target's PHY.",
+    "attributes": "Soft Science; Animal; Journey; Italy"
+  },
+  "14009": {
+    "name": "Masamune Date",
+    "faction": "SEIRYU",
+    "passiveName": "One-Eyed Dragon of Ohshu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 140% of this hero's INT. / Deal damage to the first enemy equal to 70% of this hero's INT decrease. / Decrease the midline enemy's highest PHY/INT/AGI by 30% of the total PHY/INT/AGI increase of all enemies. / Decrease the backline enemy's highest PHY/INT/AGI by 30% of the total PHY/INT/AGI increase of all enemies.",
+    "attributes": "Sengoku; One-eyed"
+  },
+  "14010": {
+    "name": "Wang Ki",
+    "faction": "SUZAKU",
+    "passiveName": "The generalissimo",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 70% of this hero's PHY. / Increase the CHARGE of all allies by 250% of target's PHY.",
+    "attributes": "Qin; Pole weapon"
+  },
+  "14011": {
+    "name": "Karl Marx",
+    "faction": "BYAKKO",
+    "passiveName": "Das Kapital",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the INT of all allies by 20 ~ 30% of this hero's INT. / {successRate}% chance to inflict Sleep on all enemies. / Revive this hero with 10% of this hero's Max HP.",
+    "attributes": "Soft Science; Revolution; Germany"
+  },
+  "14012": {
+    "name": "Soji Okita",
+    "faction": "SEIRYU",
+    "passiveName": "Three Stage Thrust",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / [3 times]Deal damage to the first enemy equal to 50% of this hero's PHY.",
+    "attributes": "Bakumatsu; Shinsengumi"
+  },
+  "14013": {
+    "name": "Pyotr Tchaikovsky",
+    "faction": "GENBU",
+    "passiveName": "Swan Lake",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Revive this hero with 20% of this hero's Max HP. / Increase this hero's AGI by 30% of this hero's INT.",
+    "attributes": "Music; Animal; Russia"
+  },
+  "14014": {
+    "name": "Marie Antoinette",
+    "faction": "GENBU",
+    "passiveName": "Brioche shoot",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to all enemies equal to 25% of this hero's INT. / Heal this hero for 30% of damage dealt. / {successRate}% chance to inflict Poison on this hero.",
+    "attributes": "Politics; Female; France"
+  },
+  "14015": {
+    "name": "Yang Guifei",
+    "faction": "GENBU",
+    "passiveName": "Imperial consort",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the AGI of the enemy with the lowest INT by 130% of this hero's INT. / Increase the AGI of the enemy with the lowest INT by 40% of target's INT.",
+    "attributes": "Music; Female; China; Performing Arts; Top three beauties of all times and places"
+  },
+  "14016": {
+    "name": "Lü Bu",
+    "faction": "KOURYU",
+    "passiveName": "Kingslayer",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase this hero's PHY by 10% of this hero's PHY. / Deal damage to the first enemy equal to 60% of this hero's PHY. / {successRate}% chance to inflict Fear on all enemies.",
+    "attributes": "Romance of the Three Kingdoms; Pole weapon"
+  },
+  "14017": {
+    "name": "Marie Curie",
+    "faction": "KOURYU",
+    "passiveName": "Petit Curie",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 10 ~ 15% of this hero's INT. / Heal all allies for 25% of Healing Coefficient. / Set the SHIELD of all allies to 100% of target's PHY if higher.",
+    "attributes": "Hard Science; Female; Poland"
+  },
+  "14018": {
+    "name": "Sun Quan",
+    "faction": "SUZAKU",
+    "passiveName": "Young successor",
+    "passiveText": "If the total HP of all enemies is less than 50% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 20% of this hero's PHY. / Increase this hero's INT by 20% of this hero's INT. / Increase this hero's AGI by 20% of this hero's AGI. / {successRate}% chance to inflict Barrier on this hero. / 100% chance to inflict Decoy on this hero.",
+    "attributes": "Head; Romance of the Three Kingdoms; Wu"
+  },
+  "14019": {
+    "name": "Kamehameha I",
+    "faction": "GENBU",
+    "passiveName": "Mamalahoe Kanawai",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Heal this hero for 70% of damage taken. / Set this hero's SHIELD to 150 ~ 250 if higher.",
+    "attributes": "Head; Politics; America; Pole weapon"
+  },
+  "14020": {
+    "name": "Calamity Jane",
+    "faction": "KOURYU",
+    "passiveName": "Court Calamity",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 15% of this hero's INT. / Decrease the INT of the enemy with the highest INT by 15% of this hero's INT. / Decrease the AGI of the enemy with the highest AGI by 10% of this hero's INT.",
+    "attributes": "Female; Firearms; Duel; Western"
+  },
+  "14021": {
+    "name": "Vincent van Gogh",
+    "faction": "GENBU",
+    "passiveName": "Sunflowers",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 30% of this hero's INT. / {successRate}% chance to inflict Confusion on this hero.",
+    "attributes": "Art; Poland"
+  },
+  "14022": {
+    "name": "Tomoe Gozen",
+    "faction": "SUZAKU",
+    "passiveName": "My last job",
+    "passiveText": "If this hero's HP is less than 30% , {triggerRate}% chance to trigger once. / Deal damage to the enemy with the highest INT equal to 160% of this hero's PHY. / Deal damage to this hero equal to 20 ~ 40% of this hero's PHY.",
+    "attributes": "Female; Heian-Kamakura; Pole weapon"
+  },
+  "14023": {
+    "name": "Zhao Yun",
+    "faction": "GENBU",
+    "passiveName": "Tiger general",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the INT of all enemies by 50% of target's INT increase. / Decrease the AGI of the enemy with the highest AGI by 50% of target's AGI increase.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon"
+  },
+  "14024": {
+    "name": "Yue Fei",
+    "faction": "SUZAKU",
+    "passiveName": "Show the flag",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 60 ~ 70% of the total PHY/INT/AGI increase of this hero. / Heal this hero for 60 ~ 70% of the total PHY/INT/AGI increase of this hero.",
+    "attributes": "Tactics; China; Pole weapon"
+  },
+  "14025": {
+    "name": "Takeda Shingen",
+    "faction": "SEIRYU",
+    "passiveName": "Furinkazan",
+    "passiveText": "If this hero's HP is less than 40% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 10 ~ 25% of this hero's Max HP. / Increase the AGI of all allies by 10 ~ 25% of this hero's Max HP.",
+    "attributes": "Tactics; Sengoku"
+  },
+  "14026": {
+    "name": "Julius Caesar",
+    "faction": "SEIRYU",
+    "passiveName": "I came I saw I conquered",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 20 ~ 30% of this hero's PHY. / Decrease the INT of all enemies by 25 ~ 35% of this hero's PHY. / Deal damage to the first enemy equal to 20 ~ 40% of the total INT decrease of all enemies.",
+    "attributes": "Head; Politics; Soft Science; Rome"
+  },
+  "14027": {
+    "name": "Hijikata Toshizo",
+    "faction": "SEIRYU",
+    "passiveName": "Hard‐hearted Vice captain",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the first enemy's AGI by 15% of this hero's PHY. / Increase the PHY of the ally with the lowest HP by 30% of this hero's PHY.",
+    "attributes": "Bakumatsu; Shinsengumi"
+  },
+  "14028": {
+    "name": "Charles Darwin",
+    "faction": "KOURYU",
+    "passiveName": "On the Origin of Species",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the PHY of all enemies by 85% of target's PHY increase. / Decrease the AGI of all enemies by 85% of target's AGI increase.",
+    "attributes": "Hard Science; Animal; England"
+  },
+  "14029": {
+    "name": "Yamato Takeru",
+    "faction": "SEIRYU",
+    "passiveName": "Three Sacred Treasures",
+    "passiveText": "After the last enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase the lowest PHY/INT/AGI of all enemies by 40% of the total PHY/INT/AGI increase of target. / Decrease the highest PHY/INT/AGI of all enemies by 30% of the total PHY/INT/AGI increase of target.",
+    "attributes": "Japan; Traditional"
+  },
+  "14030": {
+    "name": "Wolfgang Amadeus Mozart",
+    "faction": "GENBU",
+    "passiveName": "Eine kleine Nachtmusik",
+    "passiveText": "If the total PHY/INT/AGI of this hero is less than 70% of its original value, {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 40% of the total PHY/INT/AGI decrease of this hero. / Decrease the INT of all enemies by 40% of the total PHY/INT/AGI decrease of this hero. / Decrease the AGI of all enemies by 40% of the total PHY/INT/AGI decrease of this hero.",
+    "attributes": "Music; Austria"
+  },
+  "14031": {
+    "name": "Taira no Masakado",
+    "faction": "SEIRYU",
+    "passiveName": "Legend of Kubizuka",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 70% of this hero's PHY. / {successRate}% chance to inflict Fear on all enemies.",
+    "attributes": "Heian-Kamakura; Curse"
+  },
+  "14032": {
+    "name": "Uesugi Kenshin",
+    "faction": "SUZAKU",
+    "passiveName": "Incarnation of Bashamon",
+    "passiveText": "If this hero's HP is less than 40% , {triggerRate}% chance to trigger once. / Increase the INT of all allies by 10 ~ 25% of this hero's Max HP. / Increase the AGI of all allies by 10 ~ 25% of this hero's Max HP.",
+    "attributes": "Sengoku"
+  },
+  "14033": {
+    "name": "Abraham Lincoln",
+    "faction": "SEIRYU",
+    "passiveName": "Emancipation Proclamation",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Heal all allies for 50% of Healing Coefficient. / Deal damage to all enemies equal to 40 ~ 50% of this hero's INT.",
+    "attributes": "Politics; America; American Dream"
+  },
+  "14034": {
+    "name": "SATOSHI・NAKAMOTO OMEGA CC",
+    "faction": "BYAKKO",
+    "passiveName": "Mining OMEGA CC",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the last ally's PHY by 25 ~ 30% of this hero's PHY. / Increase the last ally's AGI by 25 ~ 30% of this hero's PHY.",
+    "attributes": "Hard Science; Mystery"
+  },
+  "14035": {
+    "name": "Kondo Isami",
+    "faction": "SEIRYU",
+    "passiveName": "Nagasone Konetsu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's PHY. / {successRate}% chance to inflict Confusion on this hero.",
+    "attributes": "Bakumatsu; Shinsengumi"
+  },
+  "14036": {
+    "name": "Blackbeard",
+    "faction": "BYAKKO",
+    "passiveName": "Queen Anne's Revenge",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the last enemy's AGI by 10 ~ 20% of this hero's AGI. / Increase this hero's AGI by 10 ~ 20% of this hero's AGI. / Heal this hero for 10 ~ 20% of this hero's AGI.",
+    "attributes": "Sea; Firearms; America; Blackbeard Pirates"
+  },
+  "14037": {
+    "name": "Guan Yu",
+    "faction": "GENBU",
+    "passiveName": "after crossing five passes and slaying six generals",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to this hero equal to 5 ~ 10% of this hero's Max HP. / Increase this hero's PHY by 20% of this hero's HP decrease. / Deal damage to the first enemy equal to 40 ~ 50% of this hero's PHY. / Decrease this hero's PHY by 15% of this hero's HP decrease.",
+    "attributes": "Romance of the Three Kingdoms; Shu; Pole weapon; Oath of the Peach Garden"
+  },
+  "14038": {
+    "name": "Brunhild",
+    "faction": "SUZAKU",
+    "passiveName": "Brynhild's Hel-Ride",
+    "passiveText": "If this hero's HP is less than 25% , {triggerRate}% chance to trigger once. / Increase this hero's PHY by 500% of this hero's PHY. / Increase this hero's AGI by 500% of this hero's AGI. / Heal this hero for 40% of this hero's Max HP.",
+    "attributes": "Female; Germany; Traditional"
+  },
+  "14039": {
+    "name": "Saigō Takamori",
+    "faction": "SEIRYU",
+    "passiveName": "Tabaru Slope",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the INT of all enemies by 30 ~ 40% of target's INT. / {successRate}% chance to inflict Sleep on all enemies.",
+    "attributes": "Animal; Bakumatsu"
+  },
+  "14040": {
+    "name": "Han Xin",
+    "faction": "SUZAKU",
+    "passiveName": "Kokushimuso",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 120% of this hero's PHY.",
+    "attributes": "Qin; Pole weapon"
+  },
+  "14041": {
+    "name": "Nikola Tesla",
+    "faction": "KOURYU",
+    "passiveName": "Tesla coil",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's PHY. / {successRate}% chance to remove Confusion from all allies.",
+    "attributes": "Hard Science; Poland; Machine"
+  },
+  "14044": {
+    "name": "Jean-Henri Fabre",
+    "faction": "KOURYU",
+    "passiveName": "ethology",
+    "passiveText": "If this hero's HP is less than 80% , {triggerRate}% chance to trigger once. / Decrease this hero's INT by 100% of this hero's INT. / Increase the PHY of the ally with the highest PHY by 75% of this hero's INT decrease. / Heal all allies for 45% of this hero's INT decrease.",
+    "attributes": "Hard Science; France"
+  },
+  "14045": {
+    "name": "Lancelot",
+    "faction": "KOURYU",
+    "passiveName": "Lancelot of the Lake",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 15% of damage taken. / Increase the AGI of the ally with the lowest AGI by 20% of damage taken. / Increase the AGI of the ally with the highest AGI by 20% of damage taken.",
+    "attributes": "Traditional; Celtic; Pole weapon; Knights of the Round Table"
+  },
+  "14046": {
+    "name": "Grigori Rasputin",
+    "faction": "BYAKKO",
+    "passiveName": "Russia’s Mad Monk",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the lowest PHY equal to 33% of the total INT increase of all enemies. / Deal damage to the enemy with the lowest INT equal to 33% of the total PHY increase of all enemies. / Heal all allies for 13% of the total INT increase of all enemies. / Heal all allies for 13% of the total PHY increase of all enemies.",
+    "attributes": "Politics; Occult; Russia"
+  },
+  "14047": {
+    "name": "Hannibal",
+    "faction": "SUZAKU",
+    "passiveName": "Fertility god Baal's Lightning",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the enemy with the lowest HP equal to 100% of the total AGI decrease of all allies. / Deal damage to all allies equal to 80% of the total AGI decrease of all enemies.",
+    "attributes": "Head; Tactics; Mediterranean; One-eyed"
+  },
+  "14048": {
+    "name": "Zhou Yu",
+    "faction": "SUZAKU",
+    "passiveName": "Battle of Red Cliffs",
+    "passiveText": "After an enemy uses an Active Skill, {triggerRate}% chance to trigger. / Increase the higher PHY/INT of all allies by 20 ~ 25% of this hero's INT. / {successRate}% chance to inflict Fear on this hero.",
+    "attributes": "Tactics; Politics; Romance of the Three Kingdoms; Wu"
+  },
+  "14049": {
+    "name": "Xiahou Dun",
+    "faction": "BYAKKO",
+    "passiveName": "One-eyed great man",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / [4 times]Deal damage to the last enemy equal to 35% of this hero's INT.",
+    "attributes": "Politics; Romance of the Three Kingdoms; Wei; One-eyed"
+  },
+  "14050": {
+    "name": "Sima Yi Zhongda",
+    "faction": "BYAKKO",
+    "passiveName": "Five essentials to war",
+    "passiveText": "If the total HP of all allies is less than 50% , {triggerRate}% chance to trigger once. / Increase the AGI of all allies by 130% of this hero's AGI increase. / Increase the AGI of all allies by 130% of this hero's AGI decrease. / Increase the AGI of all allies by 5 ~ 10% of this hero's AGI.",
+    "attributes": "Tactics; Romance of the Three Kingdoms; Wei"
+  },
+  "14051": {
+    "name": "Rama",
+    "faction": "BYAKKO",
+    "passiveName": "Maha avatara",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Decrease the PHY of all enemies by 25% of this hero's AGI. / Decrease the INT of all enemies by 25% of this hero's AGI. / Decrease the AGI of all enemies by 25% of this hero's AGI.",
+    "attributes": "Journey; Traditional; Bow; Asia"
+  },
+  "14052": {
+    "name": "Francis Drake",
+    "faction": "KOURYU",
+    "passiveName": "Pirates under the Queen",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Increase the AGI of all allies by 40% of target's PHY. / Increase the AGI of all allies by 40% of target's INT. / Increase the AGI of all enemies by 40% of target's PHY. / Increase the AGI of all enemies by 40% of target's INT.",
+    "attributes": "Sea; Firearms; Journey; England"
+  },
+  "14053": {
+    "name": "William Tell",
+    "faction": "BYAKKO",
+    "passiveName": "The Arrow of Liberation",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 60% of damage taken. / Decrease this hero's AGI by 10% of this hero's INT increase. / Deal damage to the first enemy equal to 100% of this hero's INT.",
+    "attributes": "Poland; Traditional; Bow"
+  },
+  "14054": {
+    "name": "Sugawara no Michizane",
+    "faction": "BYAKKO",
+    "passiveName": "Tenjin",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / {successRate}% chance to inflict Curse on all enemies. / Deal damage to the enemy with the lowest HP equal to 110% of this hero's INT.",
+    "attributes": "Politics; Heian-Kamakura; Curse"
+  },
+  "14055": {
+    "name": "Honda Tadakatsu",
+    "faction": "SUZAKU",
+    "passiveName": "Vogue and Valor",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 100% of the total PHY increase of all allies. / Increase this hero's AGI by 100% of the total AGI increase of all allies. / {successRate}% chance to inflict Barrier on this hero.",
+    "attributes": "Sengoku; Pole weapon"
+  },
+  "14056": {
+    "name": "Natsume Sōseki",
+    "faction": "GENBU",
+    "passiveName": "Quietness of Ten vigintillion ",
+    "passiveText": "If the total PHY/INT/AGI of this hero is less than 65% of its original value, {triggerRate}% chance to trigger once. / Increase the PHY of all allies by 100 ~ 150% of target's PHY decrease. / Increase the INT of all allies by 100 ~ 150% of target's INT decrease. / Increase the AGI of all allies by 100 ~ 150% of target's AGI decrease.",
+    "attributes": "Soft Science; Animal; Japan"
+  },
+  "14057": {
+    "name": "Boudica",
+    "faction": "SUZAKU",
+    "passiveName": "Queen of the Iceni",
+    "passiveText": "If this hero's HP is less than 70% , {triggerRate}% chance to trigger once. / Decrease the highest PHY/INT/AGI of all enemies by 100% of the total PHY/INT/AGI increase of this hero. / Decrease the highest PHY/INT/AGI of all allies by 100% of the total PHY/INT/AGI increase of this hero.",
+    "attributes": "Head; Female; Celtic; Pole weapon"
+  },
+  "15001": {
+    "name": "Nobunaga Oda",
+    "faction": "SEIRYU",
+    "passiveName": "Rule the Empire by Force",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 150 ~ 200% of this hero's PHY.",
+    "attributes": "Head; Firearms; Sengoku; Honnō-ji Incident; Ruler over Sengoku"
+  },
+  "15002": {
+    "name": "Napoleon Bonaparte",
+    "faction": "KOURYU",
+    "passiveName": "The Demon of Corsica",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 150 ~ 200% of this hero's INT.",
+    "attributes": "Head; Tactics; Animal; Revolution; France"
+  },
+  "15003": {
+    "name": "Cao Cao",
+    "faction": "BYAKKO",
+    "passiveName": "A Cunning Hero in Chaotic Times",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of the ally with the highest PHY by 10% of this hero's PHY. / Increase this hero's PHY by 15% of this hero's PHY. / Heal this hero for 30% of this hero's PHY.",
+    "attributes": "Head; Romance of the Three Kingdoms; Wei"
+  },
+  "15004": {
+    "name": "George Washington",
+    "faction": "SEIRYU",
+    "passiveName": "First President",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the INT of all allies by 30% of this hero's INT. / Increase the AGI of all allies by 30% of this hero's INT.",
+    "attributes": "Head; Politics; America; American Dream"
+  },
+  "15005": {
+    "name": "Leonardo da Vinci",
+    "faction": "KOURYU",
+    "passiveName": "Mona Lisa",
+    "passiveText": "If this hero's HP is less than 60% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 80% of this hero's INT.",
+    "attributes": "Art; Soft Science; Hard Science; Italy"
+  },
+  "15006": {
+    "name": "King Arthur",
+    "faction": "BYAKKO",
+    "passiveName": "Excalibur",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 50% of this hero's PHY. / Heal this hero for 30% of Healing Coefficient.",
+    "attributes": "Head; Traditional; Celtic; Knights of the Round Table"
+  },
+  "15007": {
+    "name": "Joan of Arc",
+    "faction": "BYAKKO",
+    "passiveName": "The Maid of Orleans",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 10 ~ 25% of this hero's INT. / Decrease the AGI of all enemies by 5% of this hero's PHY. / 100% chance to inflict Decoy on the first ally.",
+    "attributes": "Female; France; Faith; Pole weapon; The world's three greatest Jeannes"
+  },
+  "15008": {
+    "name": "Ryoma Sakamoto",
+    "faction": "SEIRYU",
+    "passiveName": "Kaientai",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 20% of this hero's INT. / Heal all allies for 40% of Healing Coefficient. / Increase the INT of all allies by 10% of this hero's INT.",
+    "attributes": "Firearms; Bakumatsu"
+  },
+  "15009": {
+    "name": "Liu Bei ",
+    "faction": "GENBU",
+    "passiveName": "Three Visits",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of the ally with the lowest HP by 35% of this hero's INT. / Increase the INT of the ally with the lowest HP by 35% of this hero's INT. / Increase the AGI of the ally with the lowest HP by 25% of this hero's INT.",
+    "attributes": "Head; Romance of the Three Kingdoms; Shu; Oath of the Peach Garden"
+  },
+  "15010": {
+    "name": "Albert Einstein",
+    "faction": "KOURYU",
+    "passiveName": "Theory of Relativity",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 30% of this hero's INT. / Increase the AGI of all allies by 30% of this hero's INT.",
+    "attributes": "Hard Science; Germany; Universe"
+  },
+  "15011": {
+    "name": "Himiko",
+    "faction": "BYAKKO",
+    "passiveName": "Kido",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the INT of all enemies by 50% of this hero's INT. / Decrease the INT of all allies by 50% of this hero's INT.",
+    "attributes": "Head; Female; Occult; Japan; Performing Arts"
+  },
+  "15012": {
+    "name": "Johann Sebastian Bach",
+    "faction": "GENBU",
+    "passiveName": "Baroque",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 15% of this hero's INT. / Increase the INT of all allies by 15% of this hero's INT. / Increase the AGI of all allies by 10% of this hero's INT.",
+    "attributes": "Music; Germany"
+  },
+  "15013": {
+    "name": "Genghis Khan",
+    "faction": "SUZAKU",
+    "passiveName": "Blue wolf",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the first enemy equal to 40% of this hero's PHY. / Increase this hero's CHARGE by 25 ~ 35% of the total AGI increase of all enemies.",
+    "attributes": "Head; Animal; Asia"
+  },
+  "15014": {
+    "name": "Charles the Great",
+    "faction": "SEIRYU",
+    "passiveName": "King of Heart",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's INT by 30% of this hero's INT. / Decrease the INT of the enemy with the highest INT by 30% of target's INT. / Deal damage to the enemy with the highest INT equal to 40 ~ 60% of this hero's INT increase.",
+    "attributes": "Head; Tactics; Politics; Rome; Faith"
+  },
+  "15015": {
+    "name": "Zhuge Liang",
+    "faction": "GENBU",
+    "passiveName": "This is Zhuge Liang's trap!",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Deal damage to the first enemy equal to 55% of the total PHY/INT/AGI increase of all enemies. / Decrease the PHY of all enemies by 120% of target's PHY increase. / Decrease the INT of all enemies by 120% of target's INT increase. / Decrease the AGI of all enemies by 120% of target's AGI increase. / {successRate}% chance to inflict Bind on all enemies.",
+    "attributes": "Tactics; Politics; Romance of the Three Kingdoms; Shu"
+  },
+  "15016": {
+    "name": "Cleopatra",
+    "faction": "GENBU",
+    "passiveName": "Hypnotic Beauty",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to inflict Charm on the enemy with the highest AGI. / Decrease the AGI of the enemy with the highest AGI by 25% of damage taken.",
+    "attributes": "Head; Female; Pole weapon; Mediterranean; Top three beauties of all times and places"
+  },
+  "15017": {
+    "name": "Alexander the Great",
+    "faction": "SUZAKU",
+    "passiveName": "King of Conqueror",
+    "passiveText": "After this hero dies, {triggerRate}% chance to trigger once. / Increase the first ally's PHY by 120 ~ 140% of this hero's PHY. / Increase the first ally's INT by 120 ~ 140% of this hero's INT. / Increase the first ally's AGI by 120 ~ 140% of this hero's AGI.",
+    "attributes": "Head; Greece; Mediterranean"
+  },
+  "15018": {
+    "name": "Qin Shi Huang",
+    "faction": "KOURYU",
+    "passiveName": "Unified All of China",
+    "passiveText": "If the total HP of all allies is less than 55% , {triggerRate}% chance to trigger once. / Decrease the AGI of all enemies by 100% of target's AGI. / Decrease the AGI of all allies by 100% of target's AGI. / Increase this hero's AGI by 100% of this hero's AGI decrease.",
+    "attributes": "Head; Qin"
+  },
+  "15019": {
+    "name": "Minamoto no Yoshitsune",
+    "faction": "SUZAKU",
+    "passiveName": "Genpei Downhill Rush",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's AGI by 20% of this hero's AGI. / Decrease the PHY of the enemy with the highest INT by 20% of this hero's PHY. / {successRate}% chance to inflict Fear on the enemy with the highest INT.",
+    "attributes": "Heian-Kamakura; Pole weapon"
+  },
+  "15020": {
+    "name": "Tutankhamun",
+    "faction": "KOURYU",
+    "passiveName": "Curse of the pharaohs",
+    "passiveText": "If this hero's HP is less than 50% , {triggerRate}% chance to trigger once. / Deal damage to all enemies equal to 80% of this hero's PHY.",
+    "attributes": "Occult; Mediterranean; Curse"
+  },
+  "15021": {
+    "name": "Abe no Seimei",
+    "faction": "BYAKKO",
+    "passiveName": "Kyukyunyoritsuryo",
+    "passiveText": "After the last enemy uses an Active Skill, {triggerRate}% chance to trigger. / Decrease the INT of the enemy with the highest INT by 20% of target's INT. / {successRate}% chance to inflict Sleep on the enemy with the highest INT. / Heal the ally with the lowest HP for 15 ~ 20% of this hero's Max HP.",
+    "attributes": "Occult; Heian-Kamakura"
+  },
+  "15022": {
+    "name": "Consort Yu",
+    "faction": "GENBU",
+    "passiveName": "Chu song from four sides",
+    "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of all enemies by 50% of this hero's PHY. / Decrease the PHY of all allies by 50% of this hero's PHY.",
+    "attributes": "Female; Qin; Chu Song from Four Sides"
+  },
+  "15023": {
+    "name": "Richard I",
+    "faction": "SEIRYU",
+    "passiveName": "Star of Chivalry",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 30% of this hero's PHY. / Decrease the PHY of the enemy with the highest AGI by 30% of target's AGI. / {successRate}% chance to inflict Bleed on the enemy with the highest AGI.",
+    "attributes": "Head; England"
+  },
+  "15024": {
+    "name": "Hokusai",
+    "faction": "GENBU",
+    "passiveName": "Thirty-six Views of Mount Fuji",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 15% of damage taken. / Increase the INT of all allies by 80 ~ 90% of damage taken. / Heal all allies for 5% of Healing Coefficient.",
+    "attributes": "Art; Edo"
+  },
+  "15025": {
+    "name": "Xiang Yu",
+    "faction": "SUZAKU",
+    "passiveName": "Hegemon-King of Western Chu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the PHY of all allies by 80% of target's PHY decrease. / Increase the INT of all allies by 80% of target's INT decrease. / Decrease the PHY of the enemy with the lowest INT by 30% of target's PHY. / Deal damage to the enemy with the lowest INT equal to 100% of the total PHY decrease of all enemies.",
+    "attributes": "Qin; Chu Song from Four Sides"
+  },
+  "15026": {
+    "name": "Liu Bang",
+    "faction": "SEIRYU",
+    "passiveName": "Emperor Gaozu of Han",
+    "passiveText": "After this hero takes damage from an Active Skill, {triggerRate}% chance to trigger. / Decrease the AGI of all enemies by 100% of target's PHY increase. / Decrease the AGI of all enemies by 100% of target's INT increase. / Increase this hero's CHARGE by 200% of the total AGI decrease of all allies.",
+    "attributes": "Head; Qin; Chu Song from Four Sides"
+  },
+  "15027": {
+    "name": "Galileo Galilei",
+    "faction": "BYAKKO",
+    "passiveName": "Dialogue Concerning the Two Chief World Systems",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 100% of this hero's INT. / Increase the last ally's INT by 80% of target's INT decrease. / Deal damage to all allies equal to 20% of this hero's PHY.",
+    "attributes": "Hard Science; Italy; Universe"
+  },
+  "15028": {
+    "name": "Nasu no Yoichi",
+    "faction": "SUZAKU",
+    "passiveName": "Namu Hachiman Dai-Bosatsu",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's PHY by 70% of this hero's PHY decrease. / Heal the first ally for 50% of this hero's PHY. / {successRate}% chance to inflict Stun on the last enemy.",
+    "attributes": "Heian-Kamakura; Bow"
+  },
+  "15029": {
+    "name": "Edward the Black Prince",
+    "faction": "SUZAKU",
+    "passiveName": "Battle of Poitiers",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Deal damage to the last enemy equal to 20% of this hero's PHY. / Deal damage to the last enemy equal to 60% of this hero's PHY. / Increase the AGI of all allies by 30 ~ 35% of this hero's HP decrease.",
+    "attributes": "Head; Tactics; England"
+  },
+  "15030": {
+    "name": "Wu Zetian",
+    "faction": "BYAKKO",
+    "passiveName": "Seishin-Koutei",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / {successRate}% chance to remove Bleed from all allies. / Increase the first ally's INT by 40% of this hero's INT. / {successRate}% chance to inflict Barrier on the ally with the highest AGI.",
+    "attributes": "Head; Politics; Female; China"
+  },
+  "15031": {
+    "name": "Scipio Africanus",
+    "faction": "SUZAKU",
+    "passiveName": "Quaint Cantus",
+    "passiveText": "After the midline ally uses an Active Skill, {triggerRate}% chance to trigger. / 100% chance to inflict Decoy on this hero. / {successRate}% chance to inflict Barrier on this hero. / Decrease this hero's AGI by 15% of this hero's AGI.",
+    "attributes": "Tactics; Politics; Mediterranean"
+  },
+  "15032": {
+    "name": "Miyamoto Musashi",
+    "faction": "KOURYU",
+    "passiveName": "Niten Ichi-ryū",
+    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase this hero's CHARGE by 2001.",
+    "attributes": "Duel; Edo"
+  }
+}

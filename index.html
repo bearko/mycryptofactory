@@ -1,12 +1,652 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>マイクリ・クラフトマスター</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MyCryptoFactory — Ver.2.0.0</title>
+  <meta name="description" content="My Crypto Heroes 経済圏モチーフの工房経営シム。GUM を稼いで世界一の工房を目指そう。" />
+
+  <!-- favicon -->
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/bearko/mycryptoheroes/main/MAI_SD.png" />
+
+  <!-- Open Graph / Twitter Card -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="MyCryptoFactory — Ver.2.0.0" />
+  <meta property="og:description" content="MCH 経済圏ベースの工房経営シム。クラフト受注・クエストで素材調達・GUM を稼ぐサイクルを楽しもう。" />
+  <meta property="og:url" content="https://mycryptotactics.vercel.app/" />
+  <meta property="og:image" content="https://mycryptotactics.vercel.app/og-image.png" />
+  <meta property="og:site_name" content="MyCryptoFactory" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MyCryptoFactory — Ver.2.0.0" />
+  <meta name="twitter:description" content="MCH 経済圏ベースの工房経営シム。" />
+  <meta name="twitter:image" content="https://mycryptotactics.vercel.app/og-image.png" />
+
+  <style>html, body { background: #121018; color: #e6e0f0; margin: 0; }</style>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" />
+
+  <style>
+    :root {
+      --bg: #121018;
+      --panel: #1e1a28;
+      --panel-2: #2a2438;
+      --border: #3d3550;
+      --text: #e6e0f0;
+      --muted: #8a8199;
+      --accent: #c4a35a;
+      --garuda: #5ecf8a;   /* HP 系 — 緑 */
+      --ifrit: #e76060;    /* PHY 系 — 赤 */
+      --leviathan: #5ab4c4;/* INT 系 — 青 */
+      --tiamat: #f0c14b;   /* AGI 系 — 黄 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+      background: radial-gradient(ellipse at top, #1f1a2e 0%, var(--bg) 55%);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+    .hidden { display: none !important; }
+
+    /* ── Title screen (legacy, kept for first-launch flow) ───────── */
+    .title-screen {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #080611;
+      cursor: pointer; user-select: none;
+      gap: 2.8rem;
+    }
+    .title-screen.hidden { display: none !important; }
+    .title-screen.title-out { animation: title-fade-out 0.38s ease forwards; }
+    @keyframes title-fade-out { to { opacity: 0; } }
+    .title-logo { max-width: min(420px, 88vw); border-radius: 12px; }
+    .title-press {
+      font-size: 1.05rem; color: #bba8d8; letter-spacing: 0.2em;
+      text-transform: uppercase; animation: title-blink 1.3s ease-in-out infinite;
+    }
+    @keyframes title-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+    .title-version {
+      position: fixed; bottom: 0.55rem; left: 50%;
+      transform: translateX(-50%); margin: 0;
+      font-size: 0.7rem; color: #6c5e8a; letter-spacing: 0.16em;
+      pointer-events: none;
+    }
+    .lang-toggle {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 0.55rem;
+      cursor: default;
+    }
+    .lang-toggle-label { font-size: 0.72rem; color: #8c7fb0; letter-spacing: 0.14em; text-transform: uppercase; }
+    .lang-toggle .lang-btn {
+      appearance: none; background: rgba(255,255,255,0.04);
+      color: #d6cdec; border: 1px solid #5b4d8a;
+      border-radius: 8px; padding: 0.5rem 1.1rem;
+      font-size: 0.85rem; cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+    }
+    .lang-toggle .lang-btn + .lang-btn { margin-left: 0.4rem; }
+    .lang-toggle .lang-btn:hover { background: rgba(155,127,210,0.18); border-color: #9b7fd2; }
+    .lang-toggle .lang-btn--active { background: #9b7fd2; border-color: #c8b6e6; color: #fff; font-weight: 700; }
+
+    /* ── Factory shell ─────────────────────────────────────────── */
+    .factory-app {
+      width: 100%;
+      max-width: 540px;
+      display: flex; flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    /* Header (always visible) */
+    .factory-header {
+      width: 100%;
+      display: flex; align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: linear-gradient(180deg, #2a2438 0%, #1e1a28 100%);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      gap: 0.6rem;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .factory-header__date {
+      display: flex; align-items: center; gap: 0.4rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .week-gauge {
+      width: 14px; height: 14px;
+      flex-shrink: 0;
+    }
+    .factory-header__spacer { flex: 1; }
+    .factory-header__gum {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-weight: 700; color: var(--accent);
+      font-size: 1rem;
+    }
+    .factory-header__gum-icon {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ffe79c, #c4a35a 65%, #6b5026);
+      color: #2a1d05;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 0.75rem;
+    }
+    .factory-header__btn {
+      appearance: none; background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      width: 32px; height: 28px;
+      padding: 0;
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+    }
+    .factory-header__btn:hover { border-color: var(--accent); }
+
+    /* Workshop view */
+    .workshop {
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      background-color: #1a1420;
+    }
+    .workshop__bg {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .workshop__menu-btn {
+      position: absolute;
+      bottom: 0.75rem; right: 0.75rem;
+      appearance: none;
+      background: rgba(245, 240, 230, 0.92);
+      color: #1a1420;
+      border: 2px solid #1a1420;
+      border-radius: 8px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em;
+      cursor: pointer;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.35);
+    }
+    .workshop__menu-btn:hover { background: #fff; }
+    /* 配属ヒーロースプライト (将来クラフト中に表示) */
+    .workshop__hero {
+      position: absolute;
+      width: 64px; height: 64px;
+      pointer-events: none;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.6));
+    }
+
+    /* Order panel (bottom) */
+    .order-panel {
+      width: 100%;
+      background: #ece6d6;
+      color: #1a1420;
+      padding: 0.6rem 0.75rem;
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 0.6rem;
+      align-items: start;
+      font-size: 0.85rem;
+      border-top: 1px solid #4a3f33;
+    }
+    .order-panel__icon {
+      width: 64px; height: 64px;
+      background: #4a4438;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: #ece6d6;
+      font-size: 0.7rem;
+      grid-row: 1 / span 2;
+      image-rendering: pixelated;
+      overflow: hidden;
+    }
+    .order-panel__icon img { width: 100%; height: 100%; object-fit: cover; }
+    .order-panel__info {
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .order-panel__desc { font-weight: 600; line-height: 1.3; }
+    .order-panel__meta {
+      font-size: 0.72rem; color: #5a4f3f;
+      display: flex; gap: 0.6rem; flex-wrap: wrap;
+    }
+    .order-panel__progress {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .order-panel__bar {
+      flex: 1;
+      height: 14px;
+      background: #d2c7a8;
+      border: 1px solid #6b5e3f;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .order-panel__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50 0%, #2e8b32 100%);
+      transition: width 0.3s ease-out;
+    }
+    .order-panel__pct {
+      font-weight: 800; font-size: 1.2rem; color: #1a1420;
+      min-width: 3.5rem; text-align: right;
+    }
+    .order-panel--empty .order-panel__icon { background: #4a4438; }
+    .order-panel--empty .order-panel__bar-fill { width: 0; }
+    .order-panel__elements {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.78rem;
+      align-items: end;
+    }
+    .order-panel__el {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .order-panel__el-icon {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+    }
+    .order-panel__el-icon--garuda    { background: var(--garuda); }
+    .order-panel__el-icon--ifrit     { background: var(--ifrit); }
+    .order-panel__el-icon--leviathan { background: var(--leviathan); }
+    .order-panel__el-icon--tiamat    { background: var(--tiamat); }
+    .order-panel__el-val {
+      color: #1a1420;
+      font-weight: 700;
+    }
+
+    /* Menu modal */
+    .menu-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: transparent;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 4rem;
+    }
+    .menu-overlay.hidden { display: none !important; }
+    .menu-card {
+      background: #ece6d6;
+      border: 2px solid #1a1420;
+      border-radius: 4px;
+      padding: 0.6rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      min-width: 200px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .menu-item {
+      appearance: none;
+      background: #fff;
+      color: #1a1420;
+      border: 1.5px solid #4a3f33;
+      border-radius: 4px;
+      padding: 0.7rem 1rem;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+    .menu-item:hover { background: #fdf3d3; }
+    .menu-item:disabled {
+      opacity: 0.5; cursor: not-allowed;
+      background: #d2c7a8; color: #5a4f3f;
+    }
+
+    /* Stub view (Coming soon) */
+    .stub-view {
+      position: fixed; inset: 0; z-index: 150;
+      background: rgba(20, 16, 30, 0.92);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem;
+      color: var(--text);
+      padding: 1rem;
+    }
+    .stub-view.hidden { display: none !important; }
+    .stub-view h2 { color: var(--accent); margin: 0; }
+    .stub-view p { color: var(--muted); max-width: 360px; text-align: center; line-height: 1.5; font-size: 0.9rem; }
+    .stub-view button {
+      appearance: none; background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px; padding: 0.55rem 1.4rem;
+      font-weight: 700; cursor: pointer;
+    }
+
+    /* ── Hero view ─────────────────────────────────────── */
+    .hero-view {
+      position: fixed; inset: 0; z-index: 150;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      color: var(--text);
+      overflow: hidden;
+    }
+    .hero-view.hidden { display: none !important; }
+    .hero-view__header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      background: linear-gradient(180deg, #2a2438 0%, #1e1a28 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-view__title {
+      margin: 0; font-size: 1rem; color: var(--accent); flex: 1;
+    }
+    .hero-view__back {
+      appearance: none; background: var(--panel-2);
+      border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 0.4rem 0.9rem;
+      font-size: 0.85rem; cursor: pointer;
+    }
+    .hero-view__body {
+      flex: 1; overflow-y: auto;
+      padding: 0.6rem 0.6rem 1.2rem;
+    }
+    .hero-team {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+    .hero-team__title {
+      font-size: 0.78rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin: 0 0 0.4rem;
+    }
+    .hero-team__slots {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem;
+    }
+    .hero-team__slot {
+      aspect-ratio: 1 / 1;
+      background: var(--panel-2);
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      font-size: 0.7rem; color: var(--muted);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-team__slot--filled {
+      border-style: solid;
+      border-color: var(--accent);
+      cursor: pointer;
+    }
+    .hero-team__slot img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .hero-team__slot-name {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.6); color: #fff;
+      font-size: 0.6rem; line-height: 1; padding: 1px 2px;
+      text-align: center;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .hero-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.5rem;
+    }
+    .hero-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem;
+      display: flex; flex-direction: column; gap: 0.35rem;
+      font-size: 0.75rem;
+    }
+    .hero-card[data-rarity="legendary"] { border-color: #c45c6a; }
+    .hero-card[data-rarity="epic"]      { border-color: #c4a35a; }
+    .hero-card[data-rarity="rare"]      { border-color: #5ab4c4; }
+    .hero-card[data-rarity="uncommon"]  { border-color: #5ecf8a; }
+    .hero-card__head {
+      display: flex; gap: 0.45rem; align-items: center;
+    }
+    .hero-card__portrait {
+      width: 48px; height: 48px;
+      border-radius: 6px;
+      background: #2a2438;
+      object-fit: cover;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+    }
+    .hero-card__name {
+      font-size: 0.85rem; font-weight: 700;
+      line-height: 1.2;
+      color: var(--text);
+      overflow: hidden;
+    }
+    .hero-card__state {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .hero-card__state[data-state="resting"]  { color: #f0c14b; }
+    .hero-card__state[data-state="crafting"] { color: var(--garuda); }
+    .hero-card__state[data-state="questing"] { color: var(--leviathan); }
+
+    .hero-card__elements {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.2rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-card__elem {
+      display: flex; align-items: center; gap: 0.25rem;
+      padding: 0.15rem 0.3rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+      font-size: 0.72rem;
+    }
+    .hero-card__elem img {
+      width: 16px; height: 16px;
+      object-fit: contain;
+    }
+    .hero-card__elem-val { font-weight: 700; }
+
+    .hero-card__stamina {
+      height: 5px;
+      background: var(--panel-2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .hero-card__stamina-fill {
+      height: 100%;
+      background: var(--garuda);
+      transition: width 0.4s ease-out;
+    }
+    .hero-card__cl {
+      font-size: 0.65rem; color: var(--muted);
+      text-align: right;
+    }
+    .hero-card__cl strong { color: var(--accent); font-size: 0.8rem; }
+    .hero-list-empty {
+      grid-column: 1 / -1;
+      text-align: center; color: var(--muted);
+      padding: 2rem 1rem; font-size: 0.85rem;
+    }
+    /* Sort/filter bar */
+    .hero-filter-bar {
+      display: flex; gap: 0.3rem; flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+      font-size: 0.72rem;
+    }
+    .hero-filter-bar select {
+      background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 0.3rem 0.4rem;
+    }
+
+    /* Help overlay (placeholder shell, content TBD) */
+    #helpOverlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    #helpOverlay.hidden { display: none !important; }
+    .help-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem; max-width: 420px;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .help-card h2 { margin: 0 0 0.5rem; color: var(--accent); }
+    .help-card p { font-size: 0.85rem; line-height: 1.5; color: var(--text); }
+    .help-card button {
+      appearance: none; background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px; padding: 0.5rem 1rem;
+      font-weight: 700; cursor: pointer; margin-top: 0.75rem;
+    }
+
+    /* Footer */
+    footer {
+      width: 100%; max-width: 540px;
+      padding: 0.8rem 0.75rem;
+      font-size: 0.7rem; color: var(--muted);
+      text-align: center; line-height: 1.5;
+    }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Title Screen ── -->
+  <div id="titleView" class="title-screen" role="button" aria-label="Start the game" data-i18n-attr-aria-label="title.aria" tabindex="0">
+    <img class="title-logo" src="./MCT_logo.jpg" alt="MyCryptoFactory" />
+    <p class="title-press" data-i18n="title.press">Press to Start</p>
+    <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
+      <span class="lang-toggle-label" data-i18n="lang.toggle.label">言語 / Language</span>
+      <div class="lang-toggle-buttons">
+        <button type="button" class="lang-btn" data-lang="ja" data-i18n="lang.ja">JP：日本語</button>
+        <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN：English</button>
+      </div>
+    </div>
+    <p class="title-version">Ver.2.0.0</p>
+  </div>
+
+  <!-- ── Factory App ── -->
+  <div class="factory-app" id="factoryApp">
+
+    <!-- Header (always visible) -->
+    <div class="factory-header">
+      <div class="factory-header__date">
+        <span id="factoryDate">2018年 12月 1週</span>
+        <svg class="week-gauge" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="14" fill="none" stroke="#3d3550" stroke-width="3" />
+          <circle id="weekGaugeFill" cx="16" cy="16" r="14" fill="none" stroke="var(--accent)" stroke-width="3"
+                  stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"
+                  transform="rotate(-90 16 16)" />
+        </svg>
+      </div>
+      <div class="factory-header__spacer"></div>
+      <div class="factory-header__gum" title="GUM">
+        <span class="factory-header__gum-icon" aria-hidden="true">G</span>
+        <span id="factoryGum">500</span>
+      </div>
+      <button type="button" class="factory-header__btn" id="btnLangToggle" data-i18n-attr-title="lang.toggle.label" title="言語 / Language">JP</button>
+      <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
+    </div>
+
+    <!-- Workshop view -->
+    <div class="workshop" id="workshopView">
+      <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
+      <!-- 動的な配属ヒーロー sprite はここに JS で append される -->
+      <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
+    </div>
+
+    <!-- Order panel (bottom) -->
+    <div class="order-panel order-panel--empty" id="orderPanel">
+      <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
+      <div class="order-panel__info">
+        <span class="order-panel__desc" id="orderDesc" data-i18n="order.none">受注なし</span>
+        <div class="order-panel__meta" id="orderMeta"></div>
+      </div>
+      <div class="order-panel__elements" id="orderElements"></div>
+      <div class="order-panel__progress">
+        <div class="order-panel__bar"><div class="order-panel__bar-fill" id="orderBarFill"></div></div>
+        <span class="order-panel__pct" id="orderPct"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu overlay -->
+  <div class="menu-overlay hidden" id="menuOverlay" role="dialog" aria-modal="true" aria-label="Menu">
+    <div class="menu-card">
+      <button type="button" class="menu-item" data-menu="craft" data-i18n="menu.craft">クラフト</button>
+      <button type="button" class="menu-item" data-menu="hero" data-i18n="menu.hero">ヒーロー</button>
+      <button type="button" class="menu-item" data-menu="quest" data-i18n="menu.quest">クエスト</button>
+      <button type="button" class="menu-item" data-menu="shop" data-i18n="menu.shop">ショップ</button>
+      <button type="button" class="menu-item" data-menu="market" data-i18n="menu.market">マーケット</button>
+      <button type="button" class="menu-item" data-menu="settings" data-i18n="menu.settings">設定</button>
+    </div>
+  </div>
+
+  <!-- Stub view (Coming Soon) -->
+  <div class="stub-view hidden" id="stubView">
+    <h2 id="stubTitle">—</h2>
+    <p data-i18n="stub.desc">この機能は次のフェーズで実装予定です。</p>
+    <button type="button" id="stubClose" data-i18n="btn.close">閉じる</button>
+  </div>
+
+  <!-- Hero view (Phase 1A) -->
+  <div class="hero-view hidden" id="heroView" role="dialog" aria-labelledby="heroViewTitle">
+    <div class="hero-view__header">
+      <h2 class="hero-view__title" id="heroViewTitle" data-i18n="menu.hero">ヒーロー</h2>
+      <button type="button" class="hero-view__back" id="heroViewBack" data-i18n="btn.back">← 戻る</button>
+    </div>
+    <div class="hero-view__body">
+
+      <!-- 5-slot craft team formation (placeholder; assignment UI in Phase 1B) -->
+      <div class="hero-team">
+        <p class="hero-team__title" data-i18n="hero.team.title">クラフトチーム (最大 5 体)</p>
+        <div class="hero-team__slots" id="heroTeamSlots">
+          <!-- Filled by JS: 5 slots, each shows assigned hero or "+" placeholder -->
+        </div>
+      </div>
+
+      <!-- Sort/filter -->
+      <div class="hero-filter-bar">
+        <label>
+          <span data-i18n="hero.sort">並び順:</span>
+          <select id="heroSortSel">
+            <option value="cl-desc"   data-i18n="hero.sort.clDesc">クラフトレベル (高い順)</option>
+            <option value="garuda"    data-i18n="hero.sort.garuda">ガルーダ</option>
+            <option value="ifrit"     data-i18n="hero.sort.ifrit">イフリート</option>
+            <option value="leviathan" data-i18n="hero.sort.leviathan">リヴァイアサン</option>
+            <option value="tiamat"    data-i18n="hero.sort.tiamat">ティアマト</option>
+            <option value="rarity"    data-i18n="hero.sort.rarity">レアリティ</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Hero grid -->
+      <div class="hero-list" id="heroList"></div>
+    </div>
+  </div>
+
+  <!-- Help overlay -->
+  <div id="helpOverlay" class="hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-card">
+      <h2 id="helpTitle" data-i18n="help.title">ヘルプ</h2>
+      <p data-i18n="help.body">マイクリ工房 (MyCryptoFactory) を 8 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう。</p>
+      <p data-i18n="help.timeNote">ホーム画面で待機している間のみ時間が進行します（1 週間 = 7 秒）。メニュー / 機能画面を開いている間は時間が止まります。</p>
+      <button type="button" id="btnHelpClose" data-i18n="deck.modal.close">閉じる</button>
+    </div>
+  </div>
+
+  <footer>
+    <span class="footer-meta" data-i18n="footer.meta">MyCryptoFactory Ver.2.0.0 · 非営利のファン制作</span>
+    <br />
+    <span class="footer-credit" data-i18n-html="footer.credit.full">
+      キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は
+      <a href="https://github.com/bearko/mycryptoheroes/blob/main/README.md" target="_blank" rel="noopener">bearko/mycryptoheroes README</a> 参照。
+    </span>
+  </footer>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
 </html>
