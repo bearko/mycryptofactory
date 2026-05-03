@@ -459,6 +459,137 @@ describe('gameStore', () => {
     });
   });
 
+  describe('Day 6: dispatchGather + advanceDay processing', () => {
+    it('dispatchGather requires SELF_CRAFT feature', () => {
+      const empId = useGameStore.getState().employees[0]!.id;
+      const ok = useGameStore.getState().dispatchGather(empId, 'forest');
+      expect(ok).toBe(false);
+    });
+
+    it('dispatchGather sets employee to gathering and creates a dispatch', () => {
+      useGameStore.setState({ unlockedFeatures: ['SELF_CRAFT'] });
+      const empId = useGameStore.getState().employees[0]!.id;
+      const ok = useGameStore.getState().dispatchGather(empId, 'forest');
+      expect(ok).toBe(true);
+      expect(useGameStore.getState().employees[0]!.state).toBe('gathering');
+      expect(useGameStore.getState().gatherDispatches).toHaveLength(1);
+    });
+
+    it('advanceDay completes gather → adds materials, frees employee', () => {
+      useGameStore.setState({ unlockedFeatures: ['SELF_CRAFT'] });
+      const empId = useGameStore.getState().employees[0]!.id;
+      useGameStore.getState().dispatchGather(empId, 'forest');
+      const beforeMats = { ...useGameStore.getState().materials };
+      useGameStore.getState().advanceDay();
+      const s = useGameStore.getState();
+      expect(s.gatherDispatches).toHaveLength(0);
+      expect(s.employees[0]!.state).toBe('idle');
+      const after = s.materials;
+      const beforeTotal = Object.values(beforeMats).reduce((a, b) => a + b, 0);
+      const afterTotal = Object.values(after).reduce((a, b) => a + b, 0);
+      expect(afterTotal).toBeGreaterThan(beforeTotal);
+    });
+  });
+
+  describe('Day 6: startSelfCraft', () => {
+    it('requires SELF_CRAFT feature', () => {
+      useGameStore.setState({
+        materials: { Iron: 5, Wood: 5, Cloth: 0, Gem: 0, Mithril: 0, Orichalcum: 0 },
+      });
+      const ok = useGameStore.getState().startSelfCraft('Sword', 1);
+      expect(ok).toBe(false);
+    });
+
+    it('starts a craft with orderId=null and pendingMinigame', () => {
+      useGameStore.setState({
+        unlockedFeatures: ['SELF_CRAFT'],
+        materials: { Iron: 5, Wood: 5, Cloth: 0, Gem: 0, Mithril: 0, Orichalcum: 0 },
+      });
+      const ok = useGameStore.getState().startSelfCraft('Sword', 1);
+      expect(ok).toBe(true);
+      const s = useGameStore.getState();
+      expect(s.activeCrafts).toHaveLength(1);
+      expect(s.activeCrafts[0]!.orderId).toBeNull();
+      expect(s.pendingMinigame).not.toBeNull();
+      expect(s.materials.Iron).toBe(4);
+    });
+
+    it('rejects tier > workshop.tierMax', () => {
+      useGameStore.setState({
+        unlockedFeatures: ['SELF_CRAFT'],
+        materials: { Iron: 99, Wood: 99, Cloth: 99, Gem: 99, Mithril: 0, Orichalcum: 0 },
+      });
+      const ok = useGameStore.getState().startSelfCraft('Sword', 5); // initial tierMax = 2
+      expect(ok).toBe(false);
+    });
+  });
+
+  describe('Day 6: showcase listing + sale sim', () => {
+    it('listShowcaseItem moves an EXT from inventory to showcase', () => {
+      const ext: import('../game/types').EXT = {
+        id: 'ext-test',
+        tier: 2,
+        category: 'Sword',
+        quality: 80,
+        craftDays: 1,
+        materialCost: {},
+        hypeBonus: 0,
+      };
+      useGameStore.setState({
+        unlockedFeatures: ['SELF_CRAFT'],
+        inventory: [ext],
+      });
+      const ok = useGameStore.getState().listShowcaseItem('ext-test', 500);
+      expect(ok).toBe(true);
+      const s = useGameStore.getState();
+      expect(s.inventory).toHaveLength(0);
+      expect(s.showcase).toHaveLength(1);
+      expect(s.showcase[0]!.price).toBe(500);
+    });
+
+    it('clamps price to 50%-150% of fair', () => {
+      const ext: import('../game/types').EXT = {
+        id: 'ext-test',
+        tier: 2,
+        category: 'Sword',
+        quality: 100,
+        craftDays: 1,
+        materialCost: {},
+        hypeBonus: 0,
+      };
+      useGameStore.setState({
+        unlockedFeatures: ['SELF_CRAFT'],
+        inventory: [ext],
+      });
+      // try to set price way too high
+      useGameStore.getState().listShowcaseItem('ext-test', 999_999);
+      // fair = 600 (tier 2 selfPrice * 1.0); max = 900
+      expect(useGameStore.getState().showcase[0]!.price).toBeLessThanOrEqual(900);
+    });
+
+    it('unlistShowcaseItem moves item back to inventory', () => {
+      const ext: import('../game/types').EXT = {
+        id: 'ext-test',
+        tier: 2,
+        category: 'Sword',
+        quality: 80,
+        craftDays: 1,
+        materialCost: {},
+        hypeBonus: 0,
+      };
+      useGameStore.setState({
+        unlockedFeatures: ['SELF_CRAFT'],
+        inventory: [ext],
+      });
+      useGameStore.getState().listShowcaseItem('ext-test', 500);
+      const showId = useGameStore.getState().showcase[0]!.id;
+      useGameStore.getState().unlistShowcaseItem(showId);
+      const s = useGameStore.getState();
+      expect(s.showcase).toHaveLength(0);
+      expect(s.inventory).toHaveLength(1);
+    });
+  });
+
   describe('Day 4: completeMinigame applies craftJudge bonus', () => {
     it('Lv 5 starter (affinity Sword) on Sword craft → +30 quality', () => {
       useGameStore.setState({

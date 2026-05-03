@@ -85,3 +85,11 @@ export interface MiniGameResult {
   success: boolean;
   durationMs: number;
 }
+
+// Phase 4: gather + showcase
+export interface GatherDispatch {
+  id: string;
+  employeeId: string;
+  nodeId: string;
+  daysRemaining: number;
+}

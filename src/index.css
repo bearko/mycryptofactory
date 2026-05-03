@@ -813,3 +813,196 @@ button {
 .toast-close:hover {
   color: #fff;
 }
+
+/* Footer extras (Day 6) */
+.footer {
+  gap: 0.6rem;
+}
+
+.footer-reset {
+  margin-right: auto; /* push reset to the left, primary stays right */
+}
+
+.btn-active {
+  background: var(--accent);
+  color: #14161a;
+  border-color: var(--accent);
+}
+
+/* Gather map (Day 6) */
+.gather-emp-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.gather-emp-picker select {
+  background: var(--bg-3);
+  color: #fff;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+}
+
+.gather-node-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.gather-node-card {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gather-node-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.gather-node-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.gather-node-mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.mat-chip-rare {
+  border-color: #9b59b6;
+  color: #b06ad0;
+}
+
+.gather-node-dispatch {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.gather-active {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.gather-active-title {
+  font-size: 0.85rem;
+  margin: 0 0 0.4rem;
+  color: var(--text-dim);
+}
+
+.gather-active ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* Showcase (Day 6) */
+.showcase-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.showcase-list,
+.inventory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.showcase-card,
+.inventory-card {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.showcase-card-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.showcase-card-quality,
+.inventory-quality {
+  color: var(--accent);
+}
+
+.showcase-card-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.showcase-price {
+  color: var(--gum);
+}
+
+.inventory-fair {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.price-display {
+  font-size: 1rem;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.price-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+/* Self-craft modal (Day 6) */
+.self-craft-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.self-craft-cats {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.self-craft-info {
+  background: var(--bg-3);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.self-craft-info p {
+  margin: 0 0 0.4rem;
+}
