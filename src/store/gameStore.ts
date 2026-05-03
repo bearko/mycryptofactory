@@ -15,10 +15,20 @@ import type {
 import {
   BANKRUPT_DAYS,
   BASE_MATERIAL_PRICES,
+  COMMON_INITIAL_STAMINA,
+  EMPLOYEE_LV_UP_COST,
+  EMPLOYEE_MAX_LEVEL,
   INITIAL_GUM,
   INITIAL_REPUTATION,
+  STAMINA_MAX,
+  STAMINA_PER_CRAFT,
   TIER_TABLE,
+  WORKSHOP_LV_UP_COSTS,
+  WORKSHOP_MAX_LEVEL,
 } from '../data/balance';
+import { applyEmployeeBonus } from '../game/craftJudge';
+import { computeUnlocks, featureLabel, newlyUnlocked } from '../game/featureUnlocks';
+import { generateHireMarket } from '../game/hireGenerator';
 import { pricesForDay } from '../game/marketPrices';
 import { canAffordMaterials, generateOrders, materialsForOrder } from '../game/orderGenerator';
 import { resolveDelivery } from '../game/orderResolver';
@@ -40,7 +50,7 @@ export type {
 
 export interface DayLog {
   day: number;
-  events: string[]; // last advanceDay's notable events for the player to see
+  events: string[];
 }
 
 export interface PendingMinigame {
@@ -80,9 +90,13 @@ interface GameState {
   advanceDay: () => void;
   buyMaterial: (mat: MaterialType, qty: number) => boolean;
   sellMaterial: (mat: MaterialType, qty: number) => boolean;
-  acceptOrder: (orderId: string) => boolean;
+  acceptOrder: (orderId: string, employeeId?: string) => boolean;
   completeMinigame: (craftId: string, quality: number) => void;
   cancelMinigame: () => void;
+  hireEmployee: (candidateId: string) => boolean;
+  levelUpEmployee: (employeeId: string) => boolean;
+  levelUpWorkshop: () => boolean;
+  restEmployee: (employeeId: string) => boolean;
 }
 
 const initialMaterials: Record<MaterialType, number> = {
@@ -107,8 +121,8 @@ const starterEmployee: Employee = {
   craftLv: 1,
   affinity: 'Sword',
   battleStats: { atk: 10, hp: 20, spd: 5 },
-  stamina: 100,
-  wage: 0,
+  stamina: COMMON_INITIAL_STAMINA,
+  wage: 0, // starter is free
   state: 'idle',
 };
 
@@ -159,11 +173,8 @@ export const useGameStore = create<GameState>()(
         const continuingCrafts: ActiveCraft[] = [];
         state.activeCrafts.forEach((craft) => {
           const remaining = craft.daysRemaining - 1;
-          if (remaining <= 0) {
-            completedCrafts.push({ ...craft, daysRemaining: 0 });
-          } else {
-            continuingCrafts.push({ ...craft, daysRemaining: remaining });
-          }
+          if (remaining <= 0) completedCrafts.push({ ...craft, daysRemaining: 0 });
+          else continuingCrafts.push({ ...craft, daysRemaining: remaining });
         });
 
         // 2) Resolve completed crafts
@@ -187,7 +198,6 @@ export const useGameStore = create<GameState>()(
             fulfilledOrderIds.add(order.id);
             events.push(outcome.message);
           } else {
-            // Self-craft → push to inventory
             const ext: EXT = {
               id: `ext-${craft.id}`,
               tier: craft.tier,
@@ -202,7 +212,7 @@ export const useGameStore = create<GameState>()(
           }
         });
 
-        // 3) Update orders: remove fulfilled, decrement deadlines, drop expired
+        // 3) Update orders
         const survivingOrders = state.orderBoard
           .filter((o) => !fulfilledOrderIds.has(o.id))
           .map((o) => ({ ...o, deadline: o.deadline - 1 }))
@@ -226,16 +236,45 @@ export const useGameStore = create<GameState>()(
         // 5) Update market prices
         const newPrices = pricesForDay(newDay);
 
-        // 6) Bankrupt detection
+        // 6) Free up employees from completed crafts + apply rest recovery
+        const completedEmpIds = new Set(completedCrafts.map((c) => c.employeeId));
+        const newEmployees = state.employees.map((e) => {
+          const next = { ...e };
+          if (completedEmpIds.has(e.id)) {
+            next.state = 'idle';
+          }
+          if (next.state === 'resting') {
+            next.stamina = STAMINA_MAX;
+            next.state = 'idle';
+            events.push(`${next.name} が休養から復帰 (Stamina ${STAMINA_MAX})`);
+          }
+          return next;
+        });
+
+        // 7) Daily wage deduction
+        const totalWages = newEmployees.reduce((sum, e) => sum + (e.wage ?? 0), 0);
+        if (totalWages > 0) {
+          gum -= totalWages;
+          events.push(`日給支払: -${totalWages} GUM (${newEmployees.filter((e) => (e.wage ?? 0) > 0).length} 名)`);
+        }
+
+        // 8) Refresh hire market (only if HIRE feature is unlocked)
+        const featuresAfter = computeUnlocks(state.unlockedFeatures, {
+          totalGumEarned: totalGum,
+          workshop: state.workshop,
+          employeeCount: newEmployees.length,
+        });
+        const justUnlocked = newlyUnlocked(state.unlockedFeatures, featuresAfter);
+        justUnlocked.forEach((f) => events.push(`${featureLabel(f)} が解放されました！`));
+
+        const newHireMarket = featuresAfter.includes('HIRE')
+          ? generateHireMarket({ day: newDay })
+          : [];
+
+        // 9) Bankrupt detection
         const consecutiveDeficit = gum < 0 ? state.consecutiveDeficitDays + 1 : 0;
         const isBankrupt = consecutiveDeficit >= BANKRUPT_DAYS && newInventory.length === 0;
         if (isBankrupt) events.push('💀 GAME OVER: 連続赤字で工房閉鎖');
-
-        // 7) Free up employees from completed crafts
-        const completedEmpIds = new Set(completedCrafts.map((c) => c.employeeId));
-        const newEmployees = state.employees.map((e) =>
-          completedEmpIds.has(e.id) ? { ...e, state: 'idle' as const } : e,
-        );
 
         set({
           day: newDay,
@@ -249,6 +288,8 @@ export const useGameStore = create<GameState>()(
           consecutiveDeficitDays: consecutiveDeficit,
           isBankrupt,
           employees: newEmployees,
+          hireMarket: newHireMarket,
+          unlockedFeatures: featuresAfter,
           lastDayLog: { day: newDay, events },
         });
       },
@@ -269,7 +310,7 @@ export const useGameStore = create<GameState>()(
         const state = get();
         if (qty <= 0) return false;
         if (state.materials[mat] < qty) return false;
-        const revenue = Math.floor(state.marketPrices[mat] * qty * 0.7); // 30% spread
+        const revenue = Math.floor(state.marketPrices[mat] * qty * 0.7);
         set({
           gum: state.gum + revenue,
           materials: { ...state.materials, [mat]: state.materials[mat] - qty },
@@ -277,7 +318,7 @@ export const useGameStore = create<GameState>()(
         return true;
       },
 
-      acceptOrder: (orderId) => {
+      acceptOrder: (orderId, employeeId) => {
         const state = get();
         const order = state.orderBoard.find((o) => o.id === orderId);
         if (!order) return false;
@@ -285,10 +326,15 @@ export const useGameStore = create<GameState>()(
         const required = materialsForOrder(order.tier);
         if (!canAffordMaterials(required, state.materials)) return false;
 
-        const idleEmp = state.employees.find((e) => e.state === 'idle');
-        if (!idleEmp) return false;
+        const candidate = employeeId
+          ? state.employees.find((e) => e.id === employeeId)
+          : state.employees.find((e) => e.state === 'idle' && e.stamina >= STAMINA_PER_CRAFT);
 
+        if (!candidate) return false;
+        if (candidate.state !== 'idle') return false;
+        if (candidate.stamina < STAMINA_PER_CRAFT) return false;
         if (state.activeCrafts.length >= state.workshop.slots) return false;
+        if (order.tier > state.workshop.tierMax) return false;
 
         // Deduct materials
         const newMaterials = { ...state.materials };
@@ -296,7 +342,6 @@ export const useGameStore = create<GameState>()(
           newMaterials[mat as MaterialType] -= qty ?? 0;
         }
 
-        // Create active craft (quality 0 until minigame fills it)
         const tierDef = TIER_TABLE[order.tier]!;
         const craftId = `craft-${state.day}-${order.id}`;
         const newCraft: ActiveCraft = {
@@ -304,7 +349,7 @@ export const useGameStore = create<GameState>()(
           orderId: order.id,
           category: order.category,
           tier: order.tier,
-          employeeId: idleEmp.id,
+          employeeId: candidate.id,
           daysRemaining: tierDef.craftDays,
           quality: 0,
         };
@@ -313,25 +358,36 @@ export const useGameStore = create<GameState>()(
           materials: newMaterials,
           activeCrafts: [...state.activeCrafts, newCraft],
           employees: state.employees.map((e) =>
-            e.id === idleEmp.id ? { ...e, state: 'crafting' as const } : e,
+            e.id === candidate.id
+              ? { ...e, state: 'crafting' as const, stamina: Math.max(0, e.stamina - STAMINA_PER_CRAFT) }
+              : e,
           ),
           pendingMinigame: { craftId, category: order.category, tier: order.tier },
         });
         return true;
       },
 
-      completeMinigame: (craftId, quality) => {
+      completeMinigame: (craftId, rawQuality) => {
         const state = get();
+        const craft = state.activeCrafts.find((c) => c.id === craftId);
+        if (!craft) {
+          set({ pendingMinigame: null });
+          return;
+        }
+        const employee = state.employees.find((e) => e.id === craft.employeeId);
+        const adjustedQuality = employee
+          ? applyEmployeeBonus(rawQuality, employee, craft.category)
+          : Math.round(Math.max(0, Math.min(100, rawQuality)));
+
         set({
           activeCrafts: state.activeCrafts.map((c) =>
-            c.id === craftId ? { ...c, quality: Math.round(Math.max(0, Math.min(100, quality))) } : c,
+            c.id === craftId ? { ...c, quality: adjustedQuality } : c,
           ),
           pendingMinigame: null,
         });
       },
 
       cancelMinigame: () => {
-        // Refund the materials and remove the craft (player aborted)
         const state = get();
         const pending = state.pendingMinigame;
         if (!pending) return;
@@ -345,20 +401,90 @@ export const useGameStore = create<GameState>()(
         for (const [mat, qty] of Object.entries(refund)) {
           newMaterials[mat as MaterialType] += qty ?? 0;
         }
+        // Refund stamina too
         set({
           materials: newMaterials,
           activeCrafts: state.activeCrafts.filter((c) => c.id !== craft.id),
           employees: state.employees.map((e) =>
-            e.id === craft.employeeId ? { ...e, state: 'idle' as const } : e,
+            e.id === craft.employeeId
+              ? { ...e, state: 'idle' as const, stamina: Math.min(STAMINA_MAX, e.stamina + STAMINA_PER_CRAFT) }
+              : e,
           ),
           pendingMinigame: null,
         });
+      },
+
+      hireEmployee: (candidateId) => {
+        const state = get();
+        if (!state.unlockedFeatures.includes('HIRE')) return false;
+        const candidate = state.hireMarket.find((c) => c.id === candidateId);
+        if (!candidate) return false;
+        // First wage paid up-front
+        if (state.gum < candidate.wage) return false;
+        const newId = `emp-${state.day}-${state.employees.length}`;
+        const hired: Employee = { ...candidate, id: newId, state: 'idle', stamina: STAMINA_MAX };
+        set({
+          gum: state.gum - candidate.wage,
+          employees: [...state.employees, hired],
+          hireMarket: state.hireMarket.filter((c) => c.id !== candidateId),
+        });
+        return true;
+      },
+
+      levelUpEmployee: (employeeId) => {
+        const state = get();
+        const emp = state.employees.find((e) => e.id === employeeId);
+        if (!emp) return false;
+        if (emp.craftLv >= EMPLOYEE_MAX_LEVEL) return false;
+        if (state.gum < EMPLOYEE_LV_UP_COST) return false;
+        set({
+          gum: state.gum - EMPLOYEE_LV_UP_COST,
+          employees: state.employees.map((e) =>
+            e.id === employeeId ? { ...e, craftLv: e.craftLv + 1 } : e,
+          ),
+        });
+        return true;
+      },
+
+      levelUpWorkshop: () => {
+        const state = get();
+        if (!state.unlockedFeatures.includes('WORKSHOP_UP')) return false;
+        if (state.workshop.level >= WORKSHOP_MAX_LEVEL) return false;
+        const cost = WORKSHOP_LV_UP_COSTS[state.workshop.level];
+        if (cost == null) return false;
+        if (state.gum < cost) return false;
+        const newLevel = state.workshop.level + 1;
+        const newWorkshop: Workshop = {
+          level: newLevel,
+          slots: state.workshop.slots + 1,
+          tierMax: state.workshop.tierMax + 1,
+        };
+        // Re-evaluate features (HIGH_TIER may unlock now)
+        const featuresAfter = computeUnlocks(state.unlockedFeatures, {
+          totalGumEarned: state.totalGumEarned,
+          workshop: newWorkshop,
+          employeeCount: state.employees.length,
+        });
+        set({ gum: state.gum - cost, workshop: newWorkshop, unlockedFeatures: featuresAfter });
+        return true;
+      },
+
+      restEmployee: (employeeId) => {
+        const state = get();
+        const emp = state.employees.find((e) => e.id === employeeId);
+        if (!emp) return false;
+        if (emp.state !== 'idle') return false;
+        set({
+          employees: state.employees.map((e) =>
+            e.id === employeeId ? { ...e, state: 'resting' as const } : e,
+          ),
+        });
+        return true;
       },
     }),
     {
       name: 'mcf-save-v1',
       partialize: (s) => ({
-        // Persist game state but not the pendingMinigame UI flag
         day: s.day,
         gum: s.gum,
         reputation: s.reputation,
@@ -370,6 +496,7 @@ export const useGameStore = create<GameState>()(
         inventory: s.inventory,
         workshop: s.workshop,
         employees: s.employees,
+        hireMarket: s.hireMarket,
         orderBoard: s.orderBoard,
         activeCrafts: s.activeCrafts,
         showcase: s.showcase,
@@ -379,5 +506,4 @@ export const useGameStore = create<GameState>()(
   ),
 );
 
-// Re-export for easy access (used by UI)
 export { BASE_MATERIAL_PRICES };
