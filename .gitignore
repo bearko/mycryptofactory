@@ -28,3 +28,4 @@ yarn-error.log*
 # Claude local settings (per-user, not committed)
 .claude/settings.local.json
 .claude/.cache/
+.claude/worktrees/
