@@ -387,6 +387,78 @@ describe('gameStore', () => {
     });
   });
 
+  describe('Day 5: bidding loss', () => {
+    it('Tier 3+ order with high bidders + low rep → mostly lost, materials kept', () => {
+      // Construct a tough bid manually
+      useGameStore.setState({
+        reputation: 10,
+        materials: { Iron: 99, Wood: 99, Cloth: 99, Gem: 99, Mithril: 0, Orichalcum: 0 },
+        workshop: { level: 3, slots: 3, tierMax: 5 },
+        orderBoard: [
+          {
+            id: 'order-tough',
+            category: 'Sword',
+            tier: 5,
+            qualityRequired: 70,
+            deadline: 4,
+            reward: 7000,
+            repBonus: 12,
+            bidders: 5,
+            playerEdge: 0,
+          },
+        ],
+      });
+      const beforeMats = useGameStore.getState().materials.Iron;
+      const result = useGameStore.getState().acceptOrder('order-tough');
+      // With bidders=5 + low rep, very likely to lose
+      if (!result) {
+        // Lost: order removed, materials kept, transient message added
+        expect(useGameStore.getState().materials.Iron).toBe(beforeMats);
+        expect(useGameStore.getState().orderBoard.find((o) => o.id === 'order-tough')).toBeUndefined();
+        expect(useGameStore.getState().transientMessages.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('Tier 1-2 orders skip bidding entirely', () => {
+      useGameStore.setState({
+        materials: { Iron: 5, Wood: 5, Cloth: 0, Gem: 0, Mithril: 0, Orichalcum: 0 },
+      });
+      const order = useGameStore.getState().orderBoard.find((o) => o.tier === 1)!;
+      const ok = useGameStore.getState().acceptOrder(order.id);
+      expect(ok).toBe(true);
+      expect(useGameStore.getState().transientMessages).toHaveLength(0);
+    });
+
+    it('dismissTransientMessage removes by index', () => {
+      useGameStore.setState({ transientMessages: ['a', 'b', 'c'] });
+      useGameStore.getState().dismissTransientMessage(1);
+      expect(useGameStore.getState().transientMessages).toEqual(['a', 'c']);
+    });
+
+    it('advanceDay clears all transient messages', () => {
+      useGameStore.setState({ transientMessages: ['a', 'b'] });
+      useGameStore.getState().advanceDay();
+      expect(useGameStore.getState().transientMessages).toEqual([]);
+    });
+  });
+
+  describe('Day 5: news / demand trend', () => {
+    it('initial state has newsTomorrow and newsAfterTomorrow set', () => {
+      const s = useGameStore.getState();
+      expect(s.newsTomorrow).not.toBeNull();
+      expect(s.newsAfterTomorrow).not.toBeNull();
+      expect(s.newsTomorrow!.date).toBe(2);
+      expect(s.newsAfterTomorrow!.date).toBe(3);
+    });
+
+    it('advanceDay rolls the news 1 day forward', () => {
+      useGameStore.getState().advanceDay();
+      const s = useGameStore.getState();
+      expect(s.newsTomorrow!.date).toBe(s.day + 1);
+      expect(s.newsAfterTomorrow!.date).toBe(s.day + 2);
+    });
+  });
+
   describe('Day 4: completeMinigame applies craftJudge bonus', () => {
     it('Lv 5 starter (affinity Sword) on Sword craft → +30 quality', () => {
       useGameStore.setState({

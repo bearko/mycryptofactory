@@ -36,6 +36,7 @@ export function generateOrders(params: GenerateParams): Order[] {
     const tierDef = TIER_TABLE[tier]!;
     const deadline = ORDER_DEADLINE_MIN + Math.floor(rng() * (ORDER_DEADLINE_MAX - ORDER_DEADLINE_MIN + 1));
 
+    const { bidders, playerEdge } = pickBidContext(rng, tier, reputationLevel);
     orders.push({
       id: `order-d${day}-${i}-${category.toLowerCase()}-t${tier}`,
       category,
@@ -44,12 +45,36 @@ export function generateOrders(params: GenerateParams): Order[] {
       deadline,
       reward: tierDef.reward,
       repBonus: tierDef.repBonus,
-      bidders: 0, // Phase 3 will populate
-      playerEdge: 0,
+      bidders,
+      playerEdge,
     });
   }
 
   return orders;
+}
+
+/**
+ * Phase 3: high-tier orders attract NPC competitors and have a player-edge rating.
+ * Tier 1-2 are uncontested.
+ */
+function pickBidContext(
+  rng: () => number,
+  tier: number,
+  reputation: number,
+): { bidders: number; playerEdge: 0 | 1 | 2 | 3 } {
+  if (tier < 3) return { bidders: 0, playerEdge: 0 };
+
+  // Bidders scale with tier (T3: 1-3, T4: 2-4, T5: 3-5)
+  const minBidders = tier - 2;
+  const maxBidders = tier;
+  const bidders = minBidders + Math.floor(rng() * (maxBidders - minBidders + 1));
+
+  // playerEdge: derived from reputation with ±1 jitter
+  const baseEdge = Math.floor(reputation / 25); // 0..4 (clamped below)
+  const jitter = Math.floor(rng() * 3) - 1; // -1, 0, +1
+  const edge = Math.max(0, Math.min(3, baseEdge + jitter)) as 0 | 1 | 2 | 3;
+
+  return { bidders, playerEdge: edge };
 }
 
 /**

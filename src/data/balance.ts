@@ -96,3 +96,23 @@ export const WORKSHOP_MAX_LEVEL = 3;
 // --- Stamina (Phase 2) ---
 export const STAMINA_PER_CRAFT = 30;
 export const STAMINA_MAX = 100;
+
+// --- Bidding / competition (Phase 3) ---
+/** Tiers at which bidders/playerEdge appear and a bid judge runs on accept. */
+export const BIDDING_MIN_TIER = 3;
+/** Spec v3 §2.3: judge weight = reputation:luck = 7:3 */
+export const BID_REPUTATION_WEIGHT = 0.7;
+export const BID_LUCK_WEIGHT = 0.3;
+/** Each ★ of playerEdge adds this to the player score. */
+export const BID_EDGE_BONUS = 0.05;
+/** Base win threshold; each extra bidder past 1 adds this much. */
+export const BID_THRESHOLD_BASE = 0.40;
+export const BID_THRESHOLD_PER_EXTRA_BIDDER = 0.05;
+
+// --- Demand trend (Phase 3 / Phase 4) ---
+/** Demand trend cycles through the 4 categories. */
+export const DEMAND_TREND_CYCLE_DAYS = 4;
+/** Demand factor on the trending day for the trending category. */
+export const DEMAND_FACTOR_TRENDING = 1.5;
+/** Demand factor on the trending day for non-trending categories. */
+export const DEMAND_FACTOR_OFF_TREND = 0.85;

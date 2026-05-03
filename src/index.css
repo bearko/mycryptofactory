@@ -707,3 +707,109 @@ button {
   padding: 0.45rem 0.8rem;
   font-size: 0.85rem;
 }
+
+/* News (Day 5: market trends) */
+.news {
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1.5rem;
+}
+
+.news-header {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.news-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.news-row {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.news-row-highlight {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.news-day {
+  color: var(--text-dim);
+  min-width: 5rem;
+}
+
+.news-trend {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Order card bidding indicator (Day 5) */
+.order-card-bidding {
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
+.order-card-bidders {
+  color: var(--text-dim);
+  margin-left: 0.4rem;
+}
+
+/* Toast stack */
+.toast-stack {
+  position: fixed;
+  bottom: 5rem;
+  right: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  z-index: 200;
+  max-width: 24rem;
+}
+
+.toast {
+  background: var(--bg-3);
+  border: 1px solid var(--accent-dim);
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.2s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-text {
+  flex: 1;
+}
+
+.toast-close {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 0 0.3rem;
+  font-size: 0.85rem;
+}
+
+.toast-close:hover {
+  color: #fff;
+}
