@@ -3,10 +3,13 @@ import { HUD } from '../components/HUD';
 import { MinigameModal } from '../components/MinigameModal';
 import { News } from '../components/News';
 import { Toasts } from '../components/Toasts';
+import { SelfCraftModal } from '../components/SelfCraftModal';
 import { OrderBoard } from './OrderBoard';
 import { MaterialMarket } from './MaterialMarket';
 import { HireMarketScene } from './HireMarket';
-import { useGameStore } from '../store/gameStore';
+import { GatherMap } from './GatherMap';
+import { Showcase } from './Showcase';
+import { useGameStore, clearSaveAndReset } from '../store/gameStore';
 import type { ActiveCraft, Employee, Feature } from '../store/gameStore';
 import {
   EMPLOYEE_LV_UP_COST,
@@ -16,7 +19,7 @@ import {
   WORKSHOP_MAX_LEVEL,
 } from '../data/balance';
 
-type ModalScene = 'orders' | 'market' | 'hire' | null;
+type ModalScene = 'orders' | 'market' | 'hire' | 'gather' | 'showcase' | 'selfCraft' | null;
 
 interface ZoneProps {
   title: string;
@@ -284,19 +287,49 @@ export function Workshop() {
           )}
         </Zone>
 
-        <Zone title="採集マップ" locked={!has('SELF_CRAFT')} unlockHint="累計 10,000 GUM で解放" />
+        <Zone
+          title="採集マップ"
+          subtitle={has('SELF_CRAFT') ? '素材を採集' : undefined}
+          locked={!has('SELF_CRAFT')}
+          unlockHint="累計 10,000 GUM で解放"
+          onClick={has('SELF_CRAFT') ? () => setScene('gather') : undefined}
+        />
 
         <Zone
           title="ショーケース"
-          subtitle={has('SELF_CRAFT') ? `${inventory.length} 個陳列可能` : undefined}
+          subtitle={has('SELF_CRAFT') ? `在庫 ${inventory.length} / 陳列 ${useGameStore.getState().showcase.length}` : undefined}
           locked={!has('SELF_CRAFT')}
           unlockHint="累計 10,000 GUM で解放"
+          onClick={has('SELF_CRAFT') ? () => setScene('showcase') : undefined}
         />
       </main>
 
       <DayLogPanel />
 
       <footer className="footer">
+        {has('SELF_CRAFT') && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setScene('selfCraft')}
+            disabled={pendingMinigame !== null}
+            title="自作: 注文なしでEXTを作って在庫に追加"
+          >
+            🛠 自作する
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn-text footer-reset"
+          onClick={() => {
+            if (window.confirm('セーブを初期化して最初からやり直しますか？')) {
+              clearSaveAndReset();
+            }
+          }}
+          title="セーブ初期化"
+        >
+          ⚙ リセット
+        </button>
         <button
           type="button"
           className="btn-primary"
@@ -311,6 +344,9 @@ export function Workshop() {
       {scene === 'orders' && <OrderBoard onClose={closeScene} />}
       {scene === 'market' && <MaterialMarket onClose={closeScene} />}
       {scene === 'hire' && <HireMarketScene onClose={closeScene} />}
+      {scene === 'gather' && <GatherMap onClose={closeScene} />}
+      {scene === 'showcase' && <Showcase onClose={closeScene} />}
+      {scene === 'selfCraft' && <SelfCraftModal onClose={closeScene} />}
       <MinigameModal />
       <Toasts />
       {isBankrupt && <BankruptModal onReset={reset} />}

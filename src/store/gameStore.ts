@@ -6,6 +6,7 @@ import type {
   Employee,
   EXT,
   Feature,
+  GatherDispatch,
   MaterialType,
   NewsItem,
   Order,
@@ -18,8 +19,13 @@ import {
   COMMON_INITIAL_STAMINA,
   EMPLOYEE_LV_UP_COST,
   EMPLOYEE_MAX_LEVEL,
+  GATHER_DAYS,
   INITIAL_GUM,
   INITIAL_REPUTATION,
+  LEGACY_SAVE_KEY,
+  SAVE_KEY,
+  SAVE_VERSION,
+  SHOWCASE_MAX_LISTED,
   STAMINA_MAX,
   STAMINA_PER_CRAFT,
   TIER_TABLE,
@@ -29,10 +35,12 @@ import {
 import seedrandom from 'seedrandom';
 import { isBiddable, judgeBidding } from '../game/biddingJudge';
 import { applyEmployeeBonus } from '../game/craftJudge';
-import { trendForDay } from '../game/demandTrend';
+import { demandFactorsForDay, trendForDay } from '../game/demandTrend';
 import { computeUnlocks, featureLabel, newlyUnlocked } from '../game/featureUnlocks';
+import { findNode, runGather } from '../game/gatherEngine';
 import { generateHireMarket } from '../game/hireGenerator';
 import { pricesForDay } from '../game/marketPrices';
+import { autoDiscount, fairPriceForExt, simulateSale } from '../game/marketSimulator';
 import { canAffordMaterials, generateOrders, materialsForOrder } from '../game/orderGenerator';
 import { resolveDelivery } from '../game/orderResolver';
 
@@ -87,6 +95,9 @@ interface GameState {
   showcase: ShowcaseItem[];
   pendingMinigame: PendingMinigame | null;
 
+  // Phase 4
+  gatherDispatches: GatherDispatch[];
+
   marketPrices: Record<MaterialType, number>;
   newsTomorrow: NewsItem | null;
   newsAfterTomorrow: NewsItem | null;
@@ -104,6 +115,11 @@ interface GameState {
   levelUpWorkshop: () => boolean;
   restEmployee: (employeeId: string) => boolean;
   dismissTransientMessage: (index: number) => void;
+  // Phase 4 actions
+  startSelfCraft: (category: Category, tier: number, employeeId?: string) => boolean;
+  dispatchGather: (employeeId: string, nodeId: string) => boolean;
+  listShowcaseItem: (extId: string, price: number) => boolean;
+  unlistShowcaseItem: (showcaseItemId: string) => boolean;
 }
 
 const initialMaterials: Record<MaterialType, number> = {
@@ -158,6 +174,7 @@ const buildInitialState = () => ({
   activeCrafts: [] as ActiveCraft[],
   showcase: [] as ShowcaseItem[],
   pendingMinigame: null as PendingMinigame | null,
+  gatherDispatches: [] as GatherDispatch[],
   marketPrices: pricesForDay(1),
   newsTomorrow: trendForDay(2) as NewsItem | null,
   newsAfterTomorrow: trendForDay(3) as NewsItem | null,
@@ -245,11 +262,41 @@ export const useGameStore = create<GameState>()(
         // 5) Update market prices
         const newPrices = pricesForDay(newDay);
 
-        // 6) Free up employees from completed crafts + apply rest recovery
+        // 5b) Process gather dispatches (Phase 4)
+        const completedDispatches: GatherDispatch[] = [];
+        const continuingDispatches: GatherDispatch[] = [];
+        state.gatherDispatches.forEach((d) => {
+          const remaining = d.daysRemaining - 1;
+          if (remaining <= 0) completedDispatches.push({ ...d, daysRemaining: 0 });
+          else continuingDispatches.push({ ...d, daysRemaining: remaining });
+        });
+
+        const newMaterials = { ...state.materials };
+        const completedDispatchEmpIds = new Set<string>();
+        completedDispatches.forEach((d) => {
+          const node = findNode(d.nodeId);
+          const employee = state.employees.find((e) => e.id === d.employeeId);
+          if (!node || !employee) return;
+          const rng = seedrandom(`gather-d${newDay}-${d.id}`);
+          const result = runGather(node, employee, () => rng());
+          for (const [mat, n] of Object.entries(result.drops)) {
+            newMaterials[mat as MaterialType] = (newMaterials[mat as MaterialType] ?? 0) + (n ?? 0);
+          }
+          const summary = Object.entries(result.drops)
+            .map(([m, n]) => `${m}×${n}`)
+            .join(' ');
+          events.push(`採集 ${node.name} (${employee.name}): ${summary}`);
+          if (result.rareDrops.length > 0) {
+            events.push(`✨ レア素材獲得: ${result.rareDrops.join(', ')}`);
+          }
+          completedDispatchEmpIds.add(employee.id);
+        });
+
+        // 6) Free up employees from completed crafts/dispatches + apply rest recovery
         const completedEmpIds = new Set(completedCrafts.map((c) => c.employeeId));
         const newEmployees = state.employees.map((e) => {
           const next = { ...e };
-          if (completedEmpIds.has(e.id)) {
+          if (completedEmpIds.has(e.id) || completedDispatchEmpIds.has(e.id)) {
             next.state = 'idle';
           }
           if (next.state === 'resting') {
@@ -280,9 +327,37 @@ export const useGameStore = create<GameState>()(
           ? generateHireMarket({ day: newDay })
           : [];
 
+        // 8b) Process showcase sales (Phase 4)
+        const factors = demandFactorsForDay(newDay);
+        const remainingShowcase: ShowcaseItem[] = [];
+        state.showcase.forEach((item) => {
+          const rng = seedrandom(`sale-d${newDay}-${item.id}`);
+          const outcome = simulateSale({
+            item,
+            demandFactor: factors[item.ext.category],
+            rng: () => rng(),
+          });
+          if (outcome.sold) {
+            gum += outcome.revenue;
+            totalGum += outcome.revenue;
+            events.push(`💰 売却: ${item.ext.category} Tier ${item.ext.tier} (Q${item.ext.quality}) → ${outcome.revenue.toLocaleString()} GUM`);
+          } else {
+            const newPrice = autoDiscount(item);
+            const aged: ShowcaseItem = {
+              ...item,
+              price: newPrice,
+              daysListed: item.daysListed + 1,
+            };
+            remainingShowcase.push(aged);
+            if (newPrice < item.price) {
+              events.push(`📉 売れ残り: ${item.ext.category} Tier ${item.ext.tier} → 値下げ ${item.price} → ${newPrice} GUM`);
+            }
+          }
+        });
+
         // 9) Bankrupt detection
         const consecutiveDeficit = gum < 0 ? state.consecutiveDeficitDays + 1 : 0;
-        const isBankrupt = consecutiveDeficit >= BANKRUPT_DAYS && newInventory.length === 0;
+        const isBankrupt = consecutiveDeficit >= BANKRUPT_DAYS && newInventory.length === 0 && remainingShowcase.length === 0;
         if (isBankrupt) events.push('💀 GAME OVER: 連続赤字で工房閉鎖');
 
         set({
@@ -303,6 +378,9 @@ export const useGameStore = create<GameState>()(
           newsTomorrow: trendForDay(newDay + 1),
           newsAfterTomorrow: trendForDay(newDay + 2),
           transientMessages: [], // clear toasts on day advance
+          gatherDispatches: continuingDispatches,
+          showcase: remainingShowcase,
+          materials: newMaterials,
         });
       },
 
@@ -520,9 +598,118 @@ export const useGameStore = create<GameState>()(
         const state = get();
         set({ transientMessages: state.transientMessages.filter((_, i) => i !== index) });
       },
+
+      // ----- Phase 4 actions -----
+
+      startSelfCraft: (category, tier, employeeId) => {
+        const state = get();
+        if (!state.unlockedFeatures.includes('SELF_CRAFT')) return false;
+        if (tier < 1 || tier > state.workshop.tierMax) return false;
+
+        const required = materialsForOrder(tier);
+        if (!canAffordMaterials(required, state.materials)) return false;
+
+        const candidate = employeeId
+          ? state.employees.find((e) => e.id === employeeId)
+          : state.employees.find((e) => e.state === 'idle' && e.stamina >= STAMINA_PER_CRAFT);
+        if (!candidate) return false;
+        if (candidate.state !== 'idle') return false;
+        if (candidate.stamina < STAMINA_PER_CRAFT) return false;
+        if (state.activeCrafts.length >= state.workshop.slots) return false;
+
+        const newMaterials = { ...state.materials };
+        for (const [mat, qty] of Object.entries(required)) {
+          newMaterials[mat as MaterialType] -= qty ?? 0;
+        }
+
+        const tierDef = TIER_TABLE[tier]!;
+        const craftId = `craft-self-${state.day}-${candidate.id}-${Date.now()}`;
+        const newCraft: ActiveCraft = {
+          id: craftId,
+          orderId: null,
+          category,
+          tier,
+          employeeId: candidate.id,
+          daysRemaining: tierDef.craftDays,
+          quality: 0,
+        };
+
+        set({
+          materials: newMaterials,
+          activeCrafts: [...state.activeCrafts, newCraft],
+          employees: state.employees.map((e) =>
+            e.id === candidate.id
+              ? { ...e, state: 'crafting' as const, stamina: Math.max(0, e.stamina - STAMINA_PER_CRAFT) }
+              : e,
+          ),
+          pendingMinigame: { craftId, category, tier },
+        });
+        return true;
+      },
+
+      dispatchGather: (employeeId, nodeId) => {
+        const state = get();
+        if (!state.unlockedFeatures.includes('SELF_CRAFT')) return false;
+        const node = findNode(nodeId);
+        if (!node) return false;
+        const emp = state.employees.find((e) => e.id === employeeId);
+        if (!emp) return false;
+        if (emp.state !== 'idle') return false;
+
+        const dispatch: GatherDispatch = {
+          id: `gather-d${state.day}-${employeeId}-${Date.now()}`,
+          employeeId,
+          nodeId,
+          daysRemaining: GATHER_DAYS,
+        };
+        set({
+          gatherDispatches: [...state.gatherDispatches, dispatch],
+          employees: state.employees.map((e) =>
+            e.id === employeeId ? { ...e, state: 'gathering' as const } : e,
+          ),
+        });
+        return true;
+      },
+
+      listShowcaseItem: (extId, price) => {
+        const state = get();
+        if (!state.unlockedFeatures.includes('SELF_CRAFT')) return false;
+        if (state.showcase.length >= SHOWCASE_MAX_LISTED) return false;
+        const ext = state.inventory.find((i) => i.id === extId);
+        if (!ext) return false;
+
+        const fair = fairPriceForExt(ext);
+        const minPrice = Math.floor(fair * 0.5);
+        const maxPrice = Math.ceil(fair * 1.5);
+        const clampedPrice = Math.max(minPrice, Math.min(maxPrice, Math.round(price)));
+
+        const item: ShowcaseItem = {
+          id: `show-${extId}-${state.day}`,
+          ext,
+          price: clampedPrice,
+          daysListed: 0,
+        };
+        set({
+          inventory: state.inventory.filter((i) => i.id !== extId),
+          showcase: [...state.showcase, item],
+        });
+        return true;
+      },
+
+      unlistShowcaseItem: (showcaseItemId) => {
+        const state = get();
+        const item = state.showcase.find((i) => i.id === showcaseItemId);
+        if (!item) return false;
+        set({
+          showcase: state.showcase.filter((i) => i.id !== showcaseItemId),
+          inventory: [...state.inventory, item.ext],
+        });
+        return true;
+      },
     }),
     {
-      name: 'mcf-save-v1',
+      name: SAVE_KEY,
+      version: SAVE_VERSION,
       partialize: (s) => ({
         day: s.day,
         gum: s.gum,
@@ -542,9 +729,37 @@ export const useGameStore = create<GameState>()(
         marketPrices: s.marketPrices,
         newsTomorrow: s.newsTomorrow,
         newsAfterTomorrow: s.newsAfterTomorrow,
+        gatherDispatches: s.gatherDispatches,
       }),
     },
   ),
 );
+
+/**
+ * Best-effort cleanup of the legacy v1 save key on first import.
+ * Runs once when the module loads. Safe in SSR (typeof check).
+ */
+if (typeof window !== 'undefined') {
+  try {
+    if (window.localStorage.getItem(LEGACY_SAVE_KEY)) {
+      window.localStorage.removeItem(LEGACY_SAVE_KEY);
+    }
+  } catch {
+    // ignore (private browsing etc)
+  }
+}
+
+/** Reset save data and reload the page — exposed for the "セーブ初期化" button. */
+export function clearSaveAndReset() {
+  useGameStore.getState().reset();
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.removeItem(SAVE_KEY);
+      window.localStorage.removeItem(LEGACY_SAVE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+}
 
 export { BASE_MATERIAL_PRICES };

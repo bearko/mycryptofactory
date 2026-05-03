@@ -116,3 +116,29 @@ export const DEMAND_TREND_CYCLE_DAYS = 4;
 export const DEMAND_FACTOR_TRENDING = 1.5;
 /** Demand factor on the trending day for non-trending categories. */
 export const DEMAND_FACTOR_OFF_TREND = 0.85;
+
+// --- Gather (Phase 4) ---
+/** Drops per dispatch: base 1-3 + 1 per 5 craftLv tiers. */
+export const GATHER_BASE_DROPS_MIN = 1;
+export const GATHER_BASE_DROPS_MAX = 3;
+export const GATHER_LV_BONUS_PER_5_LEVELS = 1;
+/** Each gather takes this many days. */
+export const GATHER_DAYS = 1;
+
+// --- Showcase / market simulator (Phase 4) ---
+/** Slider range for player price relative to fair price. */
+export const SHOWCASE_PRICE_MIN_RATIO = 0.5;
+export const SHOWCASE_PRICE_MAX_RATIO = 1.5;
+/** Auto-discount per day unsold (10%, max 30% over 3 days). */
+export const SHOWCASE_AUTO_DISCOUNT_PER_DAY = 0.10;
+export const SHOWCASE_MAX_AUTO_DISCOUNT = 0.30;
+/** Max items the player can list at once. */
+export const SHOWCASE_MAX_LISTED = 6;
+/** Sale probability bonuses by days listed (player anxiety reducer). */
+export const SHOWCASE_AGE_BONUS_PER_DAY = 0.05;
+export const SHOWCASE_MAX_AGE_BONUS = 0.30;
+
+// --- Save versioning (Phase 4) ---
+export const SAVE_KEY = 'mcf-save-v2';
+export const SAVE_VERSION = 2;
+export const LEGACY_SAVE_KEY = 'mcf-save-v1';
