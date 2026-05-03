@@ -10,6 +10,19 @@
 3. **PR先**: 常に `develop`。`develop` → `main` はリリースPRとして別途
 4. **コミット**: 末尾に `Refs SCRUM-XXX` を含める
 
+## Jira 日付運用（予実トラッキング）
+- **`customfield_10015` (Start date)**: 計画開始日。チケット起票時に設定
+- **`duedate` (期限)**: 計画終了日。チケット起票時に設定
+- **クローズ時**: `transitionJiraIssue` で完了に遷移する**直前または直後**に、`editJiraIssue` で `duedate` を**実完了日（本日, JST）**で上書きする
+- これにより Jira ガントで「予定 vs 実績」が一目で分かる（差分があれば遅延、一致すれば計画通り）
+- 詳細フローは [.claude/skills/jira-task-finish/SKILL.md](.claude/skills/jira-task-finish/SKILL.md) を参照
+
+## チケット間の依存関係
+- 全 Story には **Blocks** リンクで依存関係を設定済み
+- 新しいチケット起票時は `createIssueLink` で前後関係を明示
+  - `inwardIssue` = blocker（先に終わるべき）, `outwardIssue` = blocked（後にやる）
+- クリティカルパスは Jira Roadmap（タイムライン）ビューで可視化される
+
 ## ディレクトリ構造
 ```
 src/
