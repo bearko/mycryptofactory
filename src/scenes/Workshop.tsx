@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { HUD } from '../components/HUD';
 import { MinigameModal } from '../components/MinigameModal';
+import { News } from '../components/News';
+import { Toasts } from '../components/Toasts';
 import { OrderBoard } from './OrderBoard';
 import { MaterialMarket } from './MaterialMarket';
 import { HireMarketScene } from './HireMarket';
@@ -221,6 +223,7 @@ export function Workshop() {
   return (
     <div className={`workshop workshop-lv-${workshop.level}`}>
       <HUD />
+      <News />
 
       <main className="hub">
         <Zone
@@ -309,6 +312,7 @@ export function Workshop() {
       {scene === 'market' && <MaterialMarket onClose={closeScene} />}
       {scene === 'hire' && <HireMarketScene onClose={closeScene} />}
       <MinigameModal />
+      <Toasts />
       {isBankrupt && <BankruptModal onReset={reset} />}
     </div>
   );

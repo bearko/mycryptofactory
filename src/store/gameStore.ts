@@ -26,7 +26,10 @@ import {
   WORKSHOP_LV_UP_COSTS,
   WORKSHOP_MAX_LEVEL,
 } from '../data/balance';
+import seedrandom from 'seedrandom';
+import { isBiddable, judgeBidding } from '../game/biddingJudge';
 import { applyEmployeeBonus } from '../game/craftJudge';
+import { trendForDay } from '../game/demandTrend';
 import { computeUnlocks, featureLabel, newlyUnlocked } from '../game/featureUnlocks';
 import { generateHireMarket } from '../game/hireGenerator';
 import { pricesForDay } from '../game/marketPrices';
@@ -68,6 +71,8 @@ interface GameState {
   consecutiveDeficitDays: number;
   isBankrupt: boolean;
   lastDayLog: DayLog | null;
+  /** One-shot UI messages (e.g., bidding loss) shown as toasts. */
+  transientMessages: string[];
 
   materials: Record<MaterialType, number>;
   inventory: EXT[];
@@ -84,6 +89,7 @@ interface GameState {
 
   marketPrices: Record<MaterialType, number>;
   newsTomorrow: NewsItem | null;
+  newsAfterTomorrow: NewsItem | null;
 
   // Actions
   reset: () => void;
@@ -97,6 +103,7 @@ interface GameState {
   levelUpEmployee: (employeeId: string) => boolean;
   levelUpWorkshop: () => boolean;
   restEmployee: (employeeId: string) => boolean;
+  dismissTransientMessage: (index: number) => void;
 }
 
 const initialMaterials: Record<MaterialType, number> = {
@@ -135,6 +142,7 @@ const buildInitialState = () => ({
   consecutiveDeficitDays: 0,
   isBankrupt: false,
   lastDayLog: null as DayLog | null,
+  transientMessages: [] as string[],
   materials: { ...initialMaterials },
   inventory: [] as EXT[],
   workshop: { ...initialWorkshop },
@@ -151,7 +159,8 @@ const buildInitialState = () => ({
   showcase: [] as ShowcaseItem[],
   pendingMinigame: null as PendingMinigame | null,
   marketPrices: pricesForDay(1),
-  newsTomorrow: null as NewsItem | null,
+  newsTomorrow: trendForDay(2) as NewsItem | null,
+  newsAfterTomorrow: trendForDay(3) as NewsItem | null,
 });
 
 export const useGameStore = create<GameState>()(
@@ -291,6 +300,9 @@ export const useGameStore = create<GameState>()(
           hireMarket: newHireMarket,
           unlockedFeatures: featuresAfter,
           lastDayLog: { day: newDay, events },
+          newsTomorrow: trendForDay(newDay + 1),
+          newsAfterTomorrow: trendForDay(newDay + 2),
+          transientMessages: [], // clear toasts on day advance
         });
       },
 
@@ -335,6 +347,28 @@ export const useGameStore = create<GameState>()(
         if (candidate.stamina < STAMINA_PER_CRAFT) return false;
         if (state.activeCrafts.length >= state.workshop.slots) return false;
         if (order.tier > state.workshop.tierMax) return false;
+
+        // Phase 3: bid against NPC competitors for high-tier orders BEFORE consuming materials
+        if (isBiddable(order.tier) && order.bidders > 0) {
+          const rng = seedrandom(`bid-d${state.day}-${order.id}-r${state.reputation}`);
+          const outcome = judgeBidding({
+            reputation: state.reputation,
+            playerEdge: order.playerEdge,
+            bidders: order.bidders,
+            rng: () => rng(),
+          });
+          if (!outcome.won) {
+            // Lose: order disappears from board, no materials consumed, no rep penalty
+            set({
+              orderBoard: state.orderBoard.filter((o) => o.id !== order.id),
+              transientMessages: [
+                ...state.transientMessages,
+                `🚫 失注: ${order.category} Tier ${order.tier} は競合に取られた (${order.bidders} 人入札)`,
+              ],
+            });
+            return false;
+          }
+        }
 
         // Deduct materials
         const newMaterials = { ...state.materials };
@@ -481,6 +515,11 @@ export const useGameStore = create<GameState>()(
         });
         return true;
       },
+
+      dismissTransientMessage: (index) => {
+        const state = get();
+        set({ transientMessages: state.transientMessages.filter((_, i) => i !== index) });
+      },
     }),
     {
       name: 'mcf-save-v1',
@@ -501,6 +540,8 @@ export const useGameStore = create<GameState>()(
         activeCrafts: s.activeCrafts,
         showcase: s.showcase,
         marketPrices: s.marketPrices,
+        newsTomorrow: s.newsTomorrow,
+        newsAfterTomorrow: s.newsAfterTomorrow,
       }),
     },
   ),

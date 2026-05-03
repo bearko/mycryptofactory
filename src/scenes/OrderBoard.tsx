@@ -83,6 +83,7 @@ interface OrderRowProps {
 
 function OrderRow({ order, materials, canTake, onAccept }: OrderRowProps) {
   const required = materialsForOrder(order.tier);
+  const hasBidding = order.bidders > 0;
   return (
     <li className="order-card">
       <div className="order-card-head">
@@ -103,6 +104,15 @@ function OrderRow({ order, materials, canTake, onAccept }: OrderRowProps) {
           <span>必要品質</span>
           <span>≥ {order.qualityRequired}</span>
         </div>
+        {hasBidding && (
+          <div className="order-card-row order-card-bidding">
+            <span>競合</span>
+            <span>
+              {'★'.repeat(order.playerEdge) + '☆'.repeat(3 - order.playerEdge)}{' '}
+              <span className="order-card-bidders">他 {order.bidders} 人入札</span>
+            </span>
+          </div>
+        )}
         <div className="order-card-mats">
           {Object.entries(required).map(([mat, qty]) => {
             const have = materials[mat as MaterialType] ?? 0;
@@ -120,8 +130,9 @@ function OrderRow({ order, materials, canTake, onAccept }: OrderRowProps) {
         className="btn-primary order-card-accept"
         onClick={onAccept}
         disabled={!canTake}
+        title={hasBidding ? '受注すると入札勝負（評判+運+優位度で判定）' : undefined}
       >
-        {canTake ? '受ける' : '不可'}
+        {canTake ? (hasBidding ? '入札する' : '受ける') : '不可'}
       </button>
     </li>
   );

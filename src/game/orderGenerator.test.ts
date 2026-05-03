@@ -91,3 +91,58 @@ describe('materialsForOrder', () => {
     expect(materialsForOrder(5)).toEqual({ Iron: 8, Wood: 8, Cloth: 4, Gem: 2 });
   });
 });
+
+describe('orderGenerator (Day 5: bidding context)', () => {
+  it('Tier 1-2 orders have no bidders or edge', () => {
+    const orders = generateOrders({ day: 1, tierMax: 2, reputationLevel: 50, existingCount: 0, seed: 'low' });
+    orders.forEach((o) => {
+      if (o.tier <= 2) {
+        expect(o.bidders).toBe(0);
+        expect(o.playerEdge).toBe(0);
+      }
+    });
+  });
+
+  it('Tier 3+ orders have bidders >= 1', () => {
+    let foundHighTier = false;
+    for (let s = 0; s < 30 && !foundHighTier; s++) {
+      const orders = generateOrders({
+        day: 1,
+        tierMax: 5,
+        reputationLevel: 80,
+        existingCount: 0,
+        seed: `high-${s}`,
+      });
+      orders.forEach((o) => {
+        if (o.tier >= 3) {
+          foundHighTier = true;
+          expect(o.bidders).toBeGreaterThanOrEqual(1);
+          expect(o.playerEdge).toBeGreaterThanOrEqual(0);
+          expect(o.playerEdge).toBeLessThanOrEqual(3);
+        }
+      });
+    }
+    expect(foundHighTier).toBe(true);
+  });
+
+  it('Tier 5 has more bidders on average than Tier 3', () => {
+    let t3Sum = 0; let t3Count = 0;
+    let t5Sum = 0; let t5Count = 0;
+    for (let s = 0; s < 100; s++) {
+      const orders = generateOrders({
+        day: 1,
+        tierMax: 5,
+        reputationLevel: 80,
+        existingCount: 0,
+        seed: `bid-${s}`,
+      });
+      orders.forEach((o) => {
+        if (o.tier === 3) { t3Sum += o.bidders; t3Count++; }
+        if (o.tier === 5) { t5Sum += o.bidders; t5Count++; }
+      });
+    }
+    if (t3Count > 0 && t5Count > 0) {
+      expect(t5Sum / t5Count).toBeGreaterThan(t3Sum / t3Count);
+    }
+  });
+});
