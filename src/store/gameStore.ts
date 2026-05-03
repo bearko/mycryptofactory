@@ -76,6 +76,8 @@ interface GameState {
   reputation: number;
   totalGumEarned: number;
   unlockedFeatures: Feature[];
+  /** Features unlocked this turn but not yet acknowledged by the player (drives UnlockModal). */
+  unlockQueue: Feature[];
   consecutiveDeficitDays: number;
   isBankrupt: boolean;
   lastDayLog: DayLog | null;
@@ -120,6 +122,8 @@ interface GameState {
   dispatchGather: (employeeId: string, nodeId: string) => boolean;
   listShowcaseItem: (extId: string, price: number) => boolean;
   unlistShowcaseItem: (showcaseItemId: string) => boolean;
+  // Day 7
+  dismissUnlockNotice: (feature: Feature) => void;
 }
 
 const initialMaterials: Record<MaterialType, number> = {
@@ -155,6 +159,7 @@ const buildInitialState = () => ({
   reputation: INITIAL_REPUTATION,
   totalGumEarned: 0,
   unlockedFeatures: [] as Feature[],
+  unlockQueue: [] as Feature[],
   consecutiveDeficitDays: 0,
   isBankrupt: false,
   lastDayLog: null as DayLog | null,
@@ -374,6 +379,7 @@ export const useGameStore = create<GameState>()(
           employees: newEmployees,
           hireMarket: newHireMarket,
           unlockedFeatures: featuresAfter,
+          unlockQueue: [...state.unlockQueue, ...justUnlocked],
           lastDayLog: { day: newDay, events },
           newsTomorrow: trendForDay(newDay + 1),
           newsAfterTomorrow: trendForDay(newDay + 2),
@@ -706,6 +712,11 @@ export const useGameStore = create<GameState>()(
         });
         return true;
       },
+
+      dismissUnlockNotice: (feature) => {
+        const state = get();
+        set({ unlockQueue: state.unlockQueue.filter((f) => f !== feature) });
+      },
     }),
     {
       name: SAVE_KEY,
@@ -716,6 +727,7 @@ export const useGameStore = create<GameState>()(
         reputation: s.reputation,
         totalGumEarned: s.totalGumEarned,
         unlockedFeatures: s.unlockedFeatures,
+        unlockQueue: s.unlockQueue,
         consecutiveDeficitDays: s.consecutiveDeficitDays,
         isBankrupt: s.isBankrupt,
         materials: s.materials,
