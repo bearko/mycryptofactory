@@ -1,29 +1,277 @@
 :root {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  background: #1a1a1a;
-  color: #f0f0f0;
+  background: #14161a;
+  color: #e8e8e8;
+  --bg-1: #14161a;
+  --bg-2: #1c1f25;
+  --bg-3: #262a32;
+  --accent: #f39c12;
+  --accent-dim: #8b5a0e;
+  --text-dim: #9aa0a6;
+  --border: #2f343d;
+  --gum: #f5b342;
+  --locked: #3a3d44;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-width: 1024px;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+/* Workshop layout */
 .workshop {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
+.workshop-lv-2 {
+  background: linear-gradient(180deg, #14161a 0%, #1a1f24 100%);
+}
+
+.workshop-lv-3 {
+  background: linear-gradient(180deg, #14161a 0%, #1f1a24 100%);
+}
+
+/* HUD */
 .hud {
   display: flex;
   gap: 2rem;
-  padding: 0.75rem 1.5rem;
-  background: #2a2a2a;
-  border-bottom: 1px solid #3a3a3a;
+  padding: 0.85rem 1.5rem;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
 }
 
+.hud-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.hud-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hud-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-gum {
+  color: var(--gum);
+}
+
+/* Hub grid */
 .hub {
   flex: 1;
-  padding: 2rem;
+  display: grid;
+  grid-template-columns: 1.4fr 1.6fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 1rem;
+  padding: 1.25rem;
+  grid-template-areas:
+    'orders craft employees'
+    'materials craft employees'
+    'gather showcase showcase';
+}
+
+/* Zone */
+.zone {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 120px;
+}
+
+.zone-locked {
+  background: var(--locked);
+  opacity: 0.6;
+}
+
+.zone-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.zone-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.zone-subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.zone-body {
+  font-size: 0.9rem;
+}
+
+.placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 0;
+}
+
+.locked-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* Grid area placement */
+.zone:nth-of-type(1) {
+  grid-area: orders;
+}
+.zone:nth-of-type(2) {
+  grid-area: craft;
+}
+.zone:nth-of-type(3) {
+  grid-area: materials;
+}
+.zone:nth-of-type(4) {
+  grid-area: employees;
+}
+.zone:nth-of-type(5) {
+  grid-area: gather;
+}
+.zone:nth-of-type(6) {
+  grid-area: showcase;
+}
+
+/* Craft slots */
+.craft-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.craft-slot {
+  background: var(--bg-3);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 0.85rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 80px;
+  justify-content: center;
+}
+
+.craft-slot-active {
+  border-color: var(--accent-dim);
+}
+
+.craft-slot-locked {
+  opacity: 0.4;
+}
+
+.craft-slot-num {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.craft-slot-state {
+  font-size: 0.95rem;
+}
+
+/* Material list */
+.material-list,
+.employee-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.material-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.material-row:last-child {
+  border-bottom: none;
+}
+
+.material-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Employee list */
+.employee-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  background: var(--bg-3);
+  border-radius: 4px;
+}
+
+.employee-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.employee-meta {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Footer */
+.footer {
+  padding: 1rem 1.25rem;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #14161a;
+  padding: 0.65rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: filter 0.15s;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-primary:active {
+  filter: brightness(0.95);
 }
