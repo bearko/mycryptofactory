@@ -18,10 +18,10 @@ describe('gameStore', () => {
   });
 
   describe('initial state', () => {
-    it('starts with day 1 and 500 GUM', () => {
+    it('starts with day 1 and 700 GUM (Day 7 balance tweak)', () => {
       const state = useGameStore.getState();
       expect(state.day).toBe(1);
-      expect(state.gum).toBe(500);
+      expect(state.gum).toBe(700);
       expect(state.reputation).toBe(50);
       expect(state.totalGumEarned).toBe(0);
     });
@@ -79,7 +79,7 @@ describe('gameStore', () => {
       useGameStore.getState().reset();
       const s = useGameStore.getState();
       expect(s.day).toBe(1);
-      expect(s.gum).toBe(500);
+      expect(s.gum).toBe(700);
     });
 
     it('restores starter employee after reset', () => {

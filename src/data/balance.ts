@@ -7,7 +7,9 @@
 import type { MaterialType } from '../game/types';
 
 // --- Initial player state ---
-export const INITIAL_GUM = 500;
+// Tuned 2026-05-03 (SCRUM-33) after balance simulator showed bankrupt rate 100% at day 20
+// with the previous values. Bumping starter cushion and lowering wage/upgrade costs.
+export const INITIAL_GUM = 700;
 export const INITIAL_REPUTATION = 50;
 
 // --- Material market ---
@@ -75,7 +77,9 @@ export const HIGH_TIER_MIN_EMPLOYEES = 3;
 
 // --- Hiring (Phase 2) ---
 export const HIRE_MARKET_SIZE = 3;
-export const COMMON_DAILY_WAGE = 200;
+// Tuned 2026-05-03: 200 → 150. Greedy AI bankrupted at 200; 150 lets a Lv1 workshop
+// barely cover wages so hiring becomes a real trade-off instead of a no-brainer.
+export const COMMON_DAILY_WAGE = 150;
 export const COMMON_INITIAL_STAMINA = 100;
 export const COMMON_INITIAL_CRAFT_LV = 1;
 
@@ -86,10 +90,11 @@ export const EMPLOYEE_QUALITY_BONUS_PER_LEVEL = 5;
 export const EMPLOYEE_AFFINITY_QUALITY_BONUS = 10;
 
 // --- Workshop leveling (Phase 2) ---
+// Tuned 2026-05-03: 2000/8000 → 1500/6000. Lv2 unlocks the second craft slot and Tier3,
+// which is the main path out of "wage death spiral". Cheaper Lv up = better pacing.
 export const WORKSHOP_LV_UP_COSTS: Record<number, number> = {
-  // current_level -> cost to reach next
-  1: 2000, // Lv1 → Lv2
-  2: 8000, // Lv2 → Lv3
+  1: 1500, // Lv1 → Lv2
+  2: 6000, // Lv2 → Lv3
 };
 export const WORKSHOP_MAX_LEVEL = 3;
 

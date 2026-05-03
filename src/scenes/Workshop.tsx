@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { HUD } from '../components/HUD';
+import { AudioManager, playSE } from '../components/AudioManager';
 import { MinigameModal } from '../components/MinigameModal';
 import { News } from '../components/News';
 import { Toasts } from '../components/Toasts';
 import { SelfCraftModal } from '../components/SelfCraftModal';
+import { UnlockModal } from '../components/UnlockModal';
+import { Tutorial } from '../components/Tutorial';
 import { OrderBoard } from './OrderBoard';
 import { MaterialMarket } from './MaterialMarket';
 import { HireMarketScene } from './HireMarket';
@@ -334,7 +337,10 @@ export function Workshop() {
           type="button"
           className="btn-primary"
           aria-label="次の日へ進む"
-          onClick={advanceDay}
+          onClick={() => {
+            playSE('dayAdvance');
+            advanceDay();
+          }}
           disabled={!canAdvance}
         >
           {pendingMinigame ? 'クラフト中…' : '次の日へ'}
@@ -349,6 +355,9 @@ export function Workshop() {
       {scene === 'selfCraft' && <SelfCraftModal onClose={closeScene} />}
       <MinigameModal />
       <Toasts />
+      <UnlockModal />
+      <Tutorial />
+      <AudioManager />
       {isBankrupt && <BankruptModal onReset={reset} />}
     </div>
   );
