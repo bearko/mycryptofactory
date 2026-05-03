@@ -3,10 +3,18 @@ import { HUD } from '../components/HUD';
 import { MinigameModal } from '../components/MinigameModal';
 import { OrderBoard } from './OrderBoard';
 import { MaterialMarket } from './MaterialMarket';
+import { HireMarketScene } from './HireMarket';
 import { useGameStore } from '../store/gameStore';
-import type { ActiveCraft, Feature } from '../store/gameStore';
+import type { ActiveCraft, Employee, Feature } from '../store/gameStore';
+import {
+  EMPLOYEE_LV_UP_COST,
+  EMPLOYEE_MAX_LEVEL,
+  STAMINA_MAX,
+  WORKSHOP_LV_UP_COSTS,
+  WORKSHOP_MAX_LEVEL,
+} from '../data/balance';
 
-type ModalScene = 'orders' | 'market' | null;
+type ModalScene = 'orders' | 'market' | 'hire' | null;
 
 interface ZoneProps {
   title: string;
@@ -74,6 +82,92 @@ function CraftSlot({ index, active, craft }: { index: number; active: boolean; c
   );
 }
 
+function StaminaBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, value));
+  const tone = pct >= 60 ? 'ok' : pct >= 30 ? 'warn' : 'low';
+  return (
+    <div className="stamina-bar" aria-label={`Stamina ${pct}/${STAMINA_MAX}`}>
+      <div className={`stamina-bar-fill stamina-${tone}`} style={{ width: `${pct}%` }} />
+      <span className="stamina-bar-text">{pct}/{STAMINA_MAX}</span>
+    </div>
+  );
+}
+
+function EmployeeRow({ employee }: { employee: Employee }) {
+  const gum = useGameStore((s) => s.gum);
+  const levelUpEmployee = useGameStore((s) => s.levelUpEmployee);
+  const restEmployee = useGameStore((s) => s.restEmployee);
+
+  const canLvUp =
+    employee.craftLv < EMPLOYEE_MAX_LEVEL &&
+    gum >= EMPLOYEE_LV_UP_COST;
+  const canRest = employee.state === 'idle' && employee.stamina < STAMINA_MAX;
+
+  const stateLabel: Record<string, string> = {
+    idle: '待機',
+    crafting: '作業中',
+    gathering: '採集中',
+    resting: '休養中',
+  };
+
+  return (
+    <li className="employee-row">
+      <div className="employee-row-main">
+        <span className="employee-name">{employee.name}</span>
+        <span className="employee-meta">
+          {employee.rarity} / {employee.affinity} / Lv {employee.craftLv} / {stateLabel[employee.state]}
+        </span>
+      </div>
+      <StaminaBar value={employee.stamina} />
+      <div className="employee-row-actions">
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => levelUpEmployee(employee.id)}
+          disabled={!canLvUp}
+          title={`Lv up: ${EMPLOYEE_LV_UP_COST} GUM (Lv ${employee.craftLv} → ${employee.craftLv + 1})`}
+        >
+          Lv up ({EMPLOYEE_LV_UP_COST})
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => restEmployee(employee.id)}
+          disabled={!canRest}
+          title="休養日：翌日にスタミナ全回復"
+        >
+          休養
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function WorkshopUpgradePanel() {
+  const workshop = useGameStore((s) => s.workshop);
+  const gum = useGameStore((s) => s.gum);
+  const unlocked = useGameStore((s) => s.unlockedFeatures);
+  const levelUpWorkshop = useGameStore((s) => s.levelUpWorkshop);
+
+  if (!unlocked.includes('WORKSHOP_UP')) return null;
+  if (workshop.level >= WORKSHOP_MAX_LEVEL) {
+    return <p className="zone-subtitle">工房 Lv MAX</p>;
+  }
+  const cost = WORKSHOP_LV_UP_COSTS[workshop.level] ?? 0;
+  const canUp = gum >= cost;
+  return (
+    <button
+      type="button"
+      className="btn-secondary workshop-upgrade-btn"
+      onClick={() => levelUpWorkshop()}
+      disabled={!canUp}
+      title={`工房 Lv ${workshop.level} → ${workshop.level + 1}：slots+1 / tierMax+1`}
+    >
+      工房 Lv up ({cost.toLocaleString()} GUM)
+    </button>
+  );
+}
+
 function DayLogPanel() {
   const log = useGameStore((s) => s.lastDayLog);
   if (!log || log.events.length === 0) return null;
@@ -115,6 +209,7 @@ export function Workshop() {
   const advanceDay = useGameStore((s) => s.advanceDay);
   const reset = useGameStore((s) => s.reset);
   const pendingMinigame = useGameStore((s) => s.pendingMinigame);
+  const hireMarket = useGameStore((s) => s.hireMarket);
 
   const [scene, setScene] = useState<ModalScene>(null);
 
@@ -138,7 +233,7 @@ export function Workshop() {
 
         <Zone
           title="クラフト台"
-          subtitle={`Lv${workshop.level}・${activeCrafts.length}/${workshop.slots} 稼働中`}
+          subtitle={`Lv${workshop.level}・${activeCrafts.length}/${workshop.slots} 稼働中・Tier上限 ${workshop.tierMax}`}
         >
           <div className="craft-slots">
             {[0, 1, 2].map((i) => (
@@ -150,6 +245,7 @@ export function Workshop() {
               />
             ))}
           </div>
+          <WorkshopUpgradePanel />
         </Zone>
 
         <Zone
@@ -170,14 +266,19 @@ export function Workshop() {
         <Zone title="従業員部屋" subtitle={`${employees.length} 人`}>
           <ul className="employee-list">
             {employees.map((e) => (
-              <li key={e.id} className="employee-row">
-                <span className="employee-name">{e.name}</span>
-                <span className="employee-meta">
-                  {e.rarity} / {e.affinity} Lv{e.craftLv} / {e.state}
-                </span>
-              </li>
+              <EmployeeRow key={e.id} employee={e} />
             ))}
           </ul>
+          {has('HIRE') && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setScene('hire')}
+              title="雇用ボードを開く"
+            >
+              雇用ボード ({hireMarket.length})
+            </button>
+          )}
         </Zone>
 
         <Zone title="採集マップ" locked={!has('SELF_CRAFT')} unlockHint="累計 10,000 GUM で解放" />
@@ -206,6 +307,7 @@ export function Workshop() {
 
       {scene === 'orders' && <OrderBoard onClose={closeScene} />}
       {scene === 'market' && <MaterialMarket onClose={closeScene} />}
+      {scene === 'hire' && <HireMarketScene onClose={closeScene} />}
       <MinigameModal />
       {isBankrupt && <BankruptModal onReset={reset} />}
     </div>

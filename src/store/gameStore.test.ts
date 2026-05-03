@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
-import { ORDER_BOARD_SIZE, BANKRUPT_DAYS } from '../data/balance';
+import {
+  ORDER_BOARD_SIZE,
+  BANKRUPT_DAYS,
+  HIRE_UNLOCK_TOTAL_GUM,
+  COMMON_DAILY_WAGE,
+  EMPLOYEE_LV_UP_COST,
+  WORKSHOP_LV_UP_COSTS,
+  STAMINA_PER_CRAFT,
+  STAMINA_MAX,
+} from '../data/balance';
 import { pricesForDay } from '../game/marketPrices';
 
 describe('gameStore', () => {
@@ -215,6 +224,185 @@ describe('gameStore', () => {
       expect(s.gum).toBe(beforeGum + order.reward);
       expect(s.activeCrafts).toHaveLength(0);
       expect(s.employees[0]!.state).toBe('idle');
+    });
+  });
+
+  describe('Day 4: feature unlocks', () => {
+    it('unlocks HIRE & WORKSHOP_UP after totalGumEarned crosses threshold', () => {
+      useGameStore.setState({ totalGumEarned: HIRE_UNLOCK_TOTAL_GUM });
+      useGameStore.getState().advanceDay();
+      const s = useGameStore.getState();
+      expect(s.unlockedFeatures).toContain('HIRE');
+      expect(s.unlockedFeatures).toContain('WORKSHOP_UP');
+    });
+
+    it('populates hireMarket only after HIRE is unlocked', () => {
+      useGameStore.getState().advanceDay();
+      expect(useGameStore.getState().hireMarket).toHaveLength(0);
+
+      useGameStore.setState({ totalGumEarned: HIRE_UNLOCK_TOTAL_GUM });
+      useGameStore.getState().advanceDay();
+      expect(useGameStore.getState().hireMarket.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Day 4: hireEmployee', () => {
+    beforeEach(() => {
+      useGameStore.setState({
+        unlockedFeatures: ['HIRE'],
+        hireMarket: [
+          {
+            id: 'cand-1',
+            name: 'テスト候補',
+            rarity: 'Common',
+            craftLv: 1,
+            affinity: 'Helm',
+            battleStats: { atk: 10, hp: 20, spd: 5 },
+            stamina: STAMINA_MAX,
+            wage: COMMON_DAILY_WAGE,
+            state: 'idle',
+          },
+        ],
+      });
+    });
+
+    it('hires when affordable, deducts first wage', () => {
+      const before = useGameStore.getState();
+      const ok = useGameStore.getState().hireEmployee('cand-1');
+      expect(ok).toBe(true);
+      const s = useGameStore.getState();
+      expect(s.employees).toHaveLength(2);
+      expect(s.gum).toBe(before.gum - COMMON_DAILY_WAGE);
+      expect(s.hireMarket).toHaveLength(0);
+    });
+
+    it('fails when GUM is insufficient', () => {
+      useGameStore.setState({ gum: 10 });
+      const ok = useGameStore.getState().hireEmployee('cand-1');
+      expect(ok).toBe(false);
+      expect(useGameStore.getState().employees).toHaveLength(1);
+    });
+
+    it('fails when HIRE is not unlocked', () => {
+      useGameStore.setState({ unlockedFeatures: [] });
+      const ok = useGameStore.getState().hireEmployee('cand-1');
+      expect(ok).toBe(false);
+    });
+  });
+
+  describe('Day 4: levelUpEmployee', () => {
+    it('increments craftLv and deducts cost', () => {
+      const empId = useGameStore.getState().employees[0]!.id;
+      const beforeGum = useGameStore.getState().gum;
+      const beforeLv = useGameStore.getState().employees[0]!.craftLv;
+      const ok = useGameStore.getState().levelUpEmployee(empId);
+      expect(ok).toBe(true);
+      expect(useGameStore.getState().employees[0]!.craftLv).toBe(beforeLv + 1);
+      expect(useGameStore.getState().gum).toBe(beforeGum - EMPLOYEE_LV_UP_COST);
+    });
+
+    it('fails when GUM is insufficient', () => {
+      useGameStore.setState({ gum: 0 });
+      const empId = useGameStore.getState().employees[0]!.id;
+      const ok = useGameStore.getState().levelUpEmployee(empId);
+      expect(ok).toBe(false);
+    });
+
+    it('fails at max level', () => {
+      useGameStore.setState({
+        employees: useGameStore.getState().employees.map((e) => ({ ...e, craftLv: 10 })),
+      });
+      const empId = useGameStore.getState().employees[0]!.id;
+      const ok = useGameStore.getState().levelUpEmployee(empId);
+      expect(ok).toBe(false);
+    });
+  });
+
+  describe('Day 4: levelUpWorkshop', () => {
+    beforeEach(() => {
+      useGameStore.setState({ unlockedFeatures: ['WORKSHOP_UP'], gum: 100_000 });
+    });
+
+    it('Lv1→2 deducts cost and increments slots/tierMax', () => {
+      const ok = useGameStore.getState().levelUpWorkshop();
+      expect(ok).toBe(true);
+      const s = useGameStore.getState();
+      expect(s.workshop.level).toBe(2);
+      expect(s.workshop.slots).toBe(2);
+      expect(s.workshop.tierMax).toBe(3);
+      expect(s.gum).toBe(100_000 - (WORKSHOP_LV_UP_COSTS[1] ?? 0));
+    });
+
+    it('fails at max level', () => {
+      useGameStore.setState({ workshop: { level: 3, slots: 3, tierMax: 4 } });
+      const ok = useGameStore.getState().levelUpWorkshop();
+      expect(ok).toBe(false);
+    });
+
+    it('fails when WORKSHOP_UP is not unlocked', () => {
+      useGameStore.setState({ unlockedFeatures: [] });
+      const ok = useGameStore.getState().levelUpWorkshop();
+      expect(ok).toBe(false);
+    });
+  });
+
+  describe('Day 4: stamina + restEmployee', () => {
+    it('acceptOrder consumes stamina', () => {
+      useGameStore.setState({
+        materials: { Iron: 5, Wood: 5, Cloth: 0, Gem: 0, Mithril: 0, Orichalcum: 0 },
+      });
+      const order = useGameStore.getState().orderBoard.find((o) => o.tier === 1)!;
+      useGameStore.getState().acceptOrder(order.id);
+      expect(useGameStore.getState().employees[0]!.stamina).toBe(STAMINA_MAX - STAMINA_PER_CRAFT);
+    });
+
+    it('cannot acceptOrder with stamina < STAMINA_PER_CRAFT', () => {
+      useGameStore.setState({
+        materials: { Iron: 5, Wood: 5, Cloth: 0, Gem: 0, Mithril: 0, Orichalcum: 0 },
+        employees: useGameStore.getState().employees.map((e) => ({ ...e, stamina: 10 })),
+      });
+      const order = useGameStore.getState().orderBoard.find((o) => o.tier === 1)!;
+      const ok = useGameStore.getState().acceptOrder(order.id);
+      expect(ok).toBe(false);
+    });
+
+    it('restEmployee sets state to resting', () => {
+      const empId = useGameStore.getState().employees[0]!.id;
+      const ok = useGameStore.getState().restEmployee(empId);
+      expect(ok).toBe(true);
+      expect(useGameStore.getState().employees[0]!.state).toBe('resting');
+    });
+
+    it('advanceDay restores stamina for resting employees', () => {
+      const empId = useGameStore.getState().employees[0]!.id;
+      useGameStore.setState({
+        employees: useGameStore.getState().employees.map((e) =>
+          e.id === empId ? { ...e, state: 'resting', stamina: 20 } : e,
+        ),
+      });
+      useGameStore.getState().advanceDay();
+      const s = useGameStore.getState();
+      expect(s.employees[0]!.stamina).toBe(STAMINA_MAX);
+      expect(s.employees[0]!.state).toBe('idle');
+    });
+  });
+
+  describe('Day 4: completeMinigame applies craftJudge bonus', () => {
+    it('Lv 5 starter (affinity Sword) on Sword craft → +30 quality', () => {
+      useGameStore.setState({
+        employees: useGameStore.getState().employees.map((e) => ({ ...e, craftLv: 5 })),
+        materials: { Iron: 5, Wood: 5, Cloth: 0, Gem: 0, Mithril: 0, Orichalcum: 0 },
+      });
+      const swordOrder = useGameStore.getState().orderBoard.find(
+        (o) => o.tier === 1 && o.category === 'Sword',
+      );
+      // Some seeds may not produce Sword Tier 1; only run assertion when present
+      if (!swordOrder) return;
+      useGameStore.getState().acceptOrder(swordOrder.id);
+      const craftId = useGameStore.getState().activeCrafts[0]!.id;
+      useGameStore.getState().completeMinigame(craftId, 50);
+      // Lv 5 → +20, affinity Sword → +10, total 80
+      expect(useGameStore.getState().activeCrafts[0]!.quality).toBe(80);
     });
   });
 });

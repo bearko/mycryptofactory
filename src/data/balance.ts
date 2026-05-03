@@ -64,3 +64,35 @@ export const EXPIRED_ORDER_REP_PENALTY = 0; // Phase 1: no penalty for ignoring 
 export const ORDER_BOARD_SIZE = 5; // Target number of orders on board
 export const ORDER_DEADLINE_MIN = 2;
 export const ORDER_DEADLINE_MAX = 4;
+
+// --- Feature unlock thresholds (Phase 2/4) ---
+export const HIRE_UNLOCK_TOTAL_GUM = 1000;
+export const WORKSHOP_UP_UNLOCK_TOTAL_GUM = 1000;
+export const SELF_CRAFT_UNLOCK_TOTAL_GUM = 10_000;
+// HIGH_TIER unlocks at workshop.level >= 2 AND employees.length >= 3 (logical, not GUM)
+export const HIGH_TIER_MIN_WORKSHOP_LEVEL = 2;
+export const HIGH_TIER_MIN_EMPLOYEES = 3;
+
+// --- Hiring (Phase 2) ---
+export const HIRE_MARKET_SIZE = 3;
+export const COMMON_DAILY_WAGE = 200;
+export const COMMON_INITIAL_STAMINA = 100;
+export const COMMON_INITIAL_CRAFT_LV = 1;
+
+// --- Employee leveling (Phase 2) ---
+export const EMPLOYEE_LV_UP_COST = 500; // flat per level
+export const EMPLOYEE_MAX_LEVEL = 10;
+export const EMPLOYEE_QUALITY_BONUS_PER_LEVEL = 5;
+export const EMPLOYEE_AFFINITY_QUALITY_BONUS = 10;
+
+// --- Workshop leveling (Phase 2) ---
+export const WORKSHOP_LV_UP_COSTS: Record<number, number> = {
+  // current_level -> cost to reach next
+  1: 2000, // Lv1 → Lv2
+  2: 8000, // Lv2 → Lv3
+};
+export const WORKSHOP_MAX_LEVEL = 3;
+
+// --- Stamina (Phase 2) ---
+export const STAMINA_PER_CRAFT = 30;
+export const STAMINA_MAX = 100;
