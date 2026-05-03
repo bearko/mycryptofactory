@@ -275,3 +275,302 @@ button {
 .btn-primary:active {
   filter: brightness(0.95);
 }
+
+.btn-primary:disabled {
+  background: var(--locked);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Secondary / step buttons */
+.btn-secondary {
+  background: var(--bg-3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--accent-dim);
+  color: #fff;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-step {
+  background: var(--bg-3);
+  color: #fff;
+  border: 1px solid var(--border);
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.btn-text {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.btn-text:hover {
+  color: #fff;
+}
+
+/* Clickable zone */
+.zone-clickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.zone-clickable:hover {
+  background: var(--bg-3);
+  border-color: var(--accent-dim);
+}
+
+/* Craft slot busy state */
+.craft-slot-busy {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--bg-3) 0%, #2c2616 100%);
+}
+
+.craft-slot-cat {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.craft-slot-meta {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 2rem;
+}
+
+.modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-large {
+  max-width: 800px;
+}
+
+.modal-minigame {
+  max-width: 720px;
+}
+
+.modal-bankrupt {
+  max-width: 380px;
+  text-align: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.modal-bankrupt h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.modal-meta {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.modal-body {
+  padding: 1.1rem 1.25rem;
+  overflow-y: auto;
+}
+
+/* Order list */
+.order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.order-card {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.order-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.order-card-cat {
+  font-weight: 600;
+}
+
+.order-card-tier {
+  color: var(--accent);
+}
+
+.order-card-deadline {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.order-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.order-card-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.order-card-reward {
+  color: var(--gum);
+}
+
+.order-card-mats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.mat-chip {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+.mat-chip-short {
+  border-color: #c0392b;
+  color: #e74c3c;
+}
+
+.order-card-accept {
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+/* Market table */
+.market-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.market-table th,
+.market-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.market-table th {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.market-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.market-qty {
+  min-width: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Day log */
+.day-log {
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.8rem;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.day-log header {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.3rem;
+}
+
+.day-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.day-log li {
+  color: var(--text-dim);
+}
