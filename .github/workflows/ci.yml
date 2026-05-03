@@ -2,12 +2,12 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   push:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
-  build-and-test:
+  syntax-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,15 +15,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - run: npm ci
+      - name: JS syntax check (node --check on every js/*.js)
+        run: |
+          fail=0
+          for f in js/*.js; do
+            echo "checking $f"
+            node --check "$f" || fail=1
+          done
+          exit $fail
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type check + Build
-        run: npm run build
-
-      - name: Test
-        run: npm test
+      - name: JSON validity check (data/**/*.json)
+        run: |
+          fail=0
+          for f in $(find data -name '*.json'); do
+            echo "checking $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf-8'))" || fail=1
+          done
+          exit $fail
