@@ -1652,15 +1652,51 @@ function maiSays(messageKey, options = {}) {
   _maiNextAction = options.onClose || null;
 }
 function closeMaiModal() {
+  // Phase 1D-5 修正: シーケンス進行中なら閉じずに次の行へ進める。
+  // 最終行に到達したら通常 close 経路に流す。
+  if (_maiSeqQueue.length > 0) {
+    _maiSeqIdx++;
+    if (_maiSeqIdx < _maiSeqQueue.length) {
+      const body = $("maiModalBody");
+      const btn  = $("maiModalClose");
+      if (body) body.textContent = _maiSeqQueue[_maiSeqIdx];
+      if (btn)  btn.textContent  = _maiSeqIdx < _maiSeqQueue.length - 1
+        ? ti18n("mai.next") : ti18n("btn.close");
+      return;  // モーダルは閉じない、次セリフだけ表示
+    }
+    // 最終行を表示し終わったので閉じる
+    _maiSeqQueue = [];
+    _maiSeqIdx = 0;
+    const seqCb = _maiSeqOnClose;
+    _maiSeqOnClose = null;
+    $("maiModal")?.classList.add("hidden");
+    const closeBtn = $("maiModalClose");
+    if (closeBtn) closeBtn.textContent = ti18n("btn.close");
+    if (seqCb) { seqCb(); return; }
+    // sequence が onClose を持たないなら通常 close と同じ後始末
+    const next = _maiNextAction;
+    _maiNextAction = null;
+    if (next) next();
+    else      resumeTime();
+    return;
+  }
+  // ── 通常 (単行 maiSays) の閉じ処理 ──
   $("maiModal")?.classList.add("hidden");
   const next = _maiNextAction;
   _maiNextAction = null;
   if (next) {
-    // next 側で pauseTime を再呼びするので、ここでは resume しない
     next();
   } else {
     resumeTime();
   }
+}
+
+/** Esc / 背景タップ用: シーケンス途中でも強制的に閉じる (skip dialog) */
+function forceCloseMaiModal() {
+  _maiSeqQueue = [];
+  _maiSeqIdx = 0;
+  _maiSeqOnClose = null;
+  closeMaiModal();
 }
 
 /** Phase 1D-5: マイの複数行セリフをシーケンス表示する。
@@ -1681,30 +1717,10 @@ function maiSaysSequence(messages, options = {}) {
   const body  = $("maiModalBody");
   const btn   = $("maiModalClose");
   if (!modal || !body || !btn) return;
-  // ボタンラベルを「次へ」 ↔ 「閉じる」で切替
-  const updateUi = () => {
-    body.textContent = _maiSeqQueue[_maiSeqIdx];
-    btn.textContent = _maiSeqIdx < _maiSeqQueue.length - 1
-      ? ti18n("mai.next")
-      : ti18n("btn.close");
-  };
-  // 既存 onclick を上書きして seq 進行に差し替え
-  btn.onclick = () => {
-    _maiSeqIdx++;
-    if (_maiSeqIdx >= _maiSeqQueue.length) {
-      // 全部表示し終わった → 閉じる
-      modal.classList.add("hidden");
-      btn.onclick = null;
-      btn.textContent = ti18n("btn.close");
-      _maiSeqQueue = []; _maiSeqIdx = 0;
-      const cb = _maiSeqOnClose;
-      _maiSeqOnClose = null;
-      if (cb) cb(); else resumeTime();
-    } else {
-      updateUi();
-    }
-  };
-  updateUi();
+  // 1 行目を表示。「次へ」 ↔ 「閉じる」 のラベル切替は closeMaiModal 側 (= ボタン
+  // クリックハンドラ) が次行進行のたびに実施する。
+  body.textContent = _maiSeqQueue[_maiSeqIdx];
+  btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
   pauseTime();
 }
@@ -2506,9 +2522,11 @@ async function init() {
   $("stubClose")?.addEventListener("click", closeStub);
 
   // ── Mai modal close ──
+  // 閉じるボタン: シーケンス進行時は次行へ、最終行/通常時はモーダル close
   $("maiModalClose")?.addEventListener("click", closeMaiModal);
+  // 背景タップは「skip dialog」として強制 close
   $("maiModal")?.addEventListener("click", (e) => {
-    if (e.target.id === "maiModal") closeMaiModal();
+    if (e.target.id === "maiModal") forceCloseMaiModal();
   });
 
   // ── Mai navigator: 各画面右上のマイアイコン → ヘルプモーダル ──
@@ -2762,7 +2780,7 @@ async function init() {
     if (!$("sellModal")?.classList.contains("hidden")) { closeSellModal(); return; }
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
     if (!$("maiHelpModal")?.classList.contains("hidden")) { closeMaiHelp(); return; }
-    if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
+    if (!$("maiModal")?.classList.contains("hidden")) { forceCloseMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
     if (!$("stubView")?.classList.contains("hidden")) { closeStub(); return; }
     if (!$("marketView")?.classList.contains("hidden")) { closeMarketView(); return; }
