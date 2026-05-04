@@ -149,15 +149,28 @@
     }
     .factory-header__btn:hover { border-color: var(--accent); }
 
+    /* Workshop overlays container (Phase 1D): クエスト/通知バナーを画像上に
+       重ねる。ワークショップの絶対配置子なので、表示・非表示でレイアウトが
+       押されない。 */
+    .workshop__overlays {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: flex; flex-direction: column;
+      gap: 4px;
+      z-index: 5;
+      pointer-events: none; /* 子要素で個別に有効化 */
+    }
+    .workshop__overlays > * { pointer-events: auto; }
+
     /* Notification banner (passive triggers etc.) */
     .notif-banner {
       width: 100%;
       display: flex; flex-direction: column;
       gap: 2px;
       padding: 4px 8px;
-      background: rgba(20, 16, 30, 0.55);
+      background: rgba(20, 16, 30, 0.78);
+      backdrop-filter: blur(2px);
       border-bottom: 1px solid var(--border);
-      pointer-events: none;
     }
     .notif-banner.hidden { display: none !important; }
     .notif {
@@ -470,9 +483,18 @@
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
     }
     .mai-modal__head {
-      display: flex; align-items: center; gap: 0.5rem;
+      display: flex; align-items: center; gap: 0.55rem;
       border-bottom: 1px solid var(--border);
       padding-bottom: 0.45rem;
+    }
+    .mai-modal__portrait {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
     }
     .mai-modal__name {
       color: var(--accent);
@@ -721,11 +743,24 @@
     .craft-done__el--under     { border-left-color: var(--ifrit); }
     .craft-done__el--under     .craft-done__el-val { color: var(--ifrit); }
     .craft-done__mai {
-      display: flex; flex-direction: column; gap: 0.35rem;
+      display: flex; gap: 0.6rem; align-items: flex-start;
       padding: 0.7rem 0.8rem;
       background: var(--panel-2);
       border-left: 4px solid var(--accent);
       border-radius: 6px;
+    }
+    .craft-done__mai-portrait {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
+    }
+    .craft-done__mai-text {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      flex: 1; min-width: 0;
     }
     .craft-done__mai-name {
       color: var(--accent);
@@ -1052,11 +1087,14 @@
     }
     .warehouse-item__score-num strong { color: var(--accent); font-size: 0.9rem; }
 
-    /* Quest progress overlay (Phase 1C-1) — ホーム画面の上部にバー表示 */
+    /* Quest progress overlay (Phase 1C-1) — ホーム画面の上部にバー表示。
+       Phase 1D で workshop 内 overlay 化したので背景に半透明の黒を被せて
+       コントラストを確保 + backdrop-filter で workshop 画像を少しぼかす。 */
     .quest-overlay {
       position: relative;
       width: 100%;
-      background: linear-gradient(90deg, #4a8a3e 0%, #2f6b3e 70%, #1f4d2a 100%);
+      background: linear-gradient(90deg, rgba(74,138,62,0.92) 0%, rgba(47,107,62,0.92) 70%, rgba(31,77,42,0.92) 100%);
+      backdrop-filter: blur(2px);
       color: #f6f7e8;
       display: grid;
       grid-template-columns: auto 1fr;
@@ -1941,12 +1979,56 @@
     footer a { color: var(--muted); }
 
     /* ───────────────────────────────────────────────────────────────
+     * 士農工商 attribute badges (Phase 1D-1)
+     * ヒーローカード / 詳細 / チームスロット に表示する 1 文字バッジ
+     * ─────────────────────────────────────────────────────────────── */
+    .attr-badges {
+      display: inline-flex; gap: 2px;
+      margin-left: 0.3rem;
+      vertical-align: middle;
+    }
+    .attr-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0;
+      line-height: 1;
+      text-shadow: 0 0 1px rgba(0,0,0,0.6);
+      flex-shrink: 0;
+    }
+    .attr-badge--shi { background: #c14a4a; }   /* 士 (赤) */
+    .attr-badge--no  { background: #4ea96d; }   /* 農 (緑) */
+    .attr-badge--ko  { background: #4f95a5; }   /* 工 (青) */
+    .attr-badge--sho { background: #c4a35a; color: #1a1420; }   /* 商 (金) */
+
+    /* hero-card__name-row (バッジ統合のため inline-flex に変更) */
+    .hero-card__name-row {
+      display: flex; align-items: center; gap: 0.2rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .hero-card__name-row .hero-card__name {
+      flex-shrink: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hero-card__head-info {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+      flex: 1;
+    }
+
+    /* ───────────────────────────────────────────────────────────────
      * Pixel-art rendering policy (top-priority override)
      *
      * ヒーロー / エクステンション / 素材 / 元素 — MCH 由来のドット絵は
      * すべてニアレストネイバーで拡大表示する。各コンポーネントの個別
      * image-rendering 指定を上書きするため、style ブロック末尾にまとめる。
      * ─────────────────────────────────────────────────────────────── */
+    .mai-modal__portrait,
+    .craft-done__mai-portrait,
     .hero-card__portrait,
     .hero-card__elem img,
     .hero-team__slot img,
@@ -2004,15 +2086,16 @@
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
 
-    <!-- Notification banner (Phase 1B-2): passive triggers etc. Auto-fades. -->
-    <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
-
-    <!-- Quest progress overlay (Phase 1C-1): クエスト中のみ表示、ホーム画面の上部 -->
-    <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
-
     <!-- Workshop view -->
     <div class="workshop" id="workshopView">
       <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
+      <!-- ── オーバーレイ群 (workshop 画像の上に重ねる: 縦方向にレイアウトを押さない) ── -->
+      <div class="workshop__overlays">
+        <!-- Quest progress overlay (Phase 1C-1) — クエスト中のみ表示 -->
+        <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
+        <!-- Notification banner (Phase 1B-2) — passive 発動などで表示、3 秒で消える -->
+        <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
+      </div>
       <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
       <div class="workshop__heroes" id="workshopHeroes"></div>
       <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
@@ -2058,6 +2141,7 @@
   <div class="mai-modal hidden" id="maiModal" role="dialog" aria-labelledby="maiModalName" aria-modal="true">
     <div class="mai-modal__card">
       <div class="mai-modal__head">
+        <img class="mai-modal__portrait" src="./Image/Factory/MAI_SD.png" alt="マイ" />
         <span class="mai-modal__name" id="maiModalName" data-i18n="mai.name">マイ</span>
       </div>
       <p class="mai-modal__body" id="maiModalBody">—</p>
@@ -2075,6 +2159,7 @@
           <div class="hero-detail__head-tags">
             <span class="hero-detail__rarity" id="heroDetailRarity" data-rarity="common">—</span>
             <span class="hero-detail__state" id="heroDetailState" data-state="idle">—</span>
+            <span id="heroDetailAttrs"></span>
           </div>
         </div>
       </div>
@@ -2113,8 +2198,11 @@
       <div class="craft-done__elements" id="craftDoneElements"></div>
 
       <div class="craft-done__mai">
-        <span class="craft-done__mai-name" data-i18n="mai.name">マイ</span>
-        <p class="craft-done__mai-says" id="craftDoneMaiSays">—</p>
+        <img class="craft-done__mai-portrait" src="./Image/Factory/MAI_SD.png" alt="マイ" />
+        <div class="craft-done__mai-text">
+          <span class="craft-done__mai-name" data-i18n="mai.name">マイ</span>
+          <p class="craft-done__mai-says" id="craftDoneMaiSays">—</p>
+        </div>
       </div>
 
       <button type="button" class="craft-done__close" id="craftDoneClose" data-i18n="comp.toMarket">OK</button>

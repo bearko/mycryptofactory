@@ -70,6 +70,10 @@ import {
   appraisalTotalTier,
 } from "./factory-appraisal.js";
 import {
+  ATTRIBUTE_LABEL,
+  ATTRIBUTES,
+} from "./factory-attributes.js";
+import {
   QUEST_DIFFICULTY,
   QUEST_DURATION_WEEKS,
   QUEST_BASE_LEVEL,
@@ -722,6 +726,19 @@ function elementLabel(key) {
   return ti18n(ELEMENT_LABEL_KEY[key] || ("elem." + key));
 }
 
+/** 士農工商バッジ HTML を生成。
+ *  hero.attributes (string[]) の各属性を 1 文字 Kanji の小バッジで表示。 */
+function renderHeroAttrBadges(hero) {
+  if (!hero || !Array.isArray(hero.attributes) || hero.attributes.length === 0) {
+    return "";
+  }
+  return `<span class="attr-badges">${hero.attributes.map(a => {
+    const lbl = ATTRIBUTE_LABEL[a];
+    if (!lbl) return "";
+    return `<span class="attr-badge attr-badge--${a}" title="${escapeHtml(lbl[getLang() === "en" ? "en" : "ja"])}">${escapeHtml(lbl.ja)}</span>`;
+  }).join("")}</span>`;
+}
+
 function renderHeroTeam() {
   const host = $("heroTeamSlots");
   if (!host) return;
@@ -809,8 +826,11 @@ function renderHeroList() {
     return `<div class="${cardCls}" data-hero-id="${hero.heroId}" data-rarity="${hero.rarity}" data-assigned="${assigned ? "1" : "0"}">
       <div class="hero-card__head">
         <img class="hero-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
-        <div>
-          <div class="hero-card__name">${escapeHtml(name)}</div>
+        <div class="hero-card__head-info">
+          <div class="hero-card__name-row">
+            <span class="hero-card__name">${escapeHtml(name)}</span>
+            ${renderHeroAttrBadges(hero)}
+          </div>
           <div class="hero-card__state" data-state="${hero.state}">${escapeHtml(stateLbl)}</div>
         </div>
         ${restBtn}
@@ -1368,6 +1388,7 @@ function renderHeroDetailPopup() {
   $("heroDetailState").setAttribute("data-state", hero.state);
   $("heroDetailRarity").textContent = ti18n("rarity." + hero.rarity, hero.rarity);
   $("heroDetailRarity").setAttribute("data-rarity", hero.rarity);
+  $("heroDetailAttrs").innerHTML = renderHeroAttrBadges(hero);
   $("heroDetailStaminaText").textContent = `${hero.stamina.current} / ${hero.stamina.max}`;
   $("heroDetailStaminaFill").style.width = stamPct.toFixed(1) + "%";
   $("heroDetailCl").textContent = craftLevel(hero).toLocaleString();

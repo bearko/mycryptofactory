@@ -16,6 +16,7 @@
  */
 
 import { HERO_ROSTER, HERO_DEFS } from "./heroes.js";
+import { inferAttributes, attributeBoostFactor } from "./factory-attributes.js";
 
 /** ヒーロー状態の enum 値 */
 export const HERO_STATE = {
@@ -49,7 +50,7 @@ export function makeFactoryHero(mchHero) {
   const ifrit     = mchHero.basePhy  ?? 0;
   const leviathan = mchHero.baseInt  ?? 0;
   const tiamat    = mchHero.baseAgi  ?? 0;
-  return {
+  const factoryHero = {
     heroId:      mchHero.heroId,
     nameJa:      mchHero.nameJa || "",
     rarity:      mchHero.rarity || "common",
@@ -60,7 +61,11 @@ export function makeFactoryHero(mchHero) {
     state:   HERO_STATE.IDLE,
     assignment: { kind: null, slot: null },
     img: typeof mchHero.img === "function" ? mchHero.img : (() => ""),
+    /** 士農工商属性 (Phase 1D-1)。inferAttributes で割り当てる。 */
+    attributes: /** @type {string[]} */ ([]),
   };
+  factoryHero.attributes = inferAttributes(factoryHero);
+  return factoryHero;
 }
 
 /** ガルーダ (HP) は他パラメータと比べて約 3 倍大きいので、
@@ -68,16 +73,16 @@ export function makeFactoryHero(mchHero) {
 export const GARUDA_WEIGHT = 1 / 3;
 
 /** クラフトレベル = ガルーダ × 1/3 + 他 3 元素 の合計 (整数に丸め)。
- *  チームレベルは各ヒーローの craftLevel を合算する。 */
+ *  + 工 属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)。 */
 export function craftLevel(hero) {
   if (!hero || !hero.element) return 0;
   const e = hero.element;
-  return Math.round(
-    (e.garuda || 0) * GARUDA_WEIGHT +
-    (e.ifrit || 0) +
-    (e.leviathan || 0) +
-    (e.tiamat || 0)
-  );
+  const base = (e.garuda || 0) * GARUDA_WEIGHT +
+               (e.ifrit || 0) +
+               (e.leviathan || 0) +
+               (e.tiamat || 0);
+  const boost = attributeBoostFactor(hero, "ko"); // 工 = クラフト
+  return Math.round(base * boost);
 }
 
 /** ヒーロー個別の元素値を「クラフト用 (= ガルーダ × 1/3)」に変換した表示値。
