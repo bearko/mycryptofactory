@@ -77,6 +77,18 @@
 
   "mai.name":                  { "ja": "マイ", "en": "Mai" },
   "mai.craftBusy":             { "ja": "他のエクステンションのクラフトが進行中です。まずは今のクラフトを終わらせましょう。", "en": "Another extension is being crafted. Let's finish the current craft first." },
+
+  "comp.title":                { "ja": "クラフト完了", "en": "Craft Complete" },
+  "comp.maiNotice":            { "ja": "クラフト中のエクステンションが完成しました！", "en": "The extension you were crafting is complete!" },
+  "comp.duration":             { "ja": "所要時間: 実際 {actual} 週 (予定 {est} 週)", "en": "Duration: {actual} weeks actual (estimate {est} weeks)" },
+  "comp.tier.under":           { "ja": "基準値未達", "en": "Under target" },
+  "comp.tier.good":            { "ja": "完成", "en": "Complete" },
+  "comp.tier.excellent":       { "ja": "素晴らしい出来", "en": "Excellent" },
+  "comp.maiComment.under":     { "ja": "基準値には到達できませんでしたが……マーケットに持っていきましょう！", "en": "We didn't quite hit the targets, but let's still take it to the market!" },
+  "comp.maiComment.good":      { "ja": "無事に完成しましたね♪いくらで売れるか楽しみです。", "en": "Safely finished♪ Can't wait to see what it sells for." },
+  "comp.maiComment.excellent": { "ja": "素晴らしい出来ですね！", "en": "What an excellent piece!" },
+  "comp.toMarket":             { "ja": "OK", "en": "OK" },
+
   "craft.weeks":               { "ja": "{n} 週", "en": "{n} wk" },
   "craft.targets":             { "ja": "必要基準値", "en": "Required base values" },
   "craft.materials":           { "ja": "必要素材", "en": "Required materials" },

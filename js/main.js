@@ -115,6 +115,15 @@ const state = {
   tickCount: 0,
   /** 直近にタップされた工房ヒーロー (詳細ポップアップ表示用) */
   popupHeroId: null,
+  /** クラフト完了直後 ─ Mai の通知 → 完成画面 → 倉庫格納 までの一時保持。
+   *  activeCraft からそのままコピーされ、完成画面を閉じるときに warehouse に
+   *  push され null に戻る。 */
+  pendingCompletion: /** @type {object | null} */ (null),
+  /** 完成済みエクステンションの倉庫 (Phase 1B-3 で push、Phase 1B-5 のマーケット
+   *  ＞倉庫タブで一覧表示する想定)。各要素:
+   *  { extId, achievedAt:{year,month,week}, achievedTicks, durationActualWeeks,
+   *    progress:{...}, targets:{...}, qualityRatio: number, qualityTier: string } */
+  warehouse: /** @type {Array<object>} */ ([]),
 };
 
 /** 通知バナー / 浮上値ともに 4 秒 = 4 tick で消える */
@@ -202,6 +211,72 @@ function tickActiveCraft() {
       pushPassiveNotification(hero, passive);
     }
   }
+  // 4. クラフト完了判定 (target>0 の全色が target を満たす = 進捗 100%)
+  if (isCraftComplete(ac)) {
+    triggerCraftCompletion(ac);
+  }
+}
+
+/** target > 0 の色がすべて progress >= target に到達したか。
+ *  target = 0 の色は無視 (= 不要色)。 */
+function isCraftComplete(ac) {
+  for (const k of ELEMENTS) {
+    const tgt = ac.targets[k] || 0;
+    if (tgt <= 0) continue;
+    if ((ac.progress[k] || 0) < tgt) return false;
+  }
+  return true;
+}
+
+/** 完成判定発火 ─ activeCraft を pendingCompletion に移し、
+ *  Mai の通知 → 完成画面を順に表示する。 */
+function triggerCraftCompletion(ac) {
+  // 実所要週数 (進捗 0 → 完了までの実時間)
+  const elapsedTicks = state.tickCount - (ac.startedAtTick || 0);
+  const actualWeeks  = Math.max(1, Math.ceil(elapsedTicks / SECONDS_PER_WEEK));
+  // 品質 ratio = 全色合計 (cap なし) / 全色 target 合計
+  let progSum = 0, tgtSum = 0;
+  for (const k of ELEMENTS) {
+    progSum += ac.progress[k] || 0;
+    tgtSum  += ac.targets[k]  || 0;
+  }
+  const qualityRatio = tgtSum > 0 ? progSum / tgtSum : 1;
+  const qualityTier  = pickQualityTier(qualityRatio);
+
+  state.pendingCompletion = {
+    extId: ac.extId,
+    team:  ac.team.slice(),
+    progress: { ...ac.progress },
+    targets:  { ...ac.targets },
+    startedAt: ac.startedAt,
+    achievedAt: { year: state.year, month: state.month, week: state.week },
+    achievedTicks: elapsedTicks,
+    durationActualWeeks: actualWeeks,
+    durationEstimateWeeks: ac.durationWeeks,
+    qualityRatio,
+    qualityTier,
+  };
+  state.activeCraft = null;
+
+  // 配属ヒーローはまず CRAFTING を解除 (RESTING のままなら回復継続するので、
+  // ここでは触らず → 完成画面 close 時に IDLE に戻す)
+  // → ただし Workshop sprite から消えてしまうのは活発感が削がれるので、
+  //   pendingCompletion 中も視覚的に残しておきたい。
+  // 解決: workshop render は state.activeCraft / state.pendingCompletion の
+  //   どちらかが非 null ならスプライト維持する。
+
+  // Mai 通知 → 閉じると完成画面へ
+  maiSays("comp.maiNotice", { onClose: openCompletionScreen });
+}
+
+/** quality ratio から「素晴らしい / 普通 / 下回り」のいずれかを返す。
+ *  下回り は通常の完了 (全色 target 達成) では発生しないが、将来
+ *  「時間切れで強制完了」を入れたときに使えるよう経路を残しておく。 */
+function pickQualityTier(ratio) {
+  // 全色到達 = ratio >= 1.0 のはず。1.5+ は overshoot (素晴らしい)。
+  if (ratio < 1.0) return "under";
+  if (ratio >= 1.5) return "excellent";
+  return "good";
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える) */
@@ -702,6 +777,7 @@ function startActiveCraft() {
     progress: { garuda: 0, ifrit: 0, leviathan: 0, tiamat: 0 },
     recipe,
     startedAt: { year: state.year, month: state.month, week: state.week },
+    startedAtTick: state.tickCount,   // 実所要時間 (週) を完成時に算出するため
     durationWeeks: dur,
   };
   // Mark assigned heroes as crafting (state machine — stamina tick comes Phase 1C)
@@ -726,8 +802,8 @@ function renderOrderPanel() {
   const icon = $("orderIcon");
   if (!panel) return;
 
-  // 進行中クラフトなし → empty state
-  if (!state.activeCraft) {
+  // 進行中クラフトなし & 完成待ちなし → empty state
+  if (!state.activeCraft && !state.pendingCompletion) {
     panel.classList.add("order-panel--empty");
     desc.textContent = ti18n("order.none");
     meta.textContent = "";
@@ -737,8 +813,8 @@ function renderOrderPanel() {
     icon.innerHTML = "";
     return;
   }
-  // 進行中
-  const ac = state.activeCraft;
+  // 進行中 (or 完成 Mai 通知 → 完成画面の間も表示維持)
+  const ac = state.activeCraft || state.pendingCompletion;
   const ext = EXTENSION_BY_ID[String(ac.extId)];
   panel.classList.remove("order-panel--empty");
   icon.innerHTML = `<img src="${extIconUrl(ac.extId)}" alt="" onerror="this.style.opacity='0.2'" />`;
@@ -774,7 +850,8 @@ function renderOrderPanel() {
 /** activeCraft.startedAt + durationWeeks から完成予定日を計算 */
 function computeEtaDate(ac) {
   const start = ac.startedAt; // {year, month, week}
-  let weeks = ac.durationWeeks;
+  // activeCraft は durationWeeks、pendingCompletion は durationEstimateWeeks
+  let weeks = ac.durationWeeks ?? ac.durationEstimateWeeks ?? 0;
   let y = start.year, m = start.month, w = start.week;
   while (weeks > 0) {
     w += 1;
@@ -802,11 +879,14 @@ function formatGameDate(d) {
 function renderWorkshop() {
   const host = $("workshopHeroes");
   if (!host) return;
-  if (!state.activeCraft) {
+  // activeCraft が無くても、pendingCompletion (= 完成モーダル表示中) の間は
+  // 直前の team を表示し続ける ─ 突然 sprite が消えないようにする。
+  const ac = state.activeCraft || state.pendingCompletion;
+  if (!ac) {
     host.innerHTML = "";
+    host.dataset.fingerprint = "";
     return;
   }
-  const ac = state.activeCraft;
   // 配属が変わった (heroId 列が変わった) ときだけ全 rebuild。それ以外は属性更新のみ。
   const fingerprint = ac.team.join(",");
   if (host.dataset.fingerprint !== fingerprint) {
@@ -1022,19 +1102,114 @@ function closeStub() {
 }
 
 /** Mai のセリフを表示する汎用モーダル。
- *  messageKey は i18n のキー (e.g. "mai.craftBusy") を指定。
- *  時間は止めずに上にかぶせるだけにする (短い通知用)。 */
-function maiSays(messageKey) {
+ *  - messageKey: i18n キー (e.g. "mai.craftBusy")
+ *  - options.onClose: モーダルを閉じたあとに呼ばれる callback。
+ *    (next action がある場合は resumeTime をスキップし、callback 側に
+ *    pause/resume 管理を委ねる ─ 完成画面など連続表示用)
+ */
+let _maiNextAction = null;
+function maiSays(messageKey, options = {}) {
   const modal = $("maiModal");
   const body  = $("maiModalBody");
   if (!modal || !body) return;
   body.textContent = ti18n(messageKey);
   modal.classList.remove("hidden");
   pauseTime();
+  _maiNextAction = options.onClose || null;
 }
 function closeMaiModal() {
   $("maiModal")?.classList.add("hidden");
+  const next = _maiNextAction;
+  _maiNextAction = null;
+  if (next) {
+    // next 側で pauseTime を再呼びするので、ここでは resume しない
+    next();
+  } else {
+    resumeTime();
+  }
+}
+
+/** ─── Craft completion screen (Phase 1B-3) ───────────────────────── */
+function openCompletionScreen() {
+  if (!state.pendingCompletion) {
+    // 万一 pendingCompletion が無い (= 直接呼ばれた) なら何もしない
+    return;
+  }
+  const modal = $("craftDoneModal");
+  if (!modal) return;
+  pauseTime();
+  modal.classList.remove("hidden");
+  renderCompletionScreen();
+}
+
+function renderCompletionScreen() {
+  const pc = state.pendingCompletion;
+  if (!pc) return;
+  const ext = EXTENSION_BY_ID[String(pc.extId)];
+  $("craftDoneIcon").src = extIconUrl(pc.extId);
+  $("craftDoneName").textContent = ext ? ext.nameJa : `ext ${pc.extId}`;
+  $("craftDoneRarity").textContent = ext ? ti18n("rarity." + ext.rarity, ext.rarity) : "";
+  $("craftDoneRarity").setAttribute("data-rarity", ext ? ext.rarity : "common");
+
+  // 所要時間 (実際 vs 予定)
+  const dur = $("craftDoneDuration");
+  dur.textContent = ti18n("comp.duration")
+    .replace("{actual}", String(pc.durationActualWeeks))
+    .replace("{est}",    String(pc.durationEstimateWeeks));
+
+  // 4 色の達成状況: progress / target、達成は緑字、未達 (target>0 で progress<target) は赤字
+  $("craftDoneElements").innerHTML = ELEMENTS.map(k => {
+    const cur = pc.progress[k] || 0;
+    const tgt = pc.targets[k]  || 0;
+    let stat = "neutral";
+    if (tgt > 0) {
+      if (cur >= tgt * 1.5) stat = "excellent";
+      else if (cur >= tgt)  stat = "reached";
+      else                  stat = "under";
+    }
+    return `<div class="craft-done__el craft-done__el--${stat}">
+      <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
+      <span class="craft-done__el-label">${escapeHtml(elementLabel(k))}</span>
+      <strong class="craft-done__el-val">${cur}</strong>
+      <span class="craft-done__el-sep">/</span>
+      <span class="craft-done__el-tgt">${tgt}</span>
+    </div>`;
+  }).join("");
+
+  // 品質ラベル + マイのコメント
+  $("craftDoneQuality").textContent = ti18n("comp.tier." + pc.qualityTier);
+  $("craftDoneQuality").setAttribute("data-tier", pc.qualityTier);
+  $("craftDoneMaiSays").textContent = ti18n("comp.maiComment." + pc.qualityTier);
+}
+
+function closeCompletionScreen() {
+  const pc = state.pendingCompletion;
+  $("craftDoneModal")?.classList.add("hidden");
+  if (pc) {
+    // 1. 完成 ext を倉庫に格納 (Phase 1B-5 のマーケット>倉庫タブから参照)
+    state.warehouse.push({
+      extId: pc.extId,
+      achievedAt: pc.achievedAt,
+      achievedTicks: pc.achievedTicks,
+      durationActualWeeks: pc.durationActualWeeks,
+      progress: pc.progress,
+      targets: pc.targets,
+      qualityRatio: pc.qualityRatio,
+      qualityTier: pc.qualityTier,
+    });
+    // 2. 配属ヒーローを IDLE に戻す (RESTING のままならそのまま継続だが、
+    //    新規クラフトの編成からも外れているので、UI 上 IDLE 復帰でよい)
+    for (const id of pc.team) {
+      if (id == null) continue;
+      const h = findHero(id);
+      if (h && (h.state === HERO_STATE.CRAFTING)) h.state = HERO_STATE.IDLE;
+    }
+  }
+  state.pendingCompletion = null;
   resumeTime();
+  // 工房スプライトと order panel をリフレッシュ
+  renderWorkshop();
+  renderOrderPanel();
 }
 
 /** ─── Help overlay ──────────────────────────────────────────────── */
@@ -1156,6 +1331,10 @@ async function init() {
     if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
 
+  // ── 完成画面 (Phase 1B-3) ──
+  $("craftDoneClose")?.addEventListener("click", closeCompletionScreen);
+  // 完成画面は背景タップでは閉じない (重要画面なので明示クリック必須)
+
   // ── Craft view bindings (Phase 1B) ──
   $("craftViewBack")?.addEventListener("click", () => {
     if (state.craftScreen === "confirm") {
@@ -1226,6 +1405,9 @@ async function init() {
     renderWorkshop();
     renderNotifications();
     if (state.popupHeroId != null) renderHeroDetailPopup();
+    if (state.pendingCompletion != null && !$("craftDoneModal")?.classList.contains("hidden")) {
+      renderCompletionScreen();
+    }
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -1235,8 +1417,10 @@ async function init() {
   });
 
   // ── Esc closes any open overlay ──
+  // 完成画面 (craftDoneModal) は明示クリック必須なので Esc では閉じない。
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
+    if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
