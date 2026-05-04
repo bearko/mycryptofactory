@@ -63,6 +63,7 @@ import {
   materialName,
   materialIcon,
   buildInitialInventory,
+  ALL_MATERIAL_IDS,
 } from "./factory-material.js";
 import {
   pickAppraisalJudges,
@@ -75,6 +76,12 @@ import {
   ATTRIBUTES,
 } from "./factory-attributes.js";
 import { MAI_HELP } from "./mai-help.js";
+import {
+  TUTORIALS,
+  makeInitialTutorialState,
+  INITIAL_HERO_IDS,
+  INITIAL_UNLOCKED_EXT_IDS,
+} from "./factory-tutorial.js";
 import {
   HIRE_PLANS,
   PLAN_BY_ID,
@@ -190,6 +197,12 @@ const state = {
   questPickedNodeId: null,
   questPickedDifficulty: "easy",
   pendingQuestResult: /** @type {object | null} */ (null),
+  /** Phase 1D-5 チュートリアル: 各画面の初回表示フラグ。
+   *  trigger 後 true にして再表示しないようにする (将来 localStorage 化予定)。 */
+  tutorial: makeInitialTutorialState(),
+  /** Phase 1D-5 解放済みエクステンション。初期は 4 件 (ノービス系)。
+   *  ファクトリーレベル up や本編進行で増える。 */
+  unlockedExtIds: /** @type {Set<number>} */ (new Set(INITIAL_UNLOCKED_EXT_IDS)),
 };
 
 const QUEST_TEAM_SIZE = 3;
@@ -742,6 +755,12 @@ function renderHeader() {
     const pct = (state.weekProgress / SECONDS_PER_WEEK) * 100;
     gauge.setAttribute("stroke-dasharray", `${pct.toFixed(2)} 100`);
   }
+  // Phase 1D-5: 工房レベル = 所有ヒーロー全員の craftLevel 合計
+  const lvEl = $("factoryLvText");
+  if (lvEl) {
+    const total = state.ownedHeroes.reduce((s, h) => s + craftLevel(h), 0);
+    lvEl.textContent = ti18n("header.factoryLv").replace("{n}", total.toLocaleString());
+  }
 }
 
 /** ─── Hero view rendering ──────────────────────────────────────── */
@@ -911,6 +930,8 @@ function openHeroView() {
   $("heroView")?.classList.remove("hidden");
   renderHeroTeam();
   renderHeroList();
+  // Phase 1D-5: 初回ヒーロー画面でクラフトチーム編成の解説
+  runTutorialOnce("heroTeam");
 }
 /**
  * Hero view を閉じる。
@@ -973,7 +994,12 @@ function escapeHtml(s) {
 const ELEMENT_OF_STAT = { hp: "garuda", phy: "ifrit", int: "leviathan", agi: "tiamat" };
 
 function commonExtensions() {
-  return EXTENSIONS.filter(e => (e.rarity || "").toLowerCase() === "common");
+  // Phase 1D-5: 解放済みエクステンション (INITIAL_UNLOCKED_EXT_IDS) のみ表示。
+  // ファクトリーレベル up や本編進行で state.unlockedExtIds に追加される。
+  return EXTENSIONS.filter(e => {
+    if ((e.rarity || "").toLowerCase() !== "common") return false;
+    return state.unlockedExtIds.has(e.extId);
+  });
 }
 function sortedExtensions() {
   const arr = commonExtensions();
@@ -998,12 +1024,30 @@ function setCraftScreen(name) {
   }
 }
 
+/** Phase 1D-5: 所有素材インベントリ strip を描画 (アイコン + 名前 + 個数)。
+ *  クラフト選択画面のヘッダー直下、「並び順」フィルターの上に表示される。 */
+function renderCraftMatStrip() {
+  const host = $("craftMatStrip");
+  if (!host) return;
+  const lang = getLang();
+  host.innerHTML = ALL_MATERIAL_IDS.map(id => {
+    const qty = state.materials[id] || 0;
+    const cls = qty === 0 ? " craft-mat-chip--zero" : "";
+    return `<span class="craft-mat-chip${cls}" title="${escapeHtml(materialName(id, lang))}">
+      <img src="${materialIcon(id)}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="craft-mat-chip__name">${escapeHtml(materialName(id, lang))}</span>
+      <span class="craft-mat-chip__qty">${qty}</span>
+    </span>`;
+  }).join("");
+}
+
 function renderExtList() {
   const host = $("extList");
   if (!host) return;
   const team = currentTeamHeroes();
   const list = sortedExtensions();
   $("craftSelectCount").textContent = ti18n("craft.select.count").replace("{n}", list.length);
+  renderCraftMatStrip();
   host.innerHTML = list.map(ext => {
     const targets = extElementTargets(ext);
     const dur = estimateDurationWeeks(ext, team);
@@ -1165,6 +1209,8 @@ function openCraftView() {
   const sortSel = $("craftSortSel");
   if (sortSel) sortSel.value = state.craftSort;
   renderExtList();
+  // Phase 1D-5: 初回オープンでクラフト選択画面の解説
+  runTutorialOnce("craftSelect");
 }
 function closeCraftView() {
   $("craftView")?.classList.add("hidden");
@@ -1175,6 +1221,15 @@ function pickExtForConfirm(extId) {
   state.craftPickedExtId = extId;
   setCraftScreen("confirm");
   renderConfirm();
+  // Phase 1D-5: 初回確認画面でマイの解説 (ヒーロー編成有無で分岐)
+  if (!state.tutorial.craftConfirm) {
+    const filled = state.craftTeam.filter(id => id != null).length;
+    const key = filled > 0 ? "craftConfirmWithTeam" : "craftConfirmNoTeam";
+    state.tutorial.craftConfirm = true;  // どちらでも 1 回限り
+    const lang = getLang() === "en" ? "en" : "ja";
+    const lines = TUTORIALS[key]?.[lang] || TUTORIALS[key]?.ja || [];
+    if (lines.length > 0) maiSaysSequence(lines);
+  }
 }
 
 function startActiveCraft() {
@@ -1214,6 +1269,11 @@ function startActiveCraft() {
   closeCraftView();
   renderOrderPanel();
   renderWorkshop();
+  // Phase 1D-5: クラフト中ホームに戻った直後の初回解説
+  // (時間進行が始まる前に、ホーム画面が表示されてから少し遅延して出す)
+  if (!state.tutorial.craftInProgress) {
+    setTimeout(() => runTutorialOnce("craftInProgress"), 600);
+  }
 }
 
 /** ─── Order panel rendering (Phase 1B-2 ・ mockup 準拠版) ──────── */
@@ -1491,6 +1551,8 @@ function dismissTitle() {
     titleEl.classList.remove("title-out");
     // Time starts only after the player taps in
     startTimeLoop();
+    // Phase 1D-5: ホーム画面初回入りでマイのチュートリアル
+    runTutorialOnce("home");
   }, 380);
 }
 
@@ -1586,6 +1648,71 @@ function closeMaiModal() {
   } else {
     resumeTime();
   }
+}
+
+/** Phase 1D-5: マイの複数行セリフをシーケンス表示する。
+ *  各行ごとに「次へ」ボタンで進み、最終行で「閉じる」になる。
+ *
+ *  @param {string[]} messages  ja or en 行の配列 (既にロケール済み)
+ *  @param {object}   options   { onClose?: () => void } 全行終了時の callback
+ */
+let _maiSeqQueue = [];
+let _maiSeqIdx   = 0;
+let _maiSeqOnClose = null;
+function maiSaysSequence(messages, options = {}) {
+  if (!Array.isArray(messages) || messages.length === 0) return;
+  _maiSeqQueue   = messages.slice();
+  _maiSeqIdx     = 0;
+  _maiSeqOnClose = options.onClose || null;
+  const modal = $("maiModal");
+  const body  = $("maiModalBody");
+  const btn   = $("maiModalClose");
+  if (!modal || !body || !btn) return;
+  // ボタンラベルを「次へ」 ↔ 「閉じる」で切替
+  const updateUi = () => {
+    body.textContent = _maiSeqQueue[_maiSeqIdx];
+    btn.textContent = _maiSeqIdx < _maiSeqQueue.length - 1
+      ? ti18n("mai.next")
+      : ti18n("btn.close");
+  };
+  // 既存 onclick を上書きして seq 進行に差し替え
+  btn.onclick = () => {
+    _maiSeqIdx++;
+    if (_maiSeqIdx >= _maiSeqQueue.length) {
+      // 全部表示し終わった → 閉じる
+      modal.classList.add("hidden");
+      btn.onclick = null;
+      btn.textContent = ti18n("btn.close");
+      _maiSeqQueue = []; _maiSeqIdx = 0;
+      const cb = _maiSeqOnClose;
+      _maiSeqOnClose = null;
+      if (cb) cb(); else resumeTime();
+    } else {
+      updateUi();
+    }
+  };
+  updateUi();
+  modal.classList.remove("hidden");
+  pauseTime();
+}
+
+/** Phase 1D-5: 文脈に応じたチュートリアルを 1 度だけ表示する。
+ *  state.tutorial.<key> が false のときに TUTORIALS[key] のセリフを順番に
+ *  シーケンス表示し、終了時に true にする。
+ *
+ *  @param {string} key  TUTORIALS のキー (e.g. "home" / "craftSelect")
+ *  @param {object} opts { onClose?: () => void }
+ *  @returns {boolean} 表示したかどうか (既に true なら false を返す)
+ */
+function runTutorialOnce(key, opts = {}) {
+  if (!key || !TUTORIALS[key]) return false;
+  if (state.tutorial?.[key]) return false;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const lines = TUTORIALS[key][lang] || TUTORIALS[key].ja || [];
+  if (lines.length === 0) return false;
+  state.tutorial[key] = true;
+  maiSaysSequence(lines, opts);
+  return true;
 }
 
 /** ─── Craft completion screen (Phase 1B-3) ───────────────────────── */
@@ -2275,11 +2402,12 @@ async function init() {
   // Hero data — used by Phase 1A hero list / craft team
   try {
     await loadHeroes();
-    // Phase 1D-3: スタート時の所持ヒーローは Factory Lv.1 cap (= 7) 分の
-    // Common ヒーローのみ。それ以降は market > 雇用 で増やす。
+    // Phase 1D-5: スタート時の所持ヒーローは INITIAL_HERO_IDS で指定した
+    // 3 名 (シートン / 伊能忠敬 / ピタゴラス) のみ。
+    // それ以降は market > 雇用 で増やす。
     const all = buildOwnedHeroes();
-    const startCommon = all.filter(h => h.rarity === "common");
-    state.ownedHeroes = startCommon.slice(0, heroCapAtFactoryLevel(state.factoryLevel));
+    const initialSet = new Set(INITIAL_HERO_IDS);
+    state.ownedHeroes = all.filter(h => initialSet.has(h.heroId));
   } catch (e) {
     console.warn("[init] heroes.json load failed", e);
   }
