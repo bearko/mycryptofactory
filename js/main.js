@@ -2869,13 +2869,13 @@ async function init() {
   // ── Stub close ──
   $("stubClose")?.addEventListener("click", closeStub);
 
-  // ── Mai modal close ──
-  // 閉じるボタン: シーケンス進行時は次行へ、最終行/通常時はモーダル close
-  $("maiModalClose")?.addEventListener("click", closeMaiModal);
-  // 背景タップは「skip dialog」として強制 close
-  $("maiModal")?.addEventListener("click", (e) => {
-    if (e.target.id === "maiModal") forceCloseMaiModal();
-  });
+  // ── Mai modal: Phase 1D-8 画面下スピーチバブル + どこタップしても次へ ──
+  // overlay 全体のクリックを 1 か所で受ける (= 「次へ」ボタン / カード内 / 背景
+  // どこを押しても closeMaiModal が呼ばれる)。closeMaiModal はシーケンス
+  // 進行中なら次行に進める、最終行 (= 「閉じる」 ラベル時) なら modal を閉じる。
+  $("maiModal")?.addEventListener("click", () => closeMaiModal());
+  // Esc は引き続き「skip dialog」として強制 close (シーケンス途中でも全閉)
+  // → keydown ハンドラ側で forceCloseMaiModal を呼ぶ
 
   // ── Mai navigator: 各画面右上のマイアイコン → ヘルプモーダル ──
   document.querySelectorAll("[data-mai-help-btn]").forEach(btn => {
