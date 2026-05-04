@@ -95,6 +95,38 @@ for (const n of NORMAL_NODES) NODE_BY_ID[n.id] = n;
  *    questLevel = element_sum × (current_stamina / max_stamina)
  *  - これにより HP が減ったヒーローは貢献度が下がる
  */
+/**
+ * Phase 1D-11: 1 ヒーローのクエストレベル + 内訳を返す。
+ *  base = 4 元素値合計
+ *  hpRatio = current / max
+ *  noBoost = 「農」属性持ち → 1.5、無 → 1.0
+ *  ql = round(base × hpRatio × noBoost)
+ *
+ *  @returns {{ base: number, hpRatio: number, hpRatioPct: number,
+ *              hasNo: boolean, noBoost: number, ql: number,
+ *              currentHp: number, maxHp: number }}
+ */
+export function heroQuestLevelBreakdown(hero) {
+  const e = hero?.element || {};
+  const base = (e.garuda || 0) + (e.ifrit || 0) + (e.leviathan || 0) + (e.tiamat || 0);
+  const cur = hero?.stamina?.current ?? 0;
+  const max = hero?.stamina?.max ?? 0;
+  const hpRatio = max > 0 ? (cur / max) : 1;
+  const hasNo = Array.isArray(hero?.attributes) && hero.attributes.includes("no");
+  const noBoost = hasNo ? 1.5 : 1.0;
+  const ql = Math.round(base * hpRatio * noBoost);
+  return {
+    base,
+    hpRatio,
+    hpRatioPct: Math.round(hpRatio * 100),
+    hasNo,
+    noBoost,
+    ql,
+    currentHp: cur,
+    maxHp: max,
+  };
+}
+
 export function teamQuestLevel(team) {
   if (!Array.isArray(team)) return 0;
   let total = 0;

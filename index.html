@@ -1331,6 +1331,247 @@
       font-size: 0.72rem; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.08em;
     }
+    .quest-subsection__title {
+      margin: 0 0 0.4rem;
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--text); letter-spacing: 0.04em;
+    }
+
+    /* Phase 1D-11: ノードカード (背景画像 + 名前 + 素材アイコン + 選択ボタン) */
+    .quest-node-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.5rem;
+    }
+    .quest-node-card {
+      position: relative;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: default;
+      background: var(--panel-2);
+      min-height: 180px;
+      display: flex; flex-direction: column;
+    }
+    .quest-node-card--sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(196,163,90,0.35); }
+    .quest-node-card__bg {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      z-index: 0;
+    }
+    .quest-node-card__bg::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.55) 100%);
+    }
+    .quest-node-card__name {
+      position: relative; z-index: 1;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.05rem;
+      padding: 0.6rem 0.7rem 0;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+      line-height: 1.2;
+    }
+    .quest-node-card__mats {
+      position: relative; z-index: 1;
+      flex: 1;
+      display: flex; flex-wrap: wrap;
+      gap: 0.3rem; align-items: flex-end;
+      padding: 0.5rem 0.7rem;
+    }
+    .quest-node-card__mat {
+      width: 22px; height: 22px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.7);
+      padding: 1px;
+    }
+    .quest-node-card__mat--rare {
+      box-shadow: 0 0 0 2px var(--accent), 0 0 8px rgba(196,163,90,0.6);
+    }
+    .quest-node-card__sel-btn {
+      position: relative; z-index: 1;
+      appearance: none;
+      background: rgba(245, 240, 230, 0.92);
+      color: #1a1420;
+      border: none;
+      padding: 0.5rem;
+      font-weight: 800; font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+    .quest-node-card__sel-btn:hover { background: #fff; }
+    .quest-node-card--sel .quest-node-card__sel-btn { background: var(--accent); color: #1a1420; }
+
+    /* Phase 1D-11: 難易度選択行 (左: 詳細プレビュー / 右: 3 段難易度) */
+    .quest-diff-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    @media (max-width: 720px) {
+      .quest-diff-row { grid-template-columns: 1fr; }
+    }
+    .quest-detail-panel {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem;
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .quest-detail-panel__head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+    .quest-detail-panel__name { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .quest-detail-panel__diff {
+      padding: 0.1rem 0.6rem;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--accent);
+      font-size: 0.78rem; font-weight: 700;
+    }
+    .quest-detail-panel__mats-label {
+      font-size: 0.72rem; color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .quest-detail-panel__mats {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .quest-detail-panel__mat {
+      display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .quest-detail-panel__mat img {
+      width: 28px; height: 28px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .quest-detail-panel__mat--rare img {
+      box-shadow: 0 0 0 1.5px var(--accent);
+      border-radius: 50%;
+    }
+    .quest-detail-panel__lv {
+      font-size: 0.85rem; color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-detail-panel__lv strong { color: var(--accent); }
+    .quest-detail-panel__rate {
+      font-size: 0.85rem; color: var(--text);
+    }
+    .quest-detail-panel__rate strong[data-rate="blocked"] { color: var(--ifrit); }
+    .quest-detail-panel__rate strong { font-size: 1.4rem; color: var(--accent); }
+    .quest-detail-panel__rate strong[data-rate="100"] { color: #5ecf8a; }
+    .quest-detail-panel__mai {
+      display: flex; gap: 0.5rem; align-items: flex-start;
+      padding: 0.45rem;
+      background: var(--panel);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+    }
+    .quest-detail-panel__mai img { width: 32px; height: 32px; border-radius: 50%; image-rendering: pixelated; flex-shrink: 0; }
+    .quest-detail-panel__mai p { margin: 0; font-size: 0.78rem; color: var(--text); line-height: 1.4; }
+
+    .quest-diff-rows { display: flex; flex-direction: column; gap: 0.4rem; }
+    .quest-diff-row__btn {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.5rem 0.7rem;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 60px 1fr 1fr 1fr 80px;
+      gap: 0.5rem;
+      align-items: center;
+      font-variant-numeric: tabular-nums;
+      text-align: left;
+    }
+    .quest-diff-row__btn--sel { border-color: var(--accent); background: linear-gradient(135deg, #2f2740, #3a2f4a); }
+    .quest-diff-row__diff-name { font-weight: 800; font-size: 0.85rem; }
+    .quest-diff-row__field { display: flex; flex-direction: column; gap: 0.05rem; font-size: 0.7rem; }
+    .quest-diff-row__field-label { color: var(--muted); font-size: 0.62rem; }
+    .quest-diff-row__field-val { color: var(--text); font-weight: 700; }
+    .quest-diff-row__mats { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+    .quest-diff-row__mats img {
+      width: 18px; height: 18px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .quest-diff-row__mats img.quest-diff-row__mat--rare {
+      box-shadow: 0 0 0 1.5px var(--accent); border-radius: 50%;
+    }
+    .quest-diff-row__sel-btn {
+      appearance: none;
+      background: rgba(245, 240, 230, 0.92);
+      color: #1a1420;
+      border: 1px solid #1a1420;
+      border-radius: 4px;
+      padding: 0.35rem 0.6rem;
+      font-weight: 800; font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .quest-diff-row__btn--sel .quest-diff-row__sel-btn { background: var(--accent); }
+
+    /* QL info popup (Phase 1D-11) */
+    .ql-info-modal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.85);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .ql-info-modal.hidden { display: none !important; }
+    .ql-info-modal__card {
+      max-width: 380px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      color: var(--text);
+    }
+    .ql-info-modal__title {
+      margin: 0; font-size: 1rem; color: var(--accent);
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+    }
+    .ql-info-modal__body {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .ql-info-row { display: flex; justify-content: space-between; gap: 0.5rem; }
+    .ql-info-row--total {
+      border-top: 1px solid var(--border);
+      padding-top: 0.4rem; margin-top: 0.2rem;
+      font-weight: 800;
+    }
+    .ql-info-row--total strong { color: var(--accent); font-size: 1.05rem; }
+    .ql-info-modal__close {
+      align-self: flex-end;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.45rem 1.2rem;
+      font-weight: 700; cursor: pointer;
+    }
+    .quest-hero-pick__ql-row {
+      display: inline-flex; align-items: center; gap: 0.2rem;
+    }
+    .quest-hero-pick__ql-info {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 0.65rem;
+      line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .quest-hero-pick__ql-info:hover { border-color: var(--accent); }
     .quest-node-list, .quest-diff-list {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -3213,27 +3454,46 @@
       <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="quest-view__back" id="questViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="quest-view__body">
+      <!-- 1. クエスト選択 (Phase 1D-11: bg image + materials + 選択 ボタンのカード) -->
       <section class="quest-section">
-        <h3 class="quest-section__title" data-i18n="quest.node.label">ノード選択</h3>
-        <div class="quest-node-list" id="questNodeList"></div>
+        <h3 class="quest-section__title" data-i18n="quest.section.pick">1. クエストを選択</h3>
+        <div class="quest-node-cards" id="questNodeCards"></div>
       </section>
+
+      <!-- 2. 難易度を選択 (左: 詳細プレビュー / 右: 3 段難易度) -->
       <section class="quest-section">
-        <h3 class="quest-section__title" data-i18n="quest.diff.label">難易度</h3>
-        <div class="quest-diff-list" id="questDiffList"></div>
+        <h3 class="quest-section__title" data-i18n="quest.section.diff">2. 難易度を選択</h3>
+        <div class="quest-diff-row">
+          <div class="quest-detail-panel" id="questDetailPanel"></div>
+          <div class="quest-diff-rows" id="questDiffRows"></div>
+        </div>
       </section>
-      <!-- Phase 1D-9: 編成 + ヒーロー一覧を横並び (wide ≥ 720px) -->
-      <div class="quest-edit-row">
-        <section class="quest-section quest-section--team">
-          <h3 class="quest-section__title" data-i18n="quest.team.label">編成 (最大 3 体)</h3>
-          <div class="quest-team-slots" id="questTeamSlots"></div>
-          <div class="quest-summary" id="questSummary"></div>
-        </section>
-        <section class="quest-section quest-section--pick">
-          <h3 class="quest-section__title" data-i18n="quest.candidates.label">ヒーローを選んで配属</h3>
-          <div class="quest-hero-pick" id="questHeroPick"></div>
-        </section>
-      </div>
+
+      <!-- 3. ヒーローを編成 (横並び: Quest Party + Select Hero) -->
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.section.team">3. ヒーローを編成</h3>
+        <div class="quest-edit-row">
+          <section class="quest-section quest-section--team">
+            <h4 class="quest-subsection__title" data-i18n="quest.team.label">Quest Party</h4>
+            <div class="quest-team-slots" id="questTeamSlots"></div>
+          </section>
+          <section class="quest-section quest-section--pick">
+            <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
+            <div class="quest-hero-pick" id="questHeroPick"></div>
+          </section>
+        </div>
+      </section>
+
       <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
+    </div>
+  </div>
+
+  <!-- Hero quest level info popup (Phase 1D-11) — ⓘ ボタンで開く内訳表示 -->
+  <div class="ql-info-modal hidden" id="qlInfoModal" role="dialog" aria-modal="true">
+    <div class="ql-info-modal__card">
+      <h3 class="ql-info-modal__title" data-i18n="quest.qlInfo.title">クエストレベル内訳</h3>
+      <div class="ql-info-modal__body" id="qlInfoBody"></div>
+      <button type="button" class="ql-info-modal__close" id="qlInfoClose" data-i18n="btn.close">閉じる</button>
     </div>
   </div>
 
