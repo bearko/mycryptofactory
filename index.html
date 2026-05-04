@@ -1978,6 +1978,102 @@
     }
     footer a { color: var(--muted); }
 
+    /* ── Mai navigator (Phase 1D-2) ─────────────────────────────────
+     * 各画面右上のマイアイコン + 文脈ヘルプモーダル
+     * ─────────────────────────────────────────────────────────────── */
+    .factory-header__mai-btn {
+      width: 36px; height: 28px;
+      padding: 0;
+      overflow: hidden;
+      background: var(--panel-2);
+      border: 1px solid var(--accent);
+      cursor: pointer;
+    }
+    .factory-header__mai-btn img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .factory-header__mai-btn:hover { border-color: #fff; }
+    .view-mai-btn {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      width: 36px; height: 32px;
+      padding: 0;
+      overflow: hidden;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .view-mai-btn img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .view-mai-btn:hover { border-color: #fff; }
+    .mai-help {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.86);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .mai-help.hidden { display: none !important; }
+    .mai-help__card {
+      max-width: 420px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .mai-help__head {
+      display: flex; gap: 0.6rem; align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .mai-help__portrait {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
+    }
+    .mai-help__head-text {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      min-width: 0;
+    }
+    .mai-help__name {
+      color: var(--accent);
+      font-weight: 800; font-size: 0.78rem;
+      letter-spacing: 0.05em;
+    }
+    .mai-help__title {
+      margin: 0;
+      color: var(--text);
+      font-weight: 800; font-size: 1.05rem;
+      line-height: 1.2;
+    }
+    .mai-help__body {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 0.88rem;
+      white-space: pre-line;
+    }
+    .mai-help__close {
+      align-self: flex-end;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.45rem 1.2rem;
+      font-weight: 700; cursor: pointer;
+    }
+
     /* ───────────────────────────────────────────────────────────────
      * 士農工商 attribute badges (Phase 1D-1)
      * ヒーローカード / 詳細 / チームスロット に表示する 1 文字バッジ
@@ -2028,7 +2124,10 @@
      * image-rendering 指定を上書きするため、style ブロック末尾にまとめる。
      * ─────────────────────────────────────────────────────────────── */
     .mai-modal__portrait,
+    .mai-help__portrait,
     .craft-done__mai-portrait,
+    .factory-header__mai-btn img,
+    .view-mai-btn img,
     .hero-card__portrait,
     .hero-card__elem img,
     .hero-team__slot img,
@@ -2082,6 +2181,9 @@
         <span class="factory-header__gum-icon" aria-hidden="true">G</span>
         <span id="factoryGum">500</span>
       </div>
+      <button type="button" class="factory-header__btn factory-header__mai-btn" data-mai-help-btn title="マイのアドバイス">
+        <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
+      </button>
       <button type="button" class="factory-header__btn" id="btnLangToggle" data-i18n-attr-title="lang.toggle.label" title="言語 / Language">JP</button>
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
@@ -2135,6 +2237,21 @@
     <h2 id="stubTitle">—</h2>
     <p data-i18n="stub.desc">この機能は次のフェーズで実装予定です。</p>
     <button type="button" id="stubClose" data-i18n="btn.close">閉じる</button>
+  </div>
+
+  <!-- Mai help modal (Phase 1D-2) — 各画面右上のマイアイコン → 文脈ヘルプ表示 -->
+  <div class="mai-help hidden" id="maiHelpModal" role="dialog" aria-modal="true" aria-labelledby="maiHelpTitle">
+    <div class="mai-help__card">
+      <div class="mai-help__head">
+        <img class="mai-help__portrait" src="./Image/Factory/MAI_SD.png" alt="マイ" />
+        <div class="mai-help__head-text">
+          <span class="mai-help__name" data-i18n="mai.name">マイ</span>
+          <h2 class="mai-help__title" id="maiHelpTitle">—</h2>
+        </div>
+      </div>
+      <p class="mai-help__body" id="maiHelpBody">—</p>
+      <button type="button" class="mai-help__close" id="maiHelpClose" data-i18n="btn.close">閉じる</button>
+    </div>
   </div>
 
   <!-- Mai modal — chat-style popup for in-game messages (busy/done/etc.) -->
@@ -2233,7 +2350,7 @@
   <div class="quest-view hidden" id="questView" role="dialog" aria-labelledby="questViewTitle">
     <div class="quest-view__header">
       <h2 class="quest-view__title" id="questViewTitle" data-i18n="quest.title">クエスト</h2>
-      <button type="button" class="quest-view__back" id="questViewBack" data-i18n="btn.back">← 戻る</button>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="quest-view__back" id="questViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="quest-view__body">
       <section class="quest-section">
@@ -2279,7 +2396,7 @@
   <div class="market-view hidden" id="marketView" role="dialog" aria-labelledby="marketViewTitle">
     <div class="market-view__header">
       <h2 class="market-view__title" id="marketViewTitle" data-i18n="market.title">マーケット</h2>
-      <button type="button" class="market-view__back" id="marketViewBack" data-i18n="btn.back">← 戻る</button>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="market-view__back" id="marketViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="market-view__tabs">
       <button type="button" class="market-view__tab market-view__tab--active" data-tab="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
@@ -2293,7 +2410,7 @@
   <div class="hero-view hidden" id="heroView" role="dialog" aria-labelledby="heroViewTitle">
     <div class="hero-view__header">
       <h2 class="hero-view__title" id="heroViewTitle" data-i18n="menu.hero">ヒーロー</h2>
-      <button type="button" class="hero-view__back" id="heroViewBack" data-i18n="btn.back">← 戻る</button>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="hero-view__back" id="heroViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="hero-view__body">
 
@@ -2336,7 +2453,7 @@
   <div class="craft-view hidden" id="craftView" role="dialog" aria-labelledby="craftViewTitle" data-craft-screen="select">
     <div class="craft-view__header">
       <h2 class="craft-view__title" id="craftViewTitle" data-i18n="craft.select.title">クラフト：エクステンションを選択</h2>
-      <button type="button" class="craft-view__back" id="craftViewBack" data-i18n="btn.back">← 戻る</button>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="craft-view__back" id="craftViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="craft-view__body" id="craftViewBody">
 
