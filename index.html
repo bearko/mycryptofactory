@@ -403,7 +403,9 @@
     .order-panel__bar-fill {
       height: 100%;
       background: linear-gradient(90deg, #4caf50 0%, #2e8b32 100%);
-      transition: width 0.3s ease-out;
+      /* Phase 1B 改修: tick (1s) ごとの値変化を 1 秒かけて線形補間し、
+         「フレーム単位で徐々に変化する」進捗ゲージを実現する */
+      transition: width 1s linear;
     }
     .order-panel__pct {
       font-weight: 800; font-size: 1.4rem; color: #1a1420;
