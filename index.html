@@ -1393,6 +1393,183 @@
       letter-spacing: 0.06em;
     }
 
+    /* Market 雇用タブ (Phase 1D-3) */
+    .hire-cap {
+      display: flex; align-items: baseline; gap: 0.4rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 0.55rem;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .hire-cap__label { color: var(--muted); }
+    .hire-cap__num   { color: var(--accent); font-size: 1.3rem; font-weight: 800; }
+    .hire-cap__num--full { color: var(--ifrit); }
+    .hire-cap__sep   { color: var(--muted); }
+    .hire-cap__max   { color: var(--text); font-size: 1rem; font-weight: 700; }
+    .hire-cap__lv    { margin-left: auto; color: var(--accent); font-size: 0.78rem; }
+
+    .hire-plan-list {
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .hire-plan {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 0.8rem;
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    .hire-plan--disabled { opacity: 0.55; }
+    .hire-plan__head {
+      display: flex; align-items: baseline; justify-content: space-between;
+    }
+    .hire-plan__name { font-weight: 800; font-size: 0.95rem; color: var(--text); }
+    .hire-plan__cost { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .hire-plan__desc { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+    .hire-plan__meta {
+      display: flex; gap: 0.7rem;
+      font-size: 0.72rem; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .hire-plan__btn {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.45rem;
+      font-weight: 800; font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      margin-top: 0.2rem;
+    }
+    .hire-plan__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hire-recruit {
+      display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .hire-recruit__head {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .hire-recruit__back {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .hire-recruit__title {
+      margin: 0; flex: 1;
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--accent);
+    }
+    .hire-recruit__list {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;
+    }
+    .hire-recruit__cand {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      color: var(--text);
+    }
+    .hire-recruit__cand:hover { border-color: var(--accent); }
+    .hire-recruit__cand img {
+      width: 56px; height: 56px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .hire-recruit__name {
+      font-weight: 700; font-size: 0.78rem;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hire-recruit__rarity {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .hire-recruit__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hire-recruit__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hire-recruit__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-recruit__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hire-recruit__empty { color: var(--muted); padding: 1rem; text-align: center; font-size: 0.85rem; }
+
+    .hire-progress {
+      display: flex; flex-direction: column; gap: 0.6rem;
+      padding: 0.7rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .hire-progress__info p { margin: 0 0 0.3rem; font-size: 0.85rem; }
+    .hire-progress__msg {
+      margin: 0;
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+    .hire-progress__bar {
+      height: 12px;
+      background: var(--panel-2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .hire-progress__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, #f6e2a4 100%);
+      transition: width 0.3s ease-out;
+    }
+    .hire-progress__pct {
+      align-self: flex-end;
+      font-weight: 800; font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+    .hire-cand-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem;
+    }
+    .hire-cand {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      align-items: flex-start;
+      color: var(--text);
+    }
+    .hire-cand:hover { border-color: var(--accent); }
+    .hire-cand__name { font-weight: 700; font-size: 0.85rem; }
+    .hire-cand__rarity {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .hire-cand__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hire-cand__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hire-cand__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-cand__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hire-cand-skip {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 0.45rem;
+      cursor: pointer;
+      font-size: 0.78rem;
+    }
+    .hire-cand-skip:hover { color: var(--text); border-color: var(--accent); }
+
     /* Hero list 「休憩」ボタン (Phase 1B-5: 手動 RESTING) */
     .hero-card__rest-btn {
       appearance: none;
@@ -2399,10 +2576,34 @@
       <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="market-view__back" id="marketViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="market-view__tabs">
-      <button type="button" class="market-view__tab market-view__tab--active" data-tab="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
+      <button type="button" class="market-view__tab market-view__tab--active" data-market-tab="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
+      <button type="button" class="market-view__tab" data-market-tab="hire" data-i18n="market.tab.hire">雇用</button>
     </div>
     <div class="market-view__body">
-      <div class="warehouse-list" id="warehouseList"></div>
+      <!-- 倉庫タブ (Phase 1B-5) -->
+      <div data-market-tab-body="warehouse">
+        <div class="warehouse-list" id="warehouseList"></div>
+      </div>
+
+      <!-- 雇用タブ (Phase 1D-3) -->
+      <div data-market-tab-body="hire" class="hidden">
+        <div class="hire-cap" id="hireCapInfo"></div>
+        <!-- プラン選択 -->
+        <div class="hire-plan-list" id="hirePlanList"></div>
+        <!-- 採用担当者ピック -->
+        <div class="hire-recruit hidden" id="hireRecruitArea">
+          <div class="hire-recruit__head">
+            <button type="button" class="hire-recruit__back" id="hireBackToPlans" data-i18n="hire.backToPlans">← プラン選択に戻る</button>
+            <h3 class="hire-recruit__title" id="hireRecruitTitle">—</h3>
+          </div>
+          <div class="hire-recruit__list" id="hireRecruitList"></div>
+        </div>
+        <!-- 進行中の雇用 (待機 + 候補表示) -->
+        <div class="hire-progress hidden" id="hireProgressArea">
+          <div class="hire-progress__info" id="hireProgressInfo"></div>
+          <div class="hire-progress__body" id="hireProgressBody"></div>
+        </div>
+      </div>
     </div>
   </div>
 
