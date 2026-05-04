@@ -749,6 +749,175 @@
       letter-spacing: 0.06em;
     }
 
+    /* Appraisal modal (Phase 1B-4) */
+    .appraisal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem; overflow-y: auto;
+    }
+    .appraisal.hidden { display: none !important; }
+    .appraisal__card {
+      max-width: 480px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .appraisal__title {
+      margin: 0;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
+    .appraisal__subtitle {
+      margin: 0 0 0.2rem;
+      text-align: center;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .appraisal__head {
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .appraisal__ext-icon {
+      width: 48px; height: 48px;
+      border-radius: 4px;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+    .appraisal__ext-name {
+      font-weight: 700; font-size: 0.92rem;
+    }
+    .appraisal__judges {
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .appraisal-judge {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 0.3rem 0.55rem;
+      padding: 0.5rem 0.6rem;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 6px;
+      transition: border-color 0.32s, background 0.32s;
+    }
+    .appraisal-judge--revealed {
+      border-left-color: var(--accent);
+      animation: appraisal-judge-reveal 0.42s ease-out;
+    }
+    @keyframes appraisal-judge-reveal {
+      from { transform: scale(0.96); opacity: 0.6; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .appraisal-judge__portrait {
+      grid-column: 1; grid-row: 1 / span 2;
+      width: 48px; height: 48px;
+      border-radius: 4px;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .appraisal-judge__name {
+      grid-column: 2; grid-row: 1;
+      font-weight: 700; font-size: 0.85rem;
+      align-self: end;
+    }
+    .appraisal-judge__score {
+      grid-column: 3; grid-row: 1;
+      align-self: center;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+    }
+    .appraisal-judge__score strong {
+      font-size: 1.4rem;
+      color: var(--accent);
+      line-height: 1;
+      font-weight: 900;
+    }
+    .appraisal-judge__score-max {
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin-left: 1px;
+    }
+    .appraisal-judge__thinking {
+      color: var(--muted);
+      font-size: 1.4rem;
+      animation: appraisal-thinking 0.7s ease-in-out infinite alternate;
+    }
+    @keyframes appraisal-thinking {
+      from { opacity: 0.3; }
+      to   { opacity: 0.95; }
+    }
+    .appraisal-judge__comment {
+      grid-column: 2 / span 2; grid-row: 2;
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .appraisal__total {
+      display: flex; align-items: baseline; justify-content: center;
+      gap: 0.4rem;
+      padding: 0.6rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+      animation: craft-done-pop 0.42s cubic-bezier(0.18, 1.16, 0.5, 1.05);
+    }
+    .appraisal__total.hidden { display: none !important; }
+    .appraisal-total__label {
+      font-size: 0.85rem; color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .appraisal-total__num {
+      font-size: 2rem;
+      color: var(--accent);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .appraisal-total__max {
+      font-size: 0.95rem; color: var(--muted);
+      font-weight: 600;
+    }
+    .appraisal__tier {
+      align-self: center;
+      padding: 0.25rem 0.85rem;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      font-size: 0.85rem;
+    }
+    .appraisal__tier.hidden { display: none !important; }
+    .appraisal__tier[data-tier="poor"]        { background: #4a4458; color: #d8d2e6; }
+    .appraisal__tier[data-tier="decent"]      { background: #2f6b3e; color: #d8f5d8; }
+    .appraisal__tier[data-tier="fine"]        { background: #2f6b8a; color: #d8edf5; }
+    .appraisal__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .appraisal__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a 0%, var(--accent) 50%, #5ecf8a 100%); color: #1a1420; }
+    .appraisal__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: opacity 0.18s;
+    }
+    .appraisal__close:disabled {
+      opacity: 0.45; cursor: not-allowed;
+    }
+
     /* ── Hero view ─────────────────────────────────────── */
     .hero-view {
       position: fixed; inset: 0; z-index: 150;
@@ -1495,6 +1664,26 @@
       </div>
 
       <button type="button" class="craft-done__close" id="craftDoneClose" data-i18n="comp.toMarket">OK</button>
+    </div>
+  </div>
+
+  <!-- Appraisal modal (Phase 1B-4) — 完成画面 → 本モーダル → 倉庫格納 -->
+  <div class="appraisal hidden" id="appraisalModal" role="dialog" aria-modal="true" aria-labelledby="appraisalTitle">
+    <div class="appraisal__card">
+      <h2 class="appraisal__title" id="appraisalTitle" data-i18n="appraisal.title">クラフト査定</h2>
+      <p class="appraisal__subtitle" data-i18n="appraisal.subtitle">美術ヒーロー 5 名による品評会</p>
+
+      <div class="appraisal__head">
+        <img class="appraisal__ext-icon" id="appraisalExtIcon" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="appraisal__ext-name" id="appraisalExtName">—</span>
+      </div>
+
+      <div class="appraisal__judges" id="appraisalJudges"></div>
+
+      <div class="appraisal__total hidden" id="appraisalTotal"></div>
+      <div class="appraisal__tier hidden" id="appraisalTier" data-tier="fine">—</div>
+
+      <button type="button" class="appraisal__close" id="appraisalClose" data-i18n="appraisal.toWarehouse" disabled>倉庫へ収納</button>
     </div>
   </div>
 

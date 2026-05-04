@@ -63,6 +63,12 @@ import {
   materialIcon,
   buildInitialInventory,
 } from "./factory-material.js";
+import {
+  pickAppraisalJudges,
+  rollJudgeScore,
+  buildJudgeComment,
+  appraisalTotalTier,
+} from "./factory-appraisal.js";
 
 const APP_VERSION = "2.0.0";
 const TEAM_SIZE = 5;
@@ -122,8 +128,11 @@ const state = {
   /** 完成済みエクステンションの倉庫 (Phase 1B-3 で push、Phase 1B-5 のマーケット
    *  ＞倉庫タブで一覧表示する想定)。各要素:
    *  { extId, achievedAt:{year,month,week}, achievedTicks, durationActualWeeks,
-   *    progress:{...}, targets:{...}, qualityRatio: number, qualityTier: string } */
+   *    progress:{...}, targets:{...}, qualityRatio: number, qualityTier: string,
+   *    appraisal: { judges:[{heroId,score,comment}], totalScore, tier } } */
   warehouse: /** @type {Array<object>} */ ([]),
+  /** Phase 1B-4 品評会の表示中データ (5 名審査員 + 各点数 + 合計) */
+  pendingAppraisal: /** @type {object | null} */ (null),
 };
 
 /** 通知バナー / 浮上値ともに 4 秒 = 4 tick で消える */
@@ -1183,10 +1192,127 @@ function renderCompletionScreen() {
 }
 
 function closeCompletionScreen() {
-  const pc = state.pendingCompletion;
+  // Phase 1B-3 では完成画面 close で完全 cleanup していたが、
+  // Phase 1B-4 から「完成 → 品評会 → 倉庫格納」のフローになるため、
+  // ここでは閉じて品評会 (appraisal) 画面を開く。
   $("craftDoneModal")?.classList.add("hidden");
+  openAppraisalScreen();
+}
+
+/** ─── Craft appraisal (Phase 1B-4) ───────────────────────────────── */
+
+/** 品評会画面を開く ─ pendingCompletion をベースに 5 名審査員を抽選し、
+ *  各点数を確定。アニメーションは CSS の reveal で順次表示する。 */
+function openAppraisalScreen() {
+  const pc = state.pendingCompletion;
+  if (!pc) {
+    // 万一 pendingCompletion 無しで呼ばれたら直接 cleanup
+    finalizeCraftCleanup();
+    return;
+  }
+  const judges = pickAppraisalJudges(state.ownedHeroes, 5);
+  const evaluated = judges.map(j => {
+    const score   = rollJudgeScore(pc.qualityTier);
+    const comment = buildJudgeComment(j, score);
+    return { heroId: j.heroId, name: j.nameJa, score, comment };
+  });
+  const totalScore = evaluated.reduce((s, j) => s + j.score, 0);
+  const tier       = appraisalTotalTier(totalScore);
+
+  state.pendingAppraisal = {
+    extId: pc.extId,
+    qualityTier: pc.qualityTier,
+    judges: evaluated,
+    totalScore,
+    tier,
+    revealCount: 0,           // アニメーションで何名分まで「表示済み」か
+  };
+  pauseTime();
+  $("appraisalModal")?.classList.remove("hidden");
+  renderAppraisalScreen();
+  // 順次 reveal: 0.7 秒ごとに 1 名ずつ点数を出す
+  scheduleAppraisalReveal();
+}
+
+let _appraisalRevealHandle = null;
+function scheduleAppraisalReveal() {
+  if (_appraisalRevealHandle) clearInterval(_appraisalRevealHandle);
+  _appraisalRevealHandle = setInterval(() => {
+    const pa = state.pendingAppraisal;
+    if (!pa) { clearInterval(_appraisalRevealHandle); _appraisalRevealHandle = null; return; }
+    if (pa.revealCount >= pa.judges.length) {
+      clearInterval(_appraisalRevealHandle);
+      _appraisalRevealHandle = null;
+      // 全員 reveal 後に合計表示 + OK ボタン有効化
+      renderAppraisalScreen();
+      return;
+    }
+    pa.revealCount += 1;
+    renderAppraisalScreen();
+  }, 700);
+}
+
+function renderAppraisalScreen() {
+  const pa = state.pendingAppraisal;
+  if (!pa) return;
+  const ext = EXTENSION_BY_ID[String(pa.extId)];
+  $("appraisalExtName").textContent = ext ? ext.nameJa : `ext ${pa.extId}`;
+  $("appraisalExtIcon").src = extIconUrl(pa.extId);
+
+  // 審査員 5 名
+  $("appraisalJudges").innerHTML = pa.judges.map((j, idx) => {
+    const revealed = idx < pa.revealCount;
+    const hero = findHero(j.heroId);
+    const portrait = hero ? hero.img() : "";
+    return `<div class="appraisal-judge ${revealed ? "appraisal-judge--revealed" : ""}" data-idx="${idx}">
+      <img class="appraisal-judge__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="appraisal-judge__name">${escapeHtml(tHero(j.heroId, j.name))}</span>
+      <div class="appraisal-judge__score">
+        ${revealed
+          ? `<strong>${j.score}</strong><span class="appraisal-judge__score-max">/10</span>`
+          : `<span class="appraisal-judge__thinking">…</span>`}
+      </div>
+      ${revealed ? `<p class="appraisal-judge__comment">${escapeHtml(j.comment)}</p>` : ""}
+    </div>`;
+  }).join("");
+
+  // 合計 + tier ラベル (全員 reveal 後のみ)
+  const allRevealed = pa.revealCount >= pa.judges.length;
+  const totalEl = $("appraisalTotal");
+  const tierEl  = $("appraisalTier");
+  const okBtn   = $("appraisalClose");
+  if (allRevealed) {
+    totalEl.classList.remove("hidden");
+    totalEl.innerHTML = `<span class="appraisal-total__label">${escapeHtml(ti18n("appraisal.total"))}</span>
+      <strong class="appraisal-total__num">${pa.totalScore}</strong>
+      <span class="appraisal-total__max">/50</span>`;
+    tierEl.classList.remove("hidden");
+    tierEl.textContent = ti18n("appraisal.tier." + pa.tier);
+    tierEl.setAttribute("data-tier", pa.tier);
+    okBtn.disabled = false;
+  } else {
+    totalEl.classList.add("hidden");
+    tierEl.classList.add("hidden");
+    okBtn.disabled = true;
+  }
+}
+
+function closeAppraisalScreen() {
+  if (_appraisalRevealHandle) {
+    clearInterval(_appraisalRevealHandle);
+    _appraisalRevealHandle = null;
+  }
+  $("appraisalModal")?.classList.add("hidden");
+  finalizeCraftCleanup();
+}
+
+/** 完成 → 品評会 → 倉庫の最終処理。
+ *  pendingCompletion + pendingAppraisal を warehouse に push し、
+ *  配属ヒーローを IDLE に戻して各種状態をクリア + ホーム再描画。 */
+function finalizeCraftCleanup() {
+  const pc = state.pendingCompletion;
+  const pa = state.pendingAppraisal;
   if (pc) {
-    // 1. 完成 ext を倉庫に格納 (Phase 1B-5 のマーケット>倉庫タブから参照)
     state.warehouse.push({
       extId: pc.extId,
       achievedAt: pc.achievedAt,
@@ -1196,18 +1322,23 @@ function closeCompletionScreen() {
       targets: pc.targets,
       qualityRatio: pc.qualityRatio,
       qualityTier: pc.qualityTier,
+      appraisal: pa
+        ? {
+            judges: pa.judges.map(j => ({ heroId: j.heroId, score: j.score, comment: j.comment })),
+            totalScore: pa.totalScore,
+            tier: pa.tier,
+          }
+        : null,
     });
-    // 2. 配属ヒーローを IDLE に戻す (RESTING のままならそのまま継続だが、
-    //    新規クラフトの編成からも外れているので、UI 上 IDLE 復帰でよい)
     for (const id of pc.team) {
       if (id == null) continue;
       const h = findHero(id);
-      if (h && (h.state === HERO_STATE.CRAFTING)) h.state = HERO_STATE.IDLE;
+      if (h && h.state === HERO_STATE.CRAFTING) h.state = HERO_STATE.IDLE;
     }
   }
   state.pendingCompletion = null;
+  state.pendingAppraisal  = null;
   resumeTime();
-  // 工房スプライトと order panel をリフレッシュ
   renderWorkshop();
   renderOrderPanel();
 }
@@ -1334,6 +1465,7 @@ async function init() {
   // ── 完成画面 (Phase 1B-3) ──
   $("craftDoneClose")?.addEventListener("click", closeCompletionScreen);
   // 完成画面は背景タップでは閉じない (重要画面なので明示クリック必須)
+  $("appraisalClose")?.addEventListener("click", closeAppraisalScreen);
 
   // ── Craft view bindings (Phase 1B) ──
   $("craftViewBack")?.addEventListener("click", () => {
@@ -1408,6 +1540,9 @@ async function init() {
     if (state.pendingCompletion != null && !$("craftDoneModal")?.classList.contains("hidden")) {
       renderCompletionScreen();
     }
+    if (state.pendingAppraisal != null && !$("appraisalModal")?.classList.contains("hidden")) {
+      renderAppraisalScreen();
+    }
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -1421,6 +1556,7 @@ async function init() {
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
+    if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
