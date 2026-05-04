@@ -1,0 +1,1913 @@
+[
+  {
+    "extId": 1001,
+    "nameJa": "ノービスブレード",
+    "series": "ブレード",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 59,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "ノービススラッシュ"
+  },
+  {
+    "extId": 1002,
+    "nameJa": "ノービスマスケット",
+    "series": "マスケット",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 59,
+      "agi": 20
+    },
+    "skillNameJa": "ノービスショット"
+  },
+  {
+    "extId": 1003,
+    "nameJa": "ノービスペン",
+    "series": "ペン",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 40,
+      "agi": 39
+    },
+    "skillNameJa": "リカバリー"
+  },
+  {
+    "extId": 1004,
+    "nameJa": "ノービスアーマー",
+    "series": "アーマー",
+    "rarity": "common",
+    "params": {
+      "hp": 177,
+      "phy": 20,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "ノービスプロテクション"
+  },
+  {
+    "extId": 1005,
+    "nameJa": "ノービスホース",
+    "series": "ホース",
+    "rarity": "common",
+    "params": {
+      "hp": 135,
+      "phy": 0,
+      "int": 0,
+      "agi": 44
+    },
+    "skillNameJa": "ノービスチャージ"
+  },
+  {
+    "extId": 1006,
+    "nameJa": "ノービスカタナ",
+    "series": "カタナ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 59,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "ノービスイアイ"
+  },
+  {
+    "extId": 1008,
+    "nameJa": "ノービスブック",
+    "series": "ブック",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 59,
+      "agi": 0
+    },
+    "skillNameJa": "ノービスリーディング"
+  },
+  {
+    "extId": 1009,
+    "nameJa": "ノービスリング",
+    "series": "リング",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 39,
+      "agi": 20
+    },
+    "skillNameJa": "ノービスブライト"
+  },
+  {
+    "extId": 1010,
+    "nameJa": "ノービスシールド",
+    "series": "シールド",
+    "rarity": "common",
+    "params": {
+      "hp": 117,
+      "phy": 20,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "ノービスバッシュ"
+  },
+  {
+    "extId": 1011,
+    "nameJa": "アックス",
+    "series": "アックス",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 64,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "バイセクト"
+  },
+  {
+    "extId": 1012,
+    "nameJa": "ETHEREMON-EKOPI",
+    "series": "ETHEREMON",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 52,
+      "int": 27,
+      "agi": 0
+    },
+    "skillNameJa": "ゴー!エコピー!"
+  },
+  {
+    "extId": 1013,
+    "nameJa": "ユミ",
+    "series": "ユミ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 40,
+      "int": 0,
+      "agi": 39
+    },
+    "skillNameJa": "ヤブサメ"
+  },
+  {
+    "extId": 1014,
+    "nameJa": "クロススピア",
+    "series": "クロススピア",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 39,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "モロテヅキ"
+  },
+  {
+    "extId": 1015,
+    "nameJa": "ハルバード",
+    "series": "ハルバード",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 59,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "スイングダウン"
+  },
+  {
+    "extId": 1016,
+    "nameJa": "スクロール",
+    "series": "スクロール",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 59,
+      "agi": 20
+    },
+    "skillNameJa": "タクティクス"
+  },
+  {
+    "extId": 1017,
+    "nameJa": "ネックレス",
+    "series": "ネックレス",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 20,
+      "agi": 39
+    },
+    "skillNameJa": "ヒーリング"
+  },
+  {
+    "extId": 1018,
+    "nameJa": "カブト",
+    "series": "カブト",
+    "rarity": "common",
+    "params": {
+      "hp": 117,
+      "phy": 20,
+      "int": 20,
+      "agi": 0
+    },
+    "skillNameJa": "デバインプロテクション"
+  },
+  {
+    "extId": 1019,
+    "nameJa": "タートル",
+    "series": "タートル",
+    "rarity": "common",
+    "params": {
+      "hp": 117,
+      "phy": 20,
+      "int": 20,
+      "agi": 0
+    },
+    "skillNameJa": "キキョウ"
+  },
+  {
+    "extId": 1020,
+    "nameJa": "ルースター",
+    "series": "ルースター",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 20,
+      "int": 0,
+      "agi": 59
+    },
+    "skillNameJa": "グンケイ"
+  },
+  {
+    "extId": 1021,
+    "nameJa": "タイガー",
+    "series": "タイガー",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 59,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "コガ"
+  },
+  {
+    "extId": 1022,
+    "nameJa": "ドラゴン",
+    "series": "ドラゴン",
+    "rarity": "common",
+    "params": {
+      "hp": 120,
+      "phy": 0,
+      "int": 39,
+      "agi": 0
+    },
+    "skillNameJa": "フクリュウ"
+  },
+  {
+    "extId": 1024,
+    "nameJa": "エレファント",
+    "series": "エレファント",
+    "rarity": "common",
+    "params": {
+      "hp": 177,
+      "phy": 20,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "ハッショウ"
+  },
+  {
+    "extId": 1025,
+    "nameJa": "モンキー",
+    "series": "モンキー",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 20,
+      "int": 59,
+      "agi": 0
+    },
+    "skillNameJa": "サルヂエ"
+  },
+  {
+    "extId": 1026,
+    "nameJa": "スネーク",
+    "series": "スネーク",
+    "rarity": "common",
+    "params": {
+      "hp": 120,
+      "phy": 0,
+      "int": 0,
+      "agi": 39
+    },
+    "skillNameJa": "ウワバミ"
+  },
+  {
+    "extId": 1027,
+    "nameJa": "ドッグ",
+    "series": "ドッグ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 40,
+      "agi": 39
+    },
+    "skillNameJa": "リョウケン"
+  },
+  {
+    "extId": 1028,
+    "nameJa": "レイピア",
+    "series": "レイピア",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 40,
+      "int": 0,
+      "agi": 39
+    },
+    "skillNameJa": "ファント"
+  },
+  {
+    "extId": 1029,
+    "nameJa": "リボルバー",
+    "series": "リボルバー",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 40,
+      "agi": 39
+    },
+    "skillNameJa": "ファニングショット"
+  },
+  {
+    "extId": 1030,
+    "nameJa": "ゴブレット",
+    "series": "ゴブレット",
+    "rarity": "common",
+    "params": {
+      "hp": 120,
+      "phy": 0,
+      "int": 39,
+      "agi": 0
+    },
+    "skillNameJa": "チアーズ！"
+  },
+  {
+    "extId": 1031,
+    "nameJa": "ブーツ",
+    "series": "ブーツ",
+    "rarity": "common",
+    "params": {
+      "hp": 177,
+      "phy": 0,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "ダッシュ"
+  },
+  {
+    "extId": 1032,
+    "nameJa": "センス",
+    "series": "センス",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 39,
+      "agi": 20
+    },
+    "skillNameJa": "シラビョウシ"
+  },
+  {
+    "extId": 1033,
+    "nameJa": "MCHメダル",
+    "series": "MCHメダル",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 20,
+      "int": 20,
+      "agi": 19
+    },
+    "skillNameJa": "Master Nobの御加護"
+  },
+  {
+    "extId": 1034,
+    "nameJa": "ハンマー",
+    "series": "ハンマー",
+    "rarity": "common",
+    "params": {
+      "hp": 120,
+      "phy": 39,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "ストローク"
+  },
+  {
+    "extId": 1035,
+    "nameJa": "ボウガン",
+    "series": "ボウガン",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 39,
+      "agi": 20
+    },
+    "skillNameJa": "サイレントシュート"
+  },
+  {
+    "extId": 1036,
+    "nameJa": "クラウン",
+    "series": "クラウン",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 20,
+      "agi": 39
+    },
+    "skillNameJa": "マジェスティ"
+  },
+  {
+    "extId": 1037,
+    "nameJa": "グンバイ",
+    "series": "グンバイ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 40,
+      "int": 39,
+      "agi": 0
+    },
+    "skillNameJa": "グンバイヘイホウ"
+  },
+  {
+    "extId": 1038,
+    "nameJa": "ステアリング",
+    "series": "ステアリング",
+    "rarity": "common",
+    "params": {
+      "hp": 30,
+      "phy": 40,
+      "int": 0,
+      "agi": 29
+    },
+    "skillNameJa": "ハリケーン"
+  },
+  {
+    "extId": 1039,
+    "nameJa": "ストロベリー",
+    "series": "ストロベリー",
+    "rarity": "common",
+    "params": {
+      "hp": 150,
+      "phy": 0,
+      "int": 0,
+      "agi": 29
+    },
+    "skillNameJa": "イチゴジェラート"
+  },
+  {
+    "extId": 1040,
+    "nameJa": "タンジェリン",
+    "series": "タンジェリン",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 50,
+      "int": 0,
+      "agi": 9
+    },
+    "skillNameJa": "フライングタンジェリン"
+  },
+  {
+    "extId": 1041,
+    "nameJa": "ライム",
+    "series": "ライム",
+    "rarity": "common",
+    "params": {
+      "hp": 87,
+      "phy": 50,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "シトラススプラッシュ"
+  },
+  {
+    "extId": 1042,
+    "nameJa": "グラファイト",
+    "series": "グラファイト",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 50,
+      "int": 0,
+      "agi": 29
+    },
+    "skillNameJa": "電気伝導"
+  },
+  {
+    "extId": 1043,
+    "nameJa": "グレープ",
+    "series": "グレープ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 29,
+      "int": 30,
+      "agi": 20
+    },
+    "skillNameJa": "ボルドー"
+  },
+  {
+    "extId": 1044,
+    "nameJa": "セージ",
+    "series": "セージ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 30,
+      "int": 20,
+      "agi": 29
+    },
+    "skillNameJa": "ハーブティー"
+  },
+  {
+    "extId": 1045,
+    "nameJa": "ブルーベリー",
+    "series": "ブルーベリー",
+    "rarity": "common",
+    "params": {
+      "hp": 87,
+      "phy": 0,
+      "int": 40,
+      "agi": 10
+    },
+    "skillNameJa": "インクベリー"
+  },
+  {
+    "extId": 1046,
+    "nameJa": "ルビー",
+    "series": "ルビー",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 30,
+      "int": 0,
+      "agi": 29
+    },
+    "skillNameJa": "ブリリアントカット"
+  },
+  {
+    "extId": 1047,
+    "nameJa": "シップ",
+    "series": "シップ",
+    "rarity": "common",
+    "params": {
+      "hp": 27,
+      "phy": 30,
+      "int": 30,
+      "agi": 10
+    },
+    "skillNameJa": "カノン砲"
+  },
+  {
+    "extId": 1048,
+    "nameJa": "ナイフ",
+    "series": "ナイフ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 27,
+      "int": 0,
+      "agi": 52
+    },
+    "skillNameJa": "リッパー"
+  },
+  {
+    "extId": 1049,
+    "nameJa": "アルケブス",
+    "series": "アルケブス",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 0,
+      "int": 52,
+      "agi": 0
+    },
+    "skillNameJa": "狙撃兵"
+  },
+  {
+    "extId": 1050,
+    "nameJa": "リソグラフィー",
+    "series": "リソグラフィ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 52,
+      "agi": 27
+    },
+    "skillNameJa": "アポカリプス"
+  },
+  {
+    "extId": 1051,
+    "nameJa": "ウィップ",
+    "series": "ウィップ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 39,
+      "int": 20,
+      "agi": 20
+    },
+    "skillNameJa": "ラッシング"
+  },
+  {
+    "extId": 1055,
+    "nameJa": "とっておきのアイスクリーム",
+    "series": "スイーツ",
+    "rarity": "common",
+    "params": {
+      "hp": 99,
+      "phy": 0,
+      "int": 46,
+      "agi": 0
+    },
+    "skillNameJa": "アイスクリームの恨みを受けよ！"
+  },
+  {
+    "extId": 1056,
+    "nameJa": "シックル",
+    "series": "シックル",
+    "rarity": "common",
+    "params": {
+      "hp": 33,
+      "phy": 45,
+      "int": 0,
+      "agi": 23
+    },
+    "skillNameJa": "ハーベスト"
+  },
+  {
+    "extId": 1057,
+    "nameJa": "ワンド",
+    "series": "ワンド",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 0,
+      "int": 56,
+      "agi": 7
+    },
+    "skillNameJa": "スイング"
+  },
+  {
+    "extId": 1058,
+    "nameJa": "サケ",
+    "series": "サケ",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 13,
+      "int": 32,
+      "agi": 7
+    },
+    "skillNameJa": "ヒャクヤク"
+  },
+  {
+    "extId": 1059,
+    "nameJa": "ハット",
+    "series": "ハット",
+    "rarity": "common",
+    "params": {
+      "hp": 153,
+      "phy": 0,
+      "int": 28,
+      "agi": 0
+    },
+    "skillNameJa": "エレガンス"
+  },
+  {
+    "extId": 1061,
+    "nameJa": "マント",
+    "series": "マント",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 40,
+      "int": 0,
+      "agi": 39
+    },
+    "skillNameJa": "フェーバー"
+  },
+  {
+    "extId": 1063,
+    "nameJa": "ピエロ",
+    "series": "ピエロ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 33,
+      "int": 32,
+      "agi": 14
+    },
+    "skillNameJa": "ジャグリング"
+  },
+  {
+    "extId": 1064,
+    "nameJa": "フルート",
+    "series": "フルート",
+    "rarity": "common",
+    "params": {
+      "hp": 138,
+      "phy": 0,
+      "int": 0,
+      "agi": 33
+    },
+    "skillNameJa": "フラジオレット"
+  },
+  {
+    "extId": 1065,
+    "nameJa": "ハープ",
+    "series": "ハープ",
+    "rarity": "common",
+    "params": {
+      "hp": 21,
+      "phy": 0,
+      "int": 56,
+      "agi": 16
+    },
+    "skillNameJa": "オクターブ"
+  },
+  {
+    "extId": 1066,
+    "nameJa": "マラカス",
+    "series": "マラカス",
+    "rarity": "common",
+    "params": {
+      "hp": 69,
+      "phy": 43,
+      "int": 0,
+      "agi": 13
+    },
+    "skillNameJa": "マンボ"
+  },
+  {
+    "extId": 1067,
+    "nameJa": "ホルン",
+    "series": "ホルン",
+    "rarity": "common",
+    "params": {
+      "hp": 114,
+      "phy": 0,
+      "int": 0,
+      "agi": 41
+    },
+    "skillNameJa": "ゲシュトップフト"
+  },
+  {
+    "extId": 1068,
+    "nameJa": "クラヴィア",
+    "series": "クラヴィア",
+    "rarity": "common",
+    "params": {
+      "hp": 42,
+      "phy": 53,
+      "int": 0,
+      "agi": 12
+    },
+    "skillNameJa": "三重奏"
+  },
+  {
+    "extId": 1069,
+    "nameJa": "ヴァイオリン",
+    "series": "ヴァイオリン",
+    "rarity": "common",
+    "params": {
+      "hp": 90,
+      "phy": 0,
+      "int": 20,
+      "agi": 29
+    },
+    "skillNameJa": "メヌエット"
+  },
+  {
+    "extId": 1070,
+    "nameJa": "ニコ",
+    "series": "ニコ",
+    "rarity": "common",
+    "params": {
+      "hp": 63,
+      "phy": 0,
+      "int": 51,
+      "agi": 7
+    },
+    "skillNameJa": "洛陽"
+  },
+  {
+    "extId": 1071,
+    "nameJa": "ドラム",
+    "series": "ドラム",
+    "rarity": "common",
+    "params": {
+      "hp": 51,
+      "phy": 39,
+      "int": 0,
+      "agi": 23
+    },
+    "skillNameJa": "8ビート"
+  },
+  {
+    "extId": 1072,
+    "nameJa": "シタール",
+    "series": "シタール",
+    "rarity": "common",
+    "params": {
+      "hp": 30,
+      "phy": 49,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "ミズラーブ"
+  },
+  {
+    "extId": 1073,
+    "nameJa": "マレット",
+    "series": "マレット",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 47,
+      "int": 0,
+      "agi": 32
+    },
+    "skillNameJa": "ショック"
+  },
+  {
+    "extId": 1074,
+    "nameJa": "ハンドカノン",
+    "series": "ハンドカノン",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 0,
+      "int": 47,
+      "agi": 32
+    },
+    "skillNameJa": "火槍術・舞破"
+  },
+  {
+    "extId": 1075,
+    "nameJa": "グラス",
+    "series": "グラス",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 32,
+      "int": 13,
+      "agi": 7
+    },
+    "skillNameJa": "ビジョン"
+  },
+  {
+    "extId": 1079,
+    "nameJa": "スタッフ",
+    "series": "スタッフ",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 39,
+      "int": 0,
+      "agi": 13
+    },
+    "skillNameJa": "クラッシュ"
+  },
+  {
+    "extId": 1080,
+    "nameJa": "ホーキ",
+    "series": "ホーキ",
+    "rarity": "common",
+    "params": {
+      "hp": 33,
+      "phy": 0,
+      "int": 48,
+      "agi": 20
+    },
+    "skillNameJa": "スイープ"
+  },
+  {
+    "extId": 1081,
+    "nameJa": "ヨロイ",
+    "series": "ヨロイ",
+    "rarity": "common",
+    "params": {
+      "hp": 99,
+      "phy": 23,
+      "int": 23,
+      "agi": 0
+    },
+    "skillNameJa": "シュラウド"
+  },
+  {
+    "extId": 1082,
+    "nameJa": "ツインブレード",
+    "series": "ツインブレード",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 56,
+      "int": 0,
+      "agi": 23
+    },
+    "skillNameJa": "ツインスラッシュ"
+  },
+  {
+    "extId": 1085,
+    "nameJa": "バイナンスチャリティメダル",
+    "series": "バイナンスチャリティメダル",
+    "rarity": "common",
+    "params": {
+      "hp": 108,
+      "phy": 15,
+      "int": 14,
+      "agi": 14
+    },
+    "skillNameJa": "バイナンスチャリティの御加護"
+  },
+  {
+    "extId": 1086,
+    "nameJa": "アンモナイト",
+    "series": "アンモナイト",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 0,
+      "int": 27,
+      "agi": 39
+    },
+    "skillNameJa": "螺旋"
+  },
+  {
+    "extId": 1087,
+    "nameJa": "プテラノドン",
+    "series": "プテラノドン",
+    "rarity": "common",
+    "params": {
+      "hp": 63,
+      "phy": 51,
+      "int": 0,
+      "agi": 7
+    },
+    "skillNameJa": "ブレイズ"
+  },
+  {
+    "extId": 1088,
+    "nameJa": "ブレク",
+    "series": "ティラノサウルス",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 30,
+      "int": 0,
+      "agi": 49
+    },
+    "skillNameJa": "グリッター"
+  },
+  {
+    "extId": 1089,
+    "nameJa": "プレシオサウルス",
+    "series": "プレシオサウルス",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 43,
+      "int": 0,
+      "agi": 16
+    },
+    "skillNameJa": "タイダルボア"
+  },
+  {
+    "extId": 1090,
+    "nameJa": "ぐらふぁいとみやげ",
+    "series": "トリケラトプス",
+    "rarity": "common",
+    "params": {
+      "hp": 78,
+      "phy": 0,
+      "int": 23,
+      "agi": 30
+    },
+    "skillNameJa": "ぐらふぁいとに行ってきました"
+  },
+  {
+    "extId": 1091,
+    "nameJa": "ロンギスクアマ",
+    "series": "ロンギスクアマ",
+    "rarity": "common",
+    "params": {
+      "hp": 57,
+      "phy": 0,
+      "int": 30,
+      "agi": 30
+    },
+    "skillNameJa": "エンシェント フェザー"
+  },
+  {
+    "extId": 1092,
+    "nameJa": "ステゴエッグ",
+    "series": "ステゴサウルス",
+    "rarity": "common",
+    "params": {
+      "hp": 75,
+      "phy": 0,
+      "int": 47,
+      "agi": 7
+    },
+    "skillNameJa": "生命の息吹"
+  },
+  {
+    "extId": 1093,
+    "nameJa": "メガロキャビア",
+    "series": "メガロドン",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 0,
+      "int": 52,
+      "agi": 0
+    },
+    "skillNameJa": "至高の前菜"
+  },
+  {
+    "extId": 1094,
+    "nameJa": "パキケファロエッグ",
+    "series": "パキケファロサウルス",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 46,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "ツボコリコリ"
+  },
+  {
+    "extId": 1095,
+    "nameJa": "采配",
+    "series": "サイハイ",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 0,
+      "int": 43,
+      "agi": 23
+    },
+    "skillNameJa": "シケツジュツ"
+  },
+  {
+    "extId": 1096,
+    "nameJa": "ベルト",
+    "series": "ベルト",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 20,
+      "int": 20,
+      "agi": 23
+    },
+    "skillNameJa": "ドミネイト"
+  },
+  {
+    "extId": 1097,
+    "nameJa": "クロー",
+    "series": "クロー",
+    "rarity": "common",
+    "params": {
+      "hp": 99,
+      "phy": 46,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "SNIKT"
+  },
+  {
+    "extId": 1098,
+    "nameJa": "ギョク",
+    "series": "ギョク",
+    "rarity": "common",
+    "params": {
+      "hp": 108,
+      "phy": 0,
+      "int": 43,
+      "agi": 0
+    },
+    "skillNameJa": "フォーチュン"
+  },
+  {
+    "extId": 1099,
+    "nameJa": "ガントレット",
+    "series": "ガントレット",
+    "rarity": "common",
+    "params": {
+      "hp": 42,
+      "phy": 33,
+      "int": 0,
+      "agi": 32
+    },
+    "skillNameJa": "ウィズスタンド"
+  },
+  {
+    "extId": 1100,
+    "nameJa": "魔法剣",
+    "series": "魔法剣",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 38,
+      "int": 38,
+      "agi": 3
+    },
+    "skillNameJa": "リーフブレード"
+  },
+  {
+    "extId": 1104,
+    "nameJa": "見習い筆パレ",
+    "series": "筆パレ",
+    "rarity": "common",
+    "params": {
+      "hp": 33,
+      "phy": 35,
+      "int": 13,
+      "agi": 20
+    },
+    "skillNameJa": "Artいいね！よろしくお願いします！"
+  },
+  {
+    "extId": 1105,
+    "nameJa": "鏡",
+    "series": "鏡",
+    "rarity": "common",
+    "params": {
+      "hp": 12,
+      "phy": 0,
+      "int": 66,
+      "agi": 9
+    },
+    "skillNameJa": "レディエイション"
+  },
+  {
+    "extId": 1106,
+    "nameJa": "待合せ場所のモアイ像",
+    "series": "モアイ",
+    "rarity": "common",
+    "params": {
+      "hp": 141,
+      "phy": 7,
+      "int": 7,
+      "agi": 18
+    },
+    "skillNameJa": "ぐらふぁい島の観光名所に来ています"
+  },
+  {
+    "extId": 1107,
+    "nameJa": "ベーグルの粘土像",
+    "series": "ノード・ドール",
+    "rarity": "common",
+    "params": {
+      "hp": 51,
+      "phy": 8,
+      "int": 38,
+      "agi": 16
+    },
+    "skillNameJa": "フィッシング デラウェア"
+  },
+  {
+    "extId": 1108,
+    "nameJa": "お手伝いゴーレム",
+    "series": "ゴーレム",
+    "rarity": "common",
+    "params": {
+      "hp": 57,
+      "phy": 11,
+      "int": 23,
+      "agi": 26
+    },
+    "skillNameJa": "ちゃぶ台返しちゃった"
+  },
+  {
+    "extId": 1109,
+    "nameJa": "すかる",
+    "series": "スカル",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 8,
+      "int": 40,
+      "agi": 11
+    },
+    "skillNameJa": "旗揚げ"
+  },
+  {
+    "extId": 1110,
+    "nameJa": "闇リボン",
+    "series": "リボン",
+    "rarity": "common",
+    "params": {
+      "hp": 42,
+      "phy": 26,
+      "int": 19,
+      "agi": 20
+    },
+    "skillNameJa": "闇のちょうちょ結び"
+  },
+  {
+    "extId": 1111,
+    "nameJa": "懐中時計",
+    "series": "懐中時計",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 20,
+      "int": 16,
+      "agi": 27
+    },
+    "skillNameJa": "クロックワーク"
+  },
+  {
+    "extId": 1112,
+    "nameJa": "モンシロちゃん",
+    "series": "妖精",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 0,
+      "int": 46,
+      "agi": 17
+    },
+    "skillNameJa": "鱗粉"
+  },
+  {
+    "extId": 1113,
+    "nameJa": "パロットエッグ",
+    "series": "パロット",
+    "rarity": "common",
+    "params": {
+      "hp": 99,
+      "phy": 23,
+      "int": 23,
+      "agi": 0
+    },
+    "skillNameJa": "ぴよぴよ"
+  },
+  {
+    "extId": 1115,
+    "nameJa": "まっすーの中古チャリ",
+    "series": "二輪車",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 4,
+      "int": 56,
+      "agi": 3
+    },
+    "skillNameJa": "カリスマの立ちこぎ"
+  },
+  {
+    "extId": 1116,
+    "nameJa": "帝国式魔導機甲兵 一般兵用量産機",
+    "series": "帝国式魔導機甲兵",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 32,
+      "int": 8,
+      "agi": 23
+    },
+    "skillNameJa": "壱式通常弾"
+  },
+  {
+    "extId": 1117,
+    "nameJa": "ライドラゴンベビー",
+    "series": "ライドラゴン",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 34,
+      "int": 7,
+      "agi": 26
+    },
+    "skillNameJa": "あの雲の上を飛びたくて"
+  },
+  {
+    "extId": 1118,
+    "nameJa": "フェリス・ホイール",
+    "series": "観覧車",
+    "rarity": "common",
+    "params": {
+      "hp": 24,
+      "phy": 48,
+      "int": 7,
+      "agi": 16
+    },
+    "skillNameJa": "シカゴ万博の名物"
+  },
+  {
+    "extId": 1119,
+    "nameJa": "パンダマシン",
+    "series": "パンダマシン",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 24,
+      "int": 11,
+      "agi": 32
+    },
+    "skillNameJa": "100GUM入れてね"
+  },
+  {
+    "extId": 1120,
+    "nameJa": "べびぺが",
+    "series": "ペガサス",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 12,
+      "int": 52,
+      "agi": 3
+    },
+    "skillNameJa": "フェザータッチ"
+  },
+  {
+    "extId": 1121,
+    "nameJa": "みにロケット",
+    "series": "宇宙船",
+    "rarity": "common",
+    "params": {
+      "hp": 45,
+      "phy": 8,
+      "int": 21,
+      "agi": 35
+    },
+    "skillNameJa": "ベビーランス"
+  },
+  {
+    "extId": 1122,
+    "nameJa": "始まりの丸太",
+    "series": "イカダ",
+    "rarity": "common",
+    "params": {
+      "hp": 51,
+      "phy": 1,
+      "int": 46,
+      "agi": 15
+    },
+    "skillNameJa": "イカダ以下だ"
+  },
+  {
+    "extId": 1123,
+    "nameJa": "魔導のクリスタル鉱山を発掘する魔導機械エメ・ラ・ルド・テレスター(破)",
+    "series": "合体ロボ",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 51,
+      "int": 8,
+      "agi": 4
+    },
+    "skillNameJa": "魔導ドリルブレイク"
+  },
+  {
+    "extId": 1124,
+    "nameJa": "手裏剣",
+    "series": "手裏剣",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 0,
+      "int": 0,
+      "agi": 59
+    },
+    "skillNameJa": "打剣"
+  },
+  {
+    "extId": 1125,
+    "nameJa": "カエルベビー",
+    "series": "カエル",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 47,
+      "int": 0,
+      "agi": 20
+    },
+    "skillNameJa": "フロッグフォース"
+  },
+  {
+    "extId": 1126,
+    "nameJa": "冬の甘えんぼ王子ウィンター",
+    "series": "雪だるま",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 0,
+      "int": 47,
+      "agi": 20
+    },
+    "skillNameJa": "アイシクル"
+  },
+  {
+    "extId": 1127,
+    "nameJa": "こけし",
+    "series": "日本人形",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 46,
+      "int": 0,
+      "agi": 13
+    },
+    "skillNameJa": "邪気払い"
+  },
+  {
+    "extId": 1128,
+    "nameJa": "SDNメダル[C]",
+    "series": "SDNメダル",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 23,
+      "int": 23,
+      "agi": 20
+    },
+    "skillNameJa": "Stake POWER!"
+  },
+  {
+    "extId": 1129,
+    "nameJa": "パンケーキ",
+    "series": "パンケーキ",
+    "rarity": "common",
+    "params": {
+      "hp": 57,
+      "phy": 30,
+      "int": 30,
+      "agi": 0
+    },
+    "skillNameJa": "もちもちふわふわ"
+  },
+  {
+    "extId": 1130,
+    "nameJa": "レーザーガン",
+    "series": "レーザーガン",
+    "rarity": "common",
+    "params": {
+      "hp": 27,
+      "phy": 0,
+      "int": 50,
+      "agi": 20
+    },
+    "skillNameJa": "プラズマショット"
+  },
+  {
+    "extId": 1131,
+    "nameJa": "百姓バッタ",
+    "series": "バッタ",
+    "rarity": "common",
+    "params": {
+      "hp": 12,
+      "phy": 3,
+      "int": 47,
+      "agi": 25
+    },
+    "skillNameJa": "晴耕雨読"
+  },
+  {
+    "extId": 1132,
+    "nameJa": "リミュラス",
+    "series": "リミュラス",
+    "rarity": "common",
+    "params": {
+      "hp": 96,
+      "phy": 9,
+      "int": 12,
+      "agi": 26
+    },
+    "skillNameJa": "白亜の光"
+  },
+  {
+    "extId": 1133,
+    "nameJa": "熱処理されたモスエッグ",
+    "series": "モス",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 3,
+      "int": 49,
+      "agi": 15
+    },
+    "skillNameJa": "栄養たっぷり召し上がれ"
+  },
+  {
+    "extId": 1135,
+    "nameJa": "象蟲ベビー（ぞうむし）",
+    "series": "象蟲",
+    "rarity": "common",
+    "params": {
+      "hp": 93,
+      "phy": 27,
+      "int": 0,
+      "agi": 21
+    },
+    "skillNameJa": "純真な心"
+  },
+  {
+    "extId": 1136,
+    "nameJa": "べびーとる",
+    "series": "ビートル",
+    "rarity": "common",
+    "params": {
+      "hp": 96,
+      "phy": 12,
+      "int": 11,
+      "agi": 24
+    },
+    "skillNameJa": "じまんのツノ"
+  },
+  {
+    "extId": 1137,
+    "nameJa": "ハチミツ",
+    "series": "ハチ",
+    "rarity": "common",
+    "params": {
+      "hp": 72,
+      "phy": 12,
+      "int": 0,
+      "agi": 43
+    },
+    "skillNameJa": "ハニートラップ"
+  },
+  {
+    "extId": 1138,
+    "nameJa": "Worker Ant",
+    "series": "Sweet Fluffy and chewy",
+    "rarity": "common",
+    "params": {
+      "hp": 108,
+      "phy": 40,
+      "int": 0,
+      "agi": 3
+    },
+    "skillNameJa": "Hard work"
+  },
+  {
+    "extId": 1139,
+    "nameJa": "放浪紋白",
+    "series": "蝶々",
+    "rarity": "common",
+    "params": {
+      "hp": 36,
+      "phy": 9,
+      "int": 11,
+      "agi": 47
+    },
+    "skillNameJa": "ちゅるちゅる"
+  },
+  {
+    "extId": 1140,
+    "nameJa": "オリフラム",
+    "series": "オリフラム",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 23,
+      "int": 23,
+      "agi": 33
+    },
+    "skillNameJa": "プレジャリージェンス"
+  },
+  {
+    "extId": 1141,
+    "nameJa": "羽織",
+    "series": "羽織",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 43,
+      "int": 0,
+      "agi": 23
+    },
+    "skillNameJa": "いきちょん"
+  },
+  {
+    "extId": 1142,
+    "nameJa": "竹皮包みおむすび",
+    "series": "お花見弁当",
+    "rarity": "common",
+    "params": {
+      "hp": 69,
+      "phy": 0,
+      "int": 36,
+      "agi": 20
+    },
+    "skillNameJa": "桜ヒラヒラ"
+  },
+  {
+    "extId": 1143,
+    "nameJa": "地球スーパーボール",
+    "series": "天体模型",
+    "rarity": "common",
+    "params": {
+      "hp": 21,
+      "phy": 0,
+      "int": 52,
+      "agi": 20
+    },
+    "skillNameJa": "跳ねる惑星"
+  },
+  {
+    "extId": 1147,
+    "nameJa": "シールドシステム",
+    "series": "シールドシステム",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 23,
+      "int": 23,
+      "agi": 6
+    },
+    "skillNameJa": "シールドジェネレーター"
+  },
+  {
+    "extId": 1148,
+    "nameJa": "RYU.phy",
+    "series": "RYU.phy",
+    "rarity": "common",
+    "params": {
+      "hp": 21,
+      "phy": 59,
+      "int": 0,
+      "agi": 13
+    },
+    "skillNameJa": "RYUクロー"
+  },
+  {
+    "extId": 1149,
+    "nameJa": "RYU.int",
+    "series": "RYU.int",
+    "rarity": "common",
+    "params": {
+      "hp": 21,
+      "phy": 0,
+      "int": 59,
+      "agi": 13
+    },
+    "skillNameJa": "RYUブレス"
+  },
+  {
+    "extId": 1150,
+    "nameJa": "ランタン",
+    "series": "ランタン",
+    "rarity": "common",
+    "params": {
+      "hp": 60,
+      "phy": 10,
+      "int": 43,
+      "agi": 6
+    },
+    "skillNameJa": "コンバスチョン"
+  },
+  {
+    "extId": 1151,
+    "nameJa": "ハンバーガー",
+    "series": "ハンバーガー",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 35,
+      "int": 35,
+      "agi": 9
+    },
+    "skillNameJa": "とろけるチーズの魔法"
+  },
+  {
+    "extId": 1152,
+    "nameJa": "メイス",
+    "series": "メイス",
+    "rarity": "common",
+    "params": {
+      "hp": 120,
+      "phy": 36,
+      "int": 0,
+      "agi": 3
+    },
+    "skillNameJa": "メイスブロー"
+  },
+  {
+    "extId": 1153,
+    "nameJa": "木製パンジャンドラム",
+    "series": "パンジャンドラム",
+    "rarity": "common",
+    "params": {
+      "hp": 120,
+      "phy": 0,
+      "int": 36,
+      "agi": 3
+    },
+    "skillNameJa": "ローリングウェポン"
+  },
+  {
+    "extId": 1154,
+    "nameJa": "お手軽カップラーメン",
+    "series": "ラーメン",
+    "rarity": "common",
+    "params": {
+      "hp": 69,
+      "phy": 0,
+      "int": 40,
+      "agi": 16
+    },
+    "skillNameJa": "三分即席"
+  },
+  {
+    "extId": 1155,
+    "nameJa": "スワン？",
+    "series": "スワンボート",
+    "rarity": "common",
+    "params": {
+      "hp": 90,
+      "phy": 41,
+      "int": 0,
+      "agi": 8
+    },
+    "skillNameJa": "ペダルローイング？"
+  },
+  {
+    "extId": 1156,
+    "nameJa": "棒磁石",
+    "series": "コンパス",
+    "rarity": "common",
+    "params": {
+      "hp": 90,
+      "phy": 0,
+      "int": 44,
+      "agi": 5
+    },
+    "skillNameJa": "マグナビゲート"
+  },
+  {
+    "extId": 1157,
+    "nameJa": "巻き寿司",
+    "series": "お寿司",
+    "rarity": "common",
+    "params": {
+      "hp": 81,
+      "phy": 27,
+      "int": 0,
+      "agi": 25
+    },
+    "skillNameJa": "シャリ"
+  },
+  {
+    "extId": 1158,
+    "nameJa": "サイバースタッフ",
+    "series": "サイバースタッフ",
+    "rarity": "common",
+    "params": {
+      "hp": 0,
+      "phy": 35,
+      "int": 34,
+      "agi": 10
+    },
+    "skillNameJa": "エナジーコンバート"
+  },
+  {
+    "extId": 1159,
+    "nameJa": "りんご",
+    "series": "りんご",
+    "rarity": "common",
+    "params": {
+      "hp": 33,
+      "phy": 50,
+      "int": 0,
+      "agi": 18
+    },
+    "skillNameJa": "アート・ハート"
+  },
+  {
+    "extId": 1160,
+    "nameJa": "ミニアクアリウム",
+    "series": "アクアリウム",
+    "rarity": "common",
+    "params": {
+      "hp": 174,
+      "phy": 0,
+      "int": 0,
+      "agi": 21
+    },
+    "skillNameJa": "流体制御"
+  },
+  {
+    "extId": 1161,
+    "nameJa": "サイバーソード",
+    "series": "サイバーソード",
+    "rarity": "common",
+    "params": {
+      "hp": 24,
+      "phy": 36,
+      "int": 35,
+      "agi": 0
+    },
+    "skillNameJa": "ファイナルギャンビット"
+  },
+  {
+    "extId": 1162,
+    "nameJa": "マンドラゴラの種",
+    "series": "マンドラゴラ",
+    "rarity": "common",
+    "params": {
+      "hp": 237,
+      "phy": 0,
+      "int": 0,
+      "agi": 0
+    },
+    "skillNameJa": "呪われし種子"
+  },
+  {
+    "extId": 1163,
+    "nameJa": "豆盆栽",
+    "series": "盆栽",
+    "rarity": "common",
+    "params": {
+      "hp": 21,
+      "phy": 20,
+      "int": 20,
+      "agi": 32
+    },
+    "skillNameJa": "有機的アート"
+  },
+  {
+    "extId": 1164,
+    "nameJa": "メリケンサック",
+    "series": "メリケンサック",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 52,
+      "int": 0,
+      "agi": 14
+    },
+    "skillNameJa": "リーチング・シャドウ"
+  },
+  {
+    "extId": 1165,
+    "nameJa": "オルゴール",
+    "series": "オルゴール",
+    "rarity": "common",
+    "params": {
+      "hp": 39,
+      "phy": 0,
+      "int": 52,
+      "agi": 14
+    },
+    "skillNameJa": "メロディ・ラウンド"
+  },
+  {
+    "extId": 1169,
+    "nameJa": "カエルの標本",
+    "series": "液浸標本",
+    "rarity": "common",
+    "params": {
+      "hp": 30,
+      "phy": 0,
+      "int": 56,
+      "agi": 13
+    },
+    "skillNameJa": "両生の知恵の雨"
+  },
+  {
+    "extId": 1170,
+    "nameJa": "パイプ椅子",
+    "series": "椅子",
+    "rarity": "common",
+    "params": {
+      "hp": 48,
+      "phy": 42,
+      "int": 0,
+      "agi": 21
+    },
+    "skillNameJa": "着席"
+  }
+]
