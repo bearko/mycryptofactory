@@ -830,7 +830,7 @@ function renderHeroTeamSummary() {
   const elsEl   = $("heroTeamElements");
   if (!totalEl || !elsEl) return;
 
-  // 合計 craftLevel (各ヒーローの craftLevel = ガルーダ 1/3 込み)
+  // 合計 craftLevel (各ヒーローの craftLevel = ガルーダ GARUDA_WEIGHT 込み)
   let totalLv = 0;
   const elTotals = { garuda: 0, ifrit: 0, leviathan: 0, tiamat: 0 };
   for (const heroId of state.craftTeam) {
@@ -869,7 +869,7 @@ function renderHeroList() {
     const stateLbl = assigned ? ti18n("hero.state.assigned") : heroStateLabel(hero.state);
     const cardCls = "hero-card" + (assigned ? " hero-card--assigned" : "");
     const elementsHtml = ELEMENTS.map(key => {
-      // ガルーダは 1/3 で表示 (factory 文脈での craft 寄与値)
+      // ガルーダは GARUDA_WEIGHT で表示 (factory 文脈での craft 寄与値)
       const val = elementValueForCraft(hero, key);
       return `<span class="hero-card__elem" title="${escapeHtml(elementLabel(key))}: ${val}">
         <img src="${elementIconUrl(key)}" alt="${escapeHtml(elementLabel(key))}" />
