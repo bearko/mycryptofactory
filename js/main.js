@@ -73,6 +73,7 @@ import {
   ATTRIBUTE_LABEL,
   ATTRIBUTES,
 } from "./factory-attributes.js";
+import { MAI_HELP } from "./mai-help.js";
 import {
   QUEST_DIFFICULTY,
   QUEST_DURATION_WEEKS,
@@ -1464,6 +1465,38 @@ function closeStub() {
   resumeTime();
 }
 
+/** ─── Mai navigator (Phase 1D-2) ─────────────────────────────────── */
+
+/** 現在開いている画面に応じた help エントリのキーを返す。
+ *  優先度: 開いている modal/view を上から評価し、最初にマッチした key を返す。 */
+function currentMaiContext() {
+  if (!$("questView")?.classList.contains("hidden"))   return "quest";
+  if (!$("marketView")?.classList.contains("hidden"))  return "market";
+  if (!$("heroView")?.classList.contains("hidden"))    return "hero";
+  if (!$("craftView")?.classList.contains("hidden")) {
+    return state.craftScreen === "confirm" ? "craftConfirm" : "craftSelect";
+  }
+  return "home";
+}
+
+function openMaiHelp() {
+  const ctx = currentMaiContext();
+  const help = MAI_HELP[ctx] || MAI_HELP.default;
+  const modal = $("maiHelpModal");
+  const titleEl = $("maiHelpTitle");
+  const bodyEl  = $("maiHelpBody");
+  if (!modal || !bodyEl || !titleEl) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  titleEl.textContent = lang === "en" ? help.titleEn : help.titleJa;
+  bodyEl.textContent  = lang === "en" ? help.bodyEn  : help.bodyJa;
+  modal.classList.remove("hidden");
+  pauseTime();
+}
+function closeMaiHelp() {
+  $("maiHelpModal")?.classList.add("hidden");
+  resumeTime();
+}
+
 /** Mai のセリフを表示する汎用モーダル。
  *  - messageKey: i18n キー (e.g. "mai.craftBusy")
  *  - options.onClose: モーダルを閉じたあとに呼ばれる callback。
@@ -1858,6 +1891,15 @@ async function init() {
     if (e.target.id === "maiModal") closeMaiModal();
   });
 
+  // ── Mai navigator: 各画面右上のマイアイコン → ヘルプモーダル ──
+  document.querySelectorAll("[data-mai-help-btn]").forEach(btn => {
+    btn.addEventListener("click", openMaiHelp);
+  });
+  $("maiHelpClose")?.addEventListener("click", closeMaiHelp);
+  $("maiHelpModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "maiHelpModal") closeMaiHelp();
+  });
+
   // ── Workshop sprite tap → ヒーロー詳細ポップアップ ──
   $("workshopHeroes")?.addEventListener("click", (ev) => {
     const sprite = ev.target.closest(".workshop-hero");
@@ -2031,6 +2073,7 @@ async function init() {
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
+    if (!$("maiHelpModal")?.classList.contains("hidden")) { closeMaiHelp(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
     if (!$("stubView")?.classList.contains("hidden")) { closeStub(); return; }
