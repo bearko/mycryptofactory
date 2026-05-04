@@ -17,7 +17,7 @@
  *  実際のディレクトリ名 (Audio) と完全一致させる。 */
 const AUDIO_BASE = "./Audio/";
 
-const BGM_FILE = "tooldev.mp3";
+const BGM_FILE = "craft.mp3";
 const SE_FILES = {
   /** ヒーローがクラフト値を獲得した瞬間 */
   craftGain:    "crash.mp3",
