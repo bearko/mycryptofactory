@@ -100,6 +100,103 @@ export function canBeRecruiter(hero, plan) {
   return got >= need;
 }
 
+/** ─── 出品 (Phase 1D-4) ─────────────────────────────────────────── */
+
+/** マーケット出品の 3 速度オプション */
+export const SALE_SPEED_OPTIONS = [
+  {
+    id: "fast",
+    nameJa: "速度重視",
+    nameEn: "Quick sell",
+    weeks: 1,
+    priceMultiplier: 0.85,   // 相場の 85% で売れる
+    descJa: "多少安くても早く売りたい (約 1 週)",
+    descEn: "Sell fast, even at a discount (~1 wk)",
+  },
+  {
+    id: "standard",
+    nameJa: "相場に合わせる",
+    nameEn: "Standard",
+    weeks: 4,
+    priceMultiplier: 1.0,
+    descJa: "標準的なペース (約 1 ヶ月)",
+    descEn: "Standard pace (~1 month)",
+  },
+  {
+    id: "premium",
+    nameJa: "価格重視",
+    nameEn: "Hold for price",
+    weeks: 8,
+    priceMultiplier: 1.20,
+    descJa: "じっくり見定めて高めで売る (約 2 ヶ月)",
+    descEn: "Hold out for a higher price (~2 months)",
+  },
+];
+export const SALE_SPEED_BY_ID = {};
+for (const s of SALE_SPEED_OPTIONS) SALE_SPEED_BY_ID[s.id] = s;
+
+/** マーケット手数料 (成約時に GUM から控除する割合) */
+export const MARKET_FEE_RATE = 0.10;
+
+/** rarity ごとの基準売却価格 (GUM)。査定 tier で更にスケールする。 */
+const BASE_PRICE_BY_RARITY = {
+  common:    300,
+  uncommon:  600,
+  rare:     1200,
+  epic:     3000,
+  legendary: 8000,
+};
+
+/** 査定 tier ごとの価格倍率 */
+const TIER_MULTIPLIER = {
+  poor:        0.55,
+  decent:      0.80,
+  fine:        1.00,
+  great:       1.30,
+  masterpiece: 1.80,
+};
+
+/**
+ * 出品 ext の期待売却価格 (GUM) を計算する。
+ *
+ * 計算式:
+ *   base × tier × speedMultiplier × seller_boost
+ *
+ *   base: rarity の標準価格
+ *   tier: 査定 tier (poor〜masterpiece)
+ *   speedMultiplier: 出品速度 (fast 0.85 / standard 1.00 / premium 1.20)
+ *   seller_boost: 担当者が「商」属性持ちなら 1.10 倍 (= +10%)
+ *
+ * @param {object} warehouseItem  state.warehouse の 1 要素
+ * @param {object} ext            extensions.json の 1 要素
+ * @param {string} speedId        SALE_SPEED_OPTIONS の id
+ * @param {object} seller         出品担当ヒーロー (factory hero) | null
+ */
+export function estimateSalePrice(warehouseItem, ext, speedId, seller) {
+  const base = BASE_PRICE_BY_RARITY[ext?.rarity] || 300;
+  const tier = warehouseItem?.appraisal?.tier || "fine";
+  const tierMul = TIER_MULTIPLIER[tier] || 1.0;
+  const speed   = SALE_SPEED_BY_ID[speedId] || SALE_SPEED_OPTIONS[1];
+  const boost   = seller && Array.isArray(seller.attributes) && seller.attributes.includes("sho") ? 1.10 : 1.0;
+  const gross   = base * tierMul * speed.priceMultiplier * boost;
+  // 手数料控除前 (= 表示用); 純収益は別途計算
+  return Math.round(gross);
+}
+
+/** 純収益 (= gross × (1 - 手数料率)) */
+export function netSaleRevenue(gross) {
+  return Math.round(gross * (1 - MARKET_FEE_RATE));
+}
+
+/** 担当者の rarity 要件チェック。
+ *  原則 ext と同等以上の rarity が必要だが、「商」属性持ちは任意 OK。 */
+export function canSellExt(seller, ext) {
+  if (!seller) return false;
+  if (Array.isArray(seller.attributes) && seller.attributes.includes("sho")) return true;
+  const RANK = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+  return (RANK[seller.rarity] || 0) >= (RANK[ext?.rarity] || 0);
+}
+
 /** ファクトリーレベルごとの所有上限 (ユーザー指定) */
 export const HERO_CAP_BY_FACTORY_LEVEL = {
   1: 7,

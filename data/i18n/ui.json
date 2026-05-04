@@ -121,6 +121,23 @@
   "hire.mai.candidatesReady":  { "ja": "採用候補が揃いましたよ！マーケットの「雇用」タブから確認してください。", "en": "Candidates are ready! Check the Hire tab in the market." },
   "hire.mai.capReached":       { "ja": "所有ヒーローの上限に達しています。工房をレベルアップするか、ヒーローを雇わないでください。", "en": "Hero capacity reached. Level up the factory or skip the hire." },
 
+  "sell.title":                { "ja": "出品", "en": "List for sale" },
+  "sell.active":               { "ja": "出品中のエクステンション", "en": "Active listings" },
+  "sell.candidates":           { "ja": "出品できる完成品", "en": "Items you can list" },
+  "sell.noActive":             { "ja": "現在出品中のエクステンションはありません。", "en": "Nothing listed right now." },
+  "sell.noCandidates":         { "ja": "完成済みのエクステンションがありません。", "en": "No completed extensions yet." },
+  "sell.pickSeller":           { "ja": "出品担当者を選択", "en": "Pick a seller" },
+  "sell.pickSpeed":            { "ja": "出品方式を選択", "en": "Pick a sale option" },
+  "sell.seller":               { "ja": "担当", "en": "Seller" },
+  "sell.weeks":                { "ja": "週", "en": "wk" },
+  "sell.gross":                { "ja": "売却価格", "en": "Sale price" },
+  "sell.fee":                  { "ja": "手数料", "en": "Fee" },
+  "sell.net":                  { "ja": "純収益", "en": "Net" },
+  "sell.list":                 { "ja": "この内容で出品", "en": "List with this setup" },
+  "sell.cancel":               { "ja": "キャンセル", "en": "Cancel" },
+  "sell.noSeller":             { "ja": "担当できるヒーローがいません (同等以上の rarity または 商 属性が必要)。", "en": "No eligible seller (need matching rarity or 商 attribute)." },
+  "sell.mai.sold":             { "ja": "出品中のエクステンションが売れました！GUMが工房の収入になりますよ。", "en": "Your listed extension sold! GUM has been added to the workshop." },
+
   "hero.actions.rest":         { "ja": "休憩", "en": "Rest" },
 
   "mai.questBusy":             { "ja": "他のクエストが進行中です。終わるまでお待ちください。", "en": "Another quest is in progress. Please wait until it finishes." },
