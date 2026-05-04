@@ -89,6 +89,16 @@
   "comp.maiComment.excellent": { "ja": "素晴らしい出来ですね！", "en": "What an excellent piece!" },
   "comp.toMarket":             { "ja": "OK", "en": "OK" },
 
+  "appraisal.title":           { "ja": "クラフト査定", "en": "Appraisal" },
+  "appraisal.subtitle":        { "ja": "美術ヒーロー 5 名による品評会", "en": "5 art-attribute judges" },
+  "appraisal.total":           { "ja": "合計", "en": "Total" },
+  "appraisal.tier.poor":       { "ja": "凡作", "en": "Mediocre" },
+  "appraisal.tier.decent":     { "ja": "良作", "en": "Decent" },
+  "appraisal.tier.fine":       { "ja": "秀作", "en": "Fine" },
+  "appraisal.tier.great":      { "ja": "名作", "en": "Great" },
+  "appraisal.tier.masterpiece": { "ja": "傑作", "en": "Masterpiece" },
+  "appraisal.toWarehouse":     { "ja": "倉庫へ収納", "en": "Send to warehouse" },
+
   "craft.weeks":               { "ja": "{n} 週", "en": "{n} wk" },
   "craft.targets":             { "ja": "必要基準値", "en": "Required base values" },
   "craft.materials":           { "ja": "必要素材", "en": "Required materials" },
