@@ -82,6 +82,12 @@ import {
   heroCapAtFactoryLevel,
   HIRE_WAIT_WEEKS,
   rollHireCandidates,
+  SALE_SPEED_OPTIONS,
+  SALE_SPEED_BY_ID,
+  MARKET_FEE_RATE,
+  estimateSalePrice,
+  netSaleRevenue,
+  canSellExt,
 } from "./factory-market.js";
 import {
   QUEST_DIFFICULTY,
@@ -169,7 +175,13 @@ const state = {
    */
   activeHire: /** @type {object | null} */ (null),
   /** Phase 1D-3 マーケットビュー UI: 現在開いているタブ */
-  marketTab: "warehouse",  // "warehouse" | "hire" | "sell" (sell は PR-10)
+  marketTab: "warehouse",  // "warehouse" | "hire" | "sell"
+  /** Phase 1D-4 進行中の出品 (warehouse から販売中の ext)
+   *  各要素: { id, warehouseIdx, sellerId, speedId, listedAtTick,
+   *          weeks, expectedPrice, status: "listed"|"sold" } */
+  activeSales: /** @type {Array<object>} */ ([]),
+  /** Phase 1D-4 出品 modal の現在ピック中 ext (warehouse index) */
+  sellPickedIdx: -1,
   /** Phase 1C-1 クエスト関連 */
   questTeam: /** @type {Array<number|null>} */ ([null, null, null]),  // 3 枠
   activeQuest: /** @type {object | null} */ (null),
@@ -225,6 +237,10 @@ function onTick() {
   // Phase 1D-3: 雇用プラン進行 (1 ヶ月で候補生成)
   if (state.activeHire) {
     tickActiveHire();
+  }
+  // Phase 1D-4: 出品 tick (完了で GUM 加算)
+  if (state.activeSales.length > 0) {
+    tickActiveSales();
   }
   // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
   tickPassiveRestRecovery();
@@ -1640,6 +1656,219 @@ function setMarketTab(tab) {
 function renderMarketView() {
   if (state.marketTab === "warehouse") renderMarketWarehouse();
   else if (state.marketTab === "hire") renderMarketHire();
+  else if (state.marketTab === "sell") renderMarketSell();
+}
+
+/** ─── 出品タブ (Phase 1D-4) ─────────────────────────────────────── */
+
+function renderMarketSell() {
+  // 進行中の販売
+  const activeHtml = state.activeSales.length === 0
+    ? `<p class="market-sell__empty-active">${escapeHtml(ti18n("sell.noActive"))}</p>`
+    : state.activeSales.map(s => {
+        const w = state.warehouse[s.warehouseIdx];
+        const ext = EXTENSION_BY_ID[String(w?.extId)];
+        const seller = findHero(s.sellerId);
+        const elapsed = state.tickCount - s.listedAtTick;
+        const total = s.weeks * SECONDS_PER_WEEK;
+        const pct = Math.min(100, Math.floor(elapsed / total * 100));
+        return `<div class="active-sale">
+          <img src="${ext ? extIconUrl(w.extId) : ""}" alt="" class="active-sale__icon" onerror="this.style.opacity='0.2'" />
+          <div class="active-sale__main">
+            <div class="active-sale__name-row">
+              <span class="active-sale__name">${escapeHtml(ext?.nameJa || "—")}</span>
+              <span class="active-sale__speed">${escapeHtml(getLang() === "en" ? SALE_SPEED_BY_ID[s.speedId].nameEn : SALE_SPEED_BY_ID[s.speedId].nameJa)}</span>
+            </div>
+            <div class="active-sale__meta">
+              <span>${escapeHtml(ti18n("sell.seller"))}: ${seller ? escapeHtml(tHero(seller.heroId, seller.nameJa)) : "—"}</span>
+              <span class="active-sale__price">${s.expectedPrice.toLocaleString()} GUM</span>
+            </div>
+            <div class="active-sale__bar"><div class="active-sale__bar-fill" style="width:${pct}%"></div></div>
+            <span class="active-sale__pct">${pct}%</span>
+          </div>
+        </div>`;
+      }).join("");
+  $("activeSalesList").innerHTML = activeHtml;
+
+  // 出品候補 (warehouse 内 + まだ販売していない)
+  const sellingIdxSet = new Set(state.activeSales.map(s => s.warehouseIdx));
+  const candidates = state.warehouse
+    .map((w, idx) => ({ w, idx }))
+    .filter(({ idx }) => !sellingIdxSet.has(idx));
+
+  $("sellableList").innerHTML = candidates.length === 0
+    ? `<p class="market-sell__empty-cand">${escapeHtml(ti18n("sell.noCandidates"))}</p>`
+    : candidates.map(({ w, idx }) => {
+        const ext = EXTENSION_BY_ID[String(w.extId)];
+        const tierLbl = w.appraisal ? ti18n("appraisal.tier." + w.appraisal.tier) : "—";
+        return `<button type="button" class="sellable" data-warehouse-idx="${idx}">
+          <img src="${extIconUrl(w.extId)}" alt="" class="sellable__icon" onerror="this.style.opacity='0.2'" />
+          <span class="sellable__name">${escapeHtml(ext?.nameJa || "—")}</span>
+          <span class="sellable__rarity" data-rarity="${ext?.rarity || "common"}">${escapeHtml(ti18n("rarity." + (ext?.rarity || "common")))}</span>
+          ${w.appraisal ? `<span class="sellable__tier" data-tier="${w.appraisal.tier}">${escapeHtml(tierLbl)}</span>` : ""}
+        </button>`;
+      }).join("");
+}
+
+/** 出品 modal を開く */
+function openSellModal(warehouseIdx) {
+  state.sellPickedIdx = warehouseIdx;
+  $("sellModal")?.classList.remove("hidden");
+  pauseTime();
+  // デフォルト 速度 = standard、seller = 未選択
+  if (!_sellPickedSpeedId) _sellPickedSpeedId = "standard";
+  _sellPickedSellerId = null;
+  renderSellModal();
+}
+
+let _sellPickedSpeedId = null;
+let _sellPickedSellerId = null;
+
+function renderSellModal() {
+  const idx = state.sellPickedIdx;
+  if (idx < 0) return;
+  const w = state.warehouse[idx];
+  if (!w) return;
+  const ext = EXTENSION_BY_ID[String(w.extId)];
+
+  // ext 情報
+  $("sellExtIcon").src = extIconUrl(w.extId);
+  $("sellExtName").textContent = ext?.nameJa || "—";
+  $("sellExtRarity").textContent = ti18n("rarity." + (ext?.rarity || "common"));
+  $("sellExtRarity").setAttribute("data-rarity", ext?.rarity || "common");
+  if (w.appraisal) {
+    $("sellExtTier").textContent = ti18n("appraisal.tier." + w.appraisal.tier);
+    $("sellExtTier").setAttribute("data-tier", w.appraisal.tier);
+    $("sellExtTier").classList.remove("hidden");
+  } else {
+    $("sellExtTier").classList.add("hidden");
+  }
+
+  // 速度選択
+  $("sellSpeedList").innerHTML = SALE_SPEED_OPTIONS.map(s => {
+    const sel = s.id === _sellPickedSpeedId ? " sell-speed--sel" : "";
+    const lang = getLang() === "en" ? "en" : "ja";
+    return `<button type="button" class="sell-speed${sel}" data-speed="${s.id}">
+      <span class="sell-speed__name">${escapeHtml(lang === "en" ? s.nameEn : s.nameJa)}</span>
+      <span class="sell-speed__weeks">${s.weeks} ${escapeHtml(ti18n("sell.weeks"))}</span>
+      <span class="sell-speed__desc">${escapeHtml(lang === "en" ? s.descEn : s.descJa)}</span>
+    </button>`;
+  }).join("");
+
+  // 担当者候補 (rarity match or 商 attribute)
+  const eligible = state.ownedHeroes.filter(h => {
+    if (!canSellExt(h, ext)) return false;
+    if (h.state === HERO_STATE.CRAFTING) return false;
+    if (h.state === HERO_STATE.QUESTING) return false;
+    return true;
+  });
+  $("sellSellerList").innerHTML = eligible.length === 0
+    ? `<p class="sell-seller__empty">${escapeHtml(ti18n("sell.noSeller"))}</p>`
+    : eligible.map(h => {
+        const sel = h.heroId === _sellPickedSellerId ? " sell-seller--sel" : "";
+        const sho = Array.isArray(h.attributes) && h.attributes.includes("sho");
+        return `<button type="button" class="sell-seller${sel}" data-seller="${h.heroId}">
+          <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+          <span class="sell-seller__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+          <span class="sell-seller__rarity" data-rarity="${h.rarity}">${escapeHtml(ti18n("rarity." + h.rarity))}</span>
+          ${sho ? `<span class="attr-badge attr-badge--sho" title="商">商</span>` : ""}
+        </button>`;
+      }).join("");
+
+  // 推定価格 + 純収益
+  const seller = findHero(_sellPickedSellerId);
+  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const net = netSaleRevenue(expected);
+  $("sellEstPrice").innerHTML = `
+    <div class="sell-est__row">
+      <span>${escapeHtml(ti18n("sell.gross"))}:</span>
+      <strong>${expected.toLocaleString()} GUM</strong>
+    </div>
+    <div class="sell-est__row sell-est__row--small">
+      <span>${escapeHtml(ti18n("sell.fee"))} (${Math.round(MARKET_FEE_RATE * 100)}%):</span>
+      <span>-${(expected - net).toLocaleString()} GUM</span>
+    </div>
+    <div class="sell-est__row sell-est__row--total">
+      <span>${escapeHtml(ti18n("sell.net"))}:</span>
+      <strong>${net.toLocaleString()} GUM</strong>
+    </div>
+  `;
+
+  // 出品ボタン enable/disable
+  $("sellListBtn").disabled = !seller || _sellPickedSpeedId == null;
+}
+
+function startSale() {
+  const idx = state.sellPickedIdx;
+  if (idx < 0) return;
+  const w = state.warehouse[idx];
+  if (!w) return;
+  const ext = EXTENSION_BY_ID[String(w.extId)];
+  const seller = findHero(_sellPickedSellerId);
+  if (!seller) return;
+  const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
+  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  state.activeSales.push({
+    id: ++_saleId,
+    warehouseIdx: idx,
+    sellerId: seller.heroId,
+    speedId: _sellPickedSpeedId,
+    listedAtTick: state.tickCount,
+    weeks: speed.weeks,
+    expectedPrice: expected,
+    status: "listed",
+  });
+  closeSellModal();
+  renderMarketSell();
+}
+let _saleId = 0;
+
+function closeSellModal() {
+  $("sellModal")?.classList.add("hidden");
+  state.sellPickedIdx = -1;
+  _sellPickedSellerId = null;
+  resumeTime();
+}
+
+/** 出品 tick: 完了時に GUM 加算 + warehouse から削除 + 通知 */
+function tickActiveSales() {
+  if (state.activeSales.length === 0) return;
+  const completed = [];
+  for (const s of state.activeSales) {
+    const elapsed = state.tickCount - s.listedAtTick;
+    const total = s.weeks * SECONDS_PER_WEEK;
+    if (elapsed >= total && s.status === "listed") {
+      // 価格にランダム ±10% 変動
+      const variance = (Math.random() - 0.5) * 0.2;
+      const finalGross = Math.round(s.expectedPrice * (1 + variance));
+      const net = netSaleRevenue(finalGross);
+      state.gum += net;
+      s.status = "sold";
+      s.finalGross = finalGross;
+      s.finalNet = net;
+      completed.push(s);
+    }
+  }
+  if (completed.length > 0) {
+    // warehouse から削除 (高い idx から消すと shift しない)
+    const idxToRemove = completed.map(s => s.warehouseIdx).sort((a, b) => b - a);
+    for (const i of idxToRemove) state.warehouse.splice(i, 1);
+    // 売却済みは activeSales からも除去 + 残り active sales の warehouseIdx を補正
+    state.activeSales = state.activeSales.filter(s => s.status !== "sold");
+    // 補正: 削除した warehouseIdx より大きい idx を持つ残 sale は idx を減算
+    for (const removed of idxToRemove) {
+      for (const s of state.activeSales) {
+        if (s.warehouseIdx > removed) s.warehouseIdx -= 1;
+      }
+    }
+    // Mai 通知
+    const totalNet = completed.reduce((a, b) => a + b.finalNet, 0);
+    maiSays("sell.mai.sold", { onClose: () => {} });
+    // 通知本文に金額が出るように i18n を上書きするのは複雑なので、
+    // とりあえず固定メッセージ + console
+    console.log(`[market] ${completed.length} ext sold for total ${totalNet} GUM`);
+    renderHeader();
+  }
 }
 
 /** Phase 1D-3 雇用タブの描画 */
@@ -2180,6 +2409,34 @@ async function init() {
     $("hireRecruitArea").classList.add("hidden");
   });
 
+  // ── Sell tab: 出品候補から ext タップ → 出品 modal ──
+  $("sellableList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-warehouse-idx]");
+    if (!btn) return;
+    const idx = parseInt(btn.getAttribute("data-warehouse-idx"), 10);
+    if (Number.isFinite(idx)) openSellModal(idx);
+  });
+  $("sellSpeedList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-speed]");
+    if (!btn) return;
+    _sellPickedSpeedId = btn.getAttribute("data-speed");
+    renderSellModal();
+  });
+  $("sellSellerList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-seller]");
+    if (!btn) return;
+    const id = parseInt(btn.getAttribute("data-seller"), 10);
+    if (Number.isFinite(id)) {
+      _sellPickedSellerId = id;
+      renderSellModal();
+    }
+  });
+  $("sellListBtn")?.addEventListener("click", startSale);
+  $("sellCancelBtn")?.addEventListener("click", closeSellModal);
+  $("sellModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "sellModal") closeSellModal();
+  });
+
   // ── Quest view (Phase 1C-1) ──
   $("questViewBack")?.addEventListener("click", closeQuestView);
   $("questNodeList")?.addEventListener("click", (ev) => {
@@ -2332,6 +2589,7 @@ async function init() {
     if (ev.key !== "Escape") return;
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
+    if (!$("sellModal")?.classList.contains("hidden")) { closeSellModal(); return; }
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
     if (!$("maiHelpModal")?.classList.contains("hidden")) { closeMaiHelp(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }

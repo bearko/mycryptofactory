@@ -1570,6 +1570,210 @@
     }
     .hire-cand-skip:hover { color: var(--text); border-color: var(--accent); }
 
+    /* Market 出品タブ (Phase 1D-4) */
+    .market-sell__section { margin-bottom: 0.85rem; }
+    .market-sell__sec-title {
+      margin: 0 0 0.35rem;
+      font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .market-sell__empty-active, .market-sell__empty-cand {
+      color: var(--muted); padding: 0.6rem; font-size: 0.78rem;
+      text-align: center;
+    }
+    .active-sales-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .active-sale {
+      display: grid; grid-template-columns: 56px 1fr; gap: 0.5rem;
+      padding: 0.55rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .active-sale__icon {
+      width: 56px; height: 56px;
+      object-fit: cover; image-rendering: pixelated;
+      background: #2a2438; border-radius: 4px;
+    }
+    .active-sale__main {
+      display: flex; flex-direction: column; gap: 0.18rem;
+      min-width: 0;
+    }
+    .active-sale__name-row { display: flex; gap: 0.35rem; align-items: baseline; }
+    .active-sale__name { font-weight: 700; font-size: 0.85rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .active-sale__speed { color: var(--accent); font-size: 0.7rem; }
+    .active-sale__meta { display: flex; gap: 0.5rem; font-size: 0.72rem; color: var(--muted); justify-content: space-between; }
+    .active-sale__price { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .active-sale__bar { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+    .active-sale__bar-fill { height: 100%; background: linear-gradient(90deg, #5ecf8a 0%, #2e8b32 100%); transition: width 0.3s ease-out; }
+    .active-sale__pct { align-self: flex-end; font-weight: 700; font-size: 0.72rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+    .sellable-list {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;
+    }
+    .sellable {
+      appearance: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.45rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      color: var(--text);
+    }
+    .sellable:hover { border-color: var(--accent); }
+    .sellable__icon {
+      width: 56px; height: 56px;
+      object-fit: cover; image-rendering: pixelated;
+      background: #2a2438; border-radius: 4px;
+    }
+    .sellable__name {
+      font-weight: 700; font-size: 0.8rem;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sellable__rarity, .sellable__tier {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+    }
+    .sellable__rarity[data-rarity="common"]    { background: #5b6b8a; color: #fff; }
+    .sellable__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .sellable__rarity[data-rarity="rare"]      { background: #5ab4c4; color: #fff; }
+    .sellable__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sellable__rarity[data-rarity="legendary"] { background: #c45c6a; color: #fff; }
+    .sellable__tier[data-tier="poor"]        { background: #4a4458; color: #d8d2e6; }
+    .sellable__tier[data-tier="decent"]      { background: #2f6b3e; color: #d8f5d8; }
+    .sellable__tier[data-tier="fine"]        { background: #2f6b8a; color: #d8edf5; }
+    .sellable__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .sellable__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a, var(--accent), #5ecf8a); color: #1a1420; }
+
+    /* Sell modal */
+    .sell-modal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.88);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem; overflow-y: auto;
+    }
+    .sell-modal.hidden { display: none !important; }
+    .sell-modal__card {
+      max-width: 460px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .sell-modal__title {
+      margin: 0; font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.06em; text-align: center;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sell-modal__head { display: grid; grid-template-columns: 64px 1fr; gap: 0.5rem; align-items: center; }
+    .sell-modal__icon { width: 64px; height: 64px; object-fit: cover; image-rendering: pixelated; background: #2a2438; border-radius: 6px; }
+    .sell-modal__head-info { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+    .sell-modal__name { font-weight: 800; font-size: 0.95rem; }
+    .sell-modal__head-tags { display: flex; gap: 0.35rem; align-items: center; }
+    .sell-modal__rarity, .sell-modal__tier {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+    }
+    .sell-modal__rarity[data-rarity="legendary"] { background: #c45c6a; color: #fff; }
+    .sell-modal__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sell-modal__rarity[data-rarity="rare"]      { background: #5ab4c4; color: #fff; }
+    .sell-modal__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .sell-modal__rarity[data-rarity="common"]    { background: #5b6b8a; color: #fff; }
+    .sell-modal__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .sell-modal__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a, var(--accent), #5ecf8a); color: #1a1420; }
+
+    .sell-modal__section { display: flex; flex-direction: column; gap: 0.35rem; }
+    .sell-modal__sec-title {
+      margin: 0;
+      font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .sell-speed-list { display: flex; flex-direction: column; gap: 0.3rem; }
+    .sell-speed {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      cursor: pointer;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 0.25rem;
+      color: var(--text);
+      text-align: left;
+    }
+    .sell-speed--sel { border-color: var(--accent); background: linear-gradient(135deg, #2f2740, #3a2f4a); }
+    .sell-speed__name { font-weight: 800; font-size: 0.85rem; }
+    .sell-speed__weeks { color: var(--accent); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+    .sell-speed__desc { grid-column: 1 / span 2; color: var(--muted); font-size: 0.7rem; }
+
+    .sell-seller-list {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.35rem;
+    }
+    .sell-seller {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.45rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      color: var(--text);
+      position: relative;
+    }
+    .sell-seller--sel { border-color: var(--accent); background: linear-gradient(135deg, #2f2740, #3a2f4a); }
+    .sell-seller img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+    .sell-seller__name { font-weight: 700; font-size: 0.72rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sell-seller__rarity {
+      padding: 0.06rem 0.32rem;
+      border-radius: 999px;
+      font-size: 0.6rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .sell-seller__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .sell-seller__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sell-seller__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .sell-seller__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .sell-seller .attr-badge--sho {
+      position: absolute; top: 4px; right: 4px;
+      width: 16px; height: 16px;
+      font-size: 0.62rem;
+    }
+    .sell-seller__empty { color: var(--muted); font-size: 0.78rem; padding: 0.5rem; text-align: center; grid-column: 1 / -1; }
+
+    .sell-est {
+      background: var(--panel-2);
+      border-radius: 6px;
+      padding: 0.5rem 0.7rem;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .sell-est__row { display: flex; justify-content: space-between; gap: 0.5rem; }
+    .sell-est__row--small { color: var(--muted); font-size: 0.72rem; }
+    .sell-est__row--total { border-top: 1px solid var(--border); padding-top: 0.25rem; margin-top: 0.15rem; }
+    .sell-est__row--total strong { color: var(--accent); font-size: 1.05rem; }
+
+    .sell-modal__buttons { display: flex; gap: 0.4rem; }
+    .sell-modal__cancel, .sell-modal__list-btn {
+      flex: 1;
+      appearance: none;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-weight: 700; cursor: pointer;
+    }
+    .sell-modal__cancel { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+    .sell-modal__list-btn { background: var(--accent); color: #1a1420; font-weight: 800; }
+    .sell-modal__list-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
     /* Hero list 「休憩」ボタン (Phase 1B-5: 手動 RESTING) */
     .hero-card__rest-btn {
       appearance: none;
@@ -2416,6 +2620,41 @@
     <button type="button" id="stubClose" data-i18n="btn.close">閉じる</button>
   </div>
 
+  <!-- Sell modal (Phase 1D-4) — warehouse の ext を選んで出品設定 -->
+  <div class="sell-modal hidden" id="sellModal" role="dialog" aria-modal="true" aria-labelledby="sellModalTitle">
+    <div class="sell-modal__card">
+      <h2 class="sell-modal__title" id="sellModalTitle" data-i18n="sell.title">出品</h2>
+
+      <div class="sell-modal__head">
+        <img class="sell-modal__icon" id="sellExtIcon" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="sell-modal__head-info">
+          <span class="sell-modal__name" id="sellExtName">—</span>
+          <div class="sell-modal__head-tags">
+            <span class="sell-modal__rarity" id="sellExtRarity" data-rarity="common">—</span>
+            <span class="sell-modal__tier" id="sellExtTier" data-tier="fine">—</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="sell-modal__section">
+        <h3 class="sell-modal__sec-title" data-i18n="sell.pickSpeed">出品方式を選択</h3>
+        <div class="sell-speed-list" id="sellSpeedList"></div>
+      </section>
+
+      <section class="sell-modal__section">
+        <h3 class="sell-modal__sec-title" data-i18n="sell.pickSeller">出品担当者を選択</h3>
+        <div class="sell-seller-list" id="sellSellerList"></div>
+      </section>
+
+      <div class="sell-est" id="sellEstPrice"></div>
+
+      <div class="sell-modal__buttons">
+        <button type="button" class="sell-modal__cancel" id="sellCancelBtn" data-i18n="sell.cancel">キャンセル</button>
+        <button type="button" class="sell-modal__list-btn" id="sellListBtn" data-i18n="sell.list" disabled>この内容で出品</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mai help modal (Phase 1D-2) — 各画面右上のマイアイコン → 文脈ヘルプ表示 -->
   <div class="mai-help hidden" id="maiHelpModal" role="dialog" aria-modal="true" aria-labelledby="maiHelpTitle">
     <div class="mai-help__card">
@@ -2578,11 +2817,24 @@
     <div class="market-view__tabs">
       <button type="button" class="market-view__tab market-view__tab--active" data-market-tab="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
       <button type="button" class="market-view__tab" data-market-tab="hire" data-i18n="market.tab.hire">雇用</button>
+      <button type="button" class="market-view__tab" data-market-tab="sell" data-i18n="market.tab.sell">出品</button>
     </div>
     <div class="market-view__body">
       <!-- 倉庫タブ (Phase 1B-5) -->
       <div data-market-tab-body="warehouse">
         <div class="warehouse-list" id="warehouseList"></div>
+      </div>
+
+      <!-- 出品タブ (Phase 1D-4) -->
+      <div data-market-tab-body="sell" class="hidden">
+        <section class="market-sell__section">
+          <h3 class="market-sell__sec-title" data-i18n="sell.active">出品中のエクステンション</h3>
+          <div class="active-sales-list" id="activeSalesList"></div>
+        </section>
+        <section class="market-sell__section">
+          <h3 class="market-sell__sec-title" data-i18n="sell.candidates">出品できる完成品</h3>
+          <div class="sellable-list" id="sellableList"></div>
+        </section>
       </div>
 
       <!-- 雇用タブ (Phase 1D-3) -->
