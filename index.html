@@ -130,12 +130,55 @@
     }
     .factory-header__gum-icon {
       width: 22px; height: 22px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #ffe79c, #c4a35a 65%, #6b5026);
-      color: #2a1d05;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 0.75rem;
+      object-fit: contain;
+      flex-shrink: 0;
     }
+    /* Phase 1D-5: クラフト選択画面の所有素材インベントリ strip */
+    .craft-mat-strip {
+      display: flex; gap: 0.4rem;
+      overflow-x: auto;
+      padding: 0.4rem 0.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      scrollbar-width: thin;
+    }
+    .craft-mat-strip::-webkit-scrollbar { height: 6px; }
+    .craft-mat-strip::-webkit-scrollbar-thumb { background: var(--panel-2); border-radius: 3px; }
+    .craft-mat-chip {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.2rem 0.4rem;
+      background: var(--panel-2);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+      color: var(--text);
+    }
+    .craft-mat-chip img {
+      width: 16px; height: 16px;
+      image-rendering: pixelated;
+      object-fit: contain;
+    }
+    .craft-mat-chip__name { color: var(--muted); }
+    .craft-mat-chip__qty { font-weight: 700; color: var(--accent); }
+    .craft-mat-chip--zero { opacity: 0.45; }
+    .craft-mat-chip--zero .craft-mat-chip__qty { color: var(--muted); }
+
+    /* Phase 1D-5: 工房レベル表示 */
+    .factory-header__factory-lv {
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.5rem;
+      background: rgba(196, 163, 90, 0.12);
+      border: 1px solid rgba(196, 163, 90, 0.45);
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .factory-header__factory-lv:empty { display: none; }
     .factory-header__btn {
       appearance: none; background: var(--panel-2);
       border: 1px solid var(--border);
@@ -2510,6 +2553,7 @@
     .mai-help__portrait,
     .craft-done__mai-portrait,
     .factory-header__mai-btn img,
+    .factory-header__gum-icon,
     .view-mai-btn img,
     .hero-card__portrait,
     .hero-card__elem img,
@@ -2559,9 +2603,10 @@
                   transform="rotate(-90 16 16)" />
         </svg>
       </div>
+      <span class="factory-header__factory-lv" id="factoryLvText" title="工房レベル"></span>
       <div class="factory-header__spacer"></div>
       <div class="factory-header__gum" title="GUM">
-        <span class="factory-header__gum-icon" aria-hidden="true">G</span>
+        <img class="factory-header__gum-icon" src="https://www.mycryptoheroes.net/_nuxt/img/icon_gum.cd9a4ae.png" alt="GUM" />
         <span id="factoryGum">500</span>
       </div>
       <button type="button" class="factory-header__btn factory-header__mai-btn" data-mai-help-btn title="マイのアドバイス">
@@ -2914,6 +2959,8 @@
 
       <!-- Select screen -->
       <div data-craft-section="select">
+        <!-- Phase 1D-5: 所有素材インベントリ (アイコン + 名前 + 個数) -->
+        <div class="craft-mat-strip" id="craftMatStrip"></div>
         <div class="craft-filter-bar">
           <label>
             <span data-i18n="craft.sort">並び順:</span>

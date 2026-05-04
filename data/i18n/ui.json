@@ -76,7 +76,10 @@
   "craft.warn.lowLevel":       { "ja": "クラフトLv 不足 ({cur} / {req}) — 編成を変更してください。", "en": "Craft Lv too low ({cur} / {req}) — change the team." },
 
   "mai.name":                  { "ja": "マイ", "en": "Mai" },
+  "mai.next":                  { "ja": "次へ", "en": "Next" },
   "mai.craftBusy":             { "ja": "他のエクステンションのクラフトが進行中です。まずは今のクラフトを終わらせましょう。", "en": "Another extension is being crafted. Let's finish the current craft first." },
+
+  "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Workshop Lv: {n}" },
 
   "comp.title":                { "ja": "クラフト完了", "en": "Craft Complete" },
   "comp.maiNotice":            { "ja": "クラフト中のエクステンションが完成しました！", "en": "The extension you were crafting is complete!" },
