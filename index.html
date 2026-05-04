@@ -1052,6 +1052,309 @@
     }
     .warehouse-item__score-num strong { color: var(--accent); font-size: 0.9rem; }
 
+    /* Quest progress overlay (Phase 1C-1) — ホーム画面の上部にバー表示 */
+    .quest-overlay {
+      position: relative;
+      width: 100%;
+      background: linear-gradient(90deg, #4a8a3e 0%, #2f6b3e 70%, #1f4d2a 100%);
+      color: #f6f7e8;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem 0.5rem;
+      font-size: 0.78rem;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.3);
+    }
+    .quest-overlay.hidden { display: none !important; }
+    .quest-overlay__left {
+      display: flex; gap: 0.18rem;
+      align-items: center;
+    }
+    .quest-overlay__hero {
+      width: 36px; height: 36px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
+    }
+    .quest-overlay__right {
+      display: flex; flex-direction: column;
+      align-items: flex-end;
+      gap: 0.1rem;
+      line-height: 1.15;
+    }
+    .quest-overlay__node {
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+    .quest-overlay__status {
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-overlay__bar {
+      grid-column: 1 / span 2;
+      height: 6px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .quest-overlay__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f6f7e8 0%, #c4a35a 100%);
+      transition: width 0.3s ease-out;
+    }
+
+    /* Quest selection view (Phase 1C-1) */
+    .quest-view {
+      position: fixed; inset: 0; z-index: 150;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      color: var(--text);
+      overflow: hidden;
+    }
+    .quest-view.hidden { display: none !important; }
+    .quest-view__header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      background: linear-gradient(180deg, #2a2438 0%, #1e1a28 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .quest-view__title { margin: 0; font-size: 1rem; color: var(--accent); flex: 1; }
+    .quest-view__back {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .quest-view__body {
+      flex: 1; overflow-y: auto;
+      padding: 0.7rem 0.6rem 1.2rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .quest-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .quest-section__title {
+      margin: 0;
+      font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .quest-node-list, .quest-diff-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.4rem;
+    }
+    .quest-diff-list { grid-template-columns: repeat(3, 1fr); }
+    .quest-node, .quest-diff {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.55rem 0.55rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      text-align: left;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .quest-node:hover, .quest-diff:hover { border-color: var(--accent); }
+    .quest-node--sel, .quest-diff--sel {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%);
+    }
+    .quest-node__name, .quest-diff__label {
+      font-weight: 800; font-size: 0.85rem;
+    }
+    .quest-node__note {
+      font-size: 0.68rem; color: var(--muted);
+    }
+    .quest-diff__weeks {
+      font-size: 0.7rem; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-team-slots {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+    }
+    .quest-team__slot {
+      aspect-ratio: 1 / 1;
+      background: var(--panel-2);
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; color: var(--muted);
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+    .quest-team__slot--filled {
+      border-style: solid;
+      border-color: var(--accent);
+    }
+    .quest-team__slot img {
+      width: 100%; height: 100%; object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .quest-team__slot-name {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.65); color: #fff;
+      font-size: 0.55rem; line-height: 1; padding: 1px 2px;
+      text-align: center;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .quest-summary {
+      background: var(--panel-2);
+      border-radius: 4px;
+      padding: 0.45rem 0.55rem;
+      display: flex; flex-direction: column; gap: 0.25rem;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-summary__row {
+      display: flex; gap: 0.4rem; align-items: baseline;
+    }
+    .quest-summary__label { color: var(--muted); }
+    .quest-summary__sep   { color: var(--muted); }
+    .quest-summary__base  { color: var(--muted); }
+    .quest-summary__rate strong { color: var(--text); }
+    .quest-summary__rate[data-rate="blocked"] { color: var(--ifrit); }
+    .quest-summary__rate[data-rate="100"]     { color: #5ecf8a; }
+    .quest-summary__mai {
+      margin: 0; font-size: 0.72rem; color: var(--accent);
+      line-height: 1.4;
+    }
+    .quest-hero-pick {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+    }
+    .quest-hero-pick > button {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.4rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      font-size: 0.65rem;
+      text-align: center;
+    }
+    .quest-hero-pick > button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .quest-hero-pick > button:hover:not(:disabled) { border-color: var(--accent); }
+    .quest-hero-pick--in {
+      border-color: var(--accent) !important;
+      background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%) !important;
+    }
+    .quest-hero-pick > button img {
+      width: 44px; height: 44px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .quest-hero-pick__name {
+      font-weight: 700;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .quest-hero-pick__ql, .quest-hero-pick__hp {
+      color: var(--muted); font-size: 0.62rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-start-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.7rem;
+      font-weight: 800; font-size: 1rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: opacity 0.18s;
+    }
+    .quest-start-btn:disabled {
+      opacity: 0.45; cursor: not-allowed;
+    }
+
+    /* Quest result modal */
+    .quest-result {
+      position: fixed; inset: 0; z-index: 290;
+      background: rgba(15, 12, 22, 0.88);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .quest-result.hidden { display: none !important; }
+    .quest-result__card {
+      max-width: 420px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .quest-result__title {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0.06em;
+      text-align: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .quest-result__title[data-success="1"] { color: #5ecf8a; }
+    .quest-result__title[data-success="0"] { color: var(--ifrit); }
+    .quest-result__summary {
+      margin: 0; text-align: center;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .quest-result__section {
+      background: var(--panel-2);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+    }
+    .quest-result__sec-title {
+      margin: 0 0 0.3rem;
+      font-size: 0.7rem; color: var(--muted);
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .quest-result__rewards { display: flex; flex-direction: column; gap: 0.25rem; }
+    .quest-result__reward {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.85rem;
+    }
+    .quest-result__reward img {
+      width: 22px; height: 22px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .quest-result__reward-name { flex: 1; }
+    .quest-result__reward-qty { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .quest-result__no-reward { margin: 0; color: var(--muted); font-size: 0.78rem; }
+    .quest-result__team { display: flex; flex-direction: column; gap: 0.25rem; }
+    .quest-result__hero {
+      display: grid; grid-template-columns: 32px 1fr auto; gap: 0.4rem;
+      align-items: center;
+      font-size: 0.78rem;
+    }
+    .quest-result__hero img {
+      width: 32px; height: 32px; object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .quest-result__hero-hp { color: var(--ifrit); font-variant-numeric: tabular-nums; }
+    .quest-result__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+
     /* Hero list 「休憩」ボタン (Phase 1B-5: 手動 RESTING) */
     .hero-card__rest-btn {
       appearance: none;
@@ -1704,6 +2007,9 @@
     <!-- Notification banner (Phase 1B-2): passive triggers etc. Auto-fades. -->
     <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
 
+    <!-- Quest progress overlay (Phase 1C-1): クエスト中のみ表示、ホーム画面の上部 -->
+    <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
+
     <!-- Workshop view -->
     <div class="workshop" id="workshopView">
       <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
@@ -1832,6 +2138,51 @@
       <div class="appraisal__tier hidden" id="appraisalTier" data-tier="fine">—</div>
 
       <button type="button" class="appraisal__close" id="appraisalClose" data-i18n="appraisal.toWarehouse" disabled>倉庫へ収納</button>
+    </div>
+  </div>
+
+  <!-- Quest view (Phase 1C-1) — node + difficulty + 3-hero party + start -->
+  <div class="quest-view hidden" id="questView" role="dialog" aria-labelledby="questViewTitle">
+    <div class="quest-view__header">
+      <h2 class="quest-view__title" id="questViewTitle" data-i18n="quest.title">クエスト</h2>
+      <button type="button" class="quest-view__back" id="questViewBack" data-i18n="btn.back">← 戻る</button>
+    </div>
+    <div class="quest-view__body">
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.node.label">ノード選択</h3>
+        <div class="quest-node-list" id="questNodeList"></div>
+      </section>
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.diff.label">難易度</h3>
+        <div class="quest-diff-list" id="questDiffList"></div>
+      </section>
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.team.label">編成 (最大 3 体)</h3>
+        <div class="quest-team-slots" id="questTeamSlots"></div>
+        <div class="quest-summary" id="questSummary"></div>
+      </section>
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.candidates.label">ヒーローを選んで配属</h3>
+        <div class="quest-hero-pick" id="questHeroPick"></div>
+      </section>
+      <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
+    </div>
+  </div>
+
+  <!-- Quest result modal (Phase 1C-1) -->
+  <div class="quest-result hidden" id="questResultModal" role="dialog" aria-modal="true" aria-labelledby="questResultTitle">
+    <div class="quest-result__card">
+      <h2 class="quest-result__title" id="questResultTitle" data-success="1">—</h2>
+      <p class="quest-result__summary" id="questResultSummary">—</p>
+      <div class="quest-result__section">
+        <p class="quest-result__sec-title" data-i18n="quest.result.rewards">獲得素材</p>
+        <div class="quest-result__rewards" id="questResultRewards"></div>
+      </div>
+      <div class="quest-result__section">
+        <p class="quest-result__sec-title" data-i18n="quest.result.team">出撃メンバー</p>
+        <div class="quest-result__team" id="questResultTeam"></div>
+      </div>
+      <button type="button" class="quest-result__close" id="questResultClose" data-i18n="quest.result.close">OK</button>
     </div>
   </div>
 

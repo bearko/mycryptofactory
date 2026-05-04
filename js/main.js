@@ -69,6 +69,18 @@ import {
   buildJudgeComment,
   appraisalTotalTier,
 } from "./factory-appraisal.js";
+import {
+  QUEST_DIFFICULTY,
+  QUEST_DURATION_WEEKS,
+  QUEST_BASE_LEVEL,
+  QUEST_DIFFICULTY_LABEL,
+  NORMAL_NODES,
+  NODE_BY_ID,
+  teamQuestLevel,
+  questSuccessRate,
+  successRateCommentKey,
+  rollQuestRewards,
+} from "./factory-quest.js";
 
 const APP_VERSION = "2.0.0";
 const TEAM_SIZE = 5;
@@ -133,7 +145,17 @@ const state = {
   warehouse: /** @type {Array<object>} */ ([]),
   /** Phase 1B-4 品評会の表示中データ (5 名審査員 + 各点数 + 合計) */
   pendingAppraisal: /** @type {object | null} */ (null),
+  /** Phase 1C-1 クエスト関連 */
+  questTeam: /** @type {Array<number|null>} */ ([null, null, null]),  // 3 枠
+  activeQuest: /** @type {object | null} */ (null),
+  /**  { nodeId, difficulty, team:[heroId|null × 3], successRate,
+   *     startedAtTick, durationWeeks, progress: 0..1 } */
+  questPickedNodeId: null,
+  questPickedDifficulty: "easy",
+  pendingQuestResult: /** @type {object | null} */ (null),
 };
+
+const QUEST_TEAM_SIZE = 3;
 
 /** 通知バナー / 浮上値ともに 4 秒 = 4 tick で消える */
 const NOTIFICATION_TTL_TICKS = 4;
@@ -171,7 +193,11 @@ function onTick() {
   if (state.activeCraft) {
     tickActiveCraft();
   }
-  // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft 配属外) の自動回復
+  // Phase 1C-1: アクティブクエストの 1 tick 進行
+  if (state.activeQuest) {
+    tickActiveQuest();
+  }
+  // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
   tickPassiveRestRecovery();
   // Notifications/floats の TTL GC + 描画更新
   pruneEphemerals();
@@ -179,6 +205,7 @@ function onTick() {
   renderWorkshop();
   renderNotifications();
   renderOrderPanel();
+  renderQuestOverlay();
 }
 
 /** activeCraft が存在するときの 1 tick 処理。
@@ -290,20 +317,298 @@ function pickQualityTier(ratio) {
   return "good";
 }
 
-/** activeCraft の team 外で RESTING になっているヒーローを自動回復させる。
- *  手動「休憩」ボタンで RESTING 入りしたヒーローや、過去のクラフトで疲れた
- *  ヒーローが対象。recover_per_tick は staminaRecoverPerTick(hero) と同じ。 */
+/** activeCraft / activeQuest の team 外で RESTING になっているヒーローを
+ *  自動回復させる。手動「休憩」ボタンで RESTING 入りしたヒーローや、
+ *  過去のクラフト/クエストで疲れたヒーローが対象。 */
 function tickPassiveRestRecovery() {
-  const activeTeam = new Set(
-    (state.activeCraft?.team || []).filter(id => id != null)
-  );
+  const skip = new Set();
+  for (const id of state.activeCraft?.team || []) if (id != null) skip.add(id);
+  for (const id of state.activeQuest?.team || []) if (id != null) skip.add(id);
   for (const hero of state.ownedHeroes) {
     if (!hero) continue;
     if (hero.state !== HERO_STATE.RESTING) continue;
-    if (activeTeam.has(hero.heroId)) continue; // クラフト team は tickActiveCraft が処理
+    if (skip.has(hero.heroId)) continue;
     adjustStamina(hero, staminaRecoverPerTick(hero));
     if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
   }
+}
+
+/** ─── Quest tick (Phase 1C-1) ───────────────────────────────────── */
+
+function tickActiveQuest() {
+  const aq = state.activeQuest;
+  if (!aq) return;
+  // 進捗 = elapsed ticks / total ticks
+  const elapsed = state.tickCount - aq.startedAtTick;
+  const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
+  aq.progress = Math.min(1, elapsed / totalTicks);
+  if (aq.progress >= 1) {
+    triggerQuestComplete(aq);
+  }
+}
+
+function triggerQuestComplete(aq) {
+  const success = Math.random() <= aq.successRate;
+  const node = NODE_BY_ID[aq.nodeId];
+  let rewards = {};
+  if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
+
+  // 報酬を所持素材に追加
+  if (success) {
+    for (const [matId, qty] of Object.entries(rewards)) {
+      state.materials[matId] = (state.materials[matId] || 0) + qty;
+    }
+  }
+
+  // 配属ヒーローの HP を 0 にして RESTING 入り (ユーザー仕様):
+  // 「成功しても編成中のヒーローの体力がゼロになる」
+  for (const id of aq.team) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (!h) continue;
+    h.stamina.current = 0;
+    h.state = HERO_STATE.RESTING;
+  }
+
+  state.pendingQuestResult = {
+    nodeId: aq.nodeId,
+    difficulty: aq.difficulty,
+    team: aq.team.slice(),
+    success,
+    rewards,
+    finishedAt: { year: state.year, month: state.month, week: state.week },
+  };
+  state.activeQuest = null;
+  // Mai ポップアップ → 閉じるとレポート画面
+  maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
+    onClose: openQuestResultScreen,
+  });
+}
+
+/** ─── Quest selection / start view (Phase 1C-1) ─────────────────── */
+
+function openQuestView() {
+  pauseTime();
+  $("questView")?.classList.remove("hidden");
+  // 初回オープンで pickedNodeId 未設定なら最初のノード+初級を仮選択
+  if (!state.questPickedNodeId) state.questPickedNodeId = NORMAL_NODES[0].id;
+  if (!state.questPickedDifficulty) state.questPickedDifficulty = "easy";
+  renderQuestView();
+}
+function closeQuestView() {
+  $("questView")?.classList.add("hidden");
+  resumeTime();
+}
+
+function renderQuestView() {
+  // ノード一覧 (4 通常ノード)
+  $("questNodeList").innerHTML = NORMAL_NODES.map(n => {
+    const sel = n.id === state.questPickedNodeId ? " quest-node--sel" : "";
+    return `<button type="button" class="quest-node${sel}" data-node="${n.id}">
+      <span class="quest-node__name">${escapeHtml(n.nameJa)}</span>
+      <span class="quest-node__note">${escapeHtml(extractNote(n.note, getLang()))}</span>
+    </button>`;
+  }).join("");
+
+  // 難易度ボタン
+  $("questDiffList").innerHTML = ["easy", "normal", "hard"].map(d => {
+    const sel = d === state.questPickedDifficulty ? " quest-diff--sel" : "";
+    const label = QUEST_DIFFICULTY_LABEL[d][getLang() === "en" ? "en" : "ja"];
+    return `<button type="button" class="quest-diff${sel}" data-diff="${d}">
+      <span class="quest-diff__label">${escapeHtml(label)}</span>
+      <span class="quest-diff__weeks">${QUEST_DURATION_WEEKS[d]}${ti18n("craft.weeks").replace("{n}", "").trim() || "wk"}</span>
+    </button>`;
+  }).join("");
+
+  // パーティ (3 枠) — クラフト編成と同じノリで heroes 一覧から pick
+  const team = state.questTeam.map(id => id == null ? null : findHero(id));
+  $("questTeamSlots").innerHTML = state.questTeam.map((id, idx) => {
+    if (id == null) return `<div class="quest-team__slot" data-slot="${idx}">+</div>`;
+    const h = findHero(id);
+    if (!h) return `<div class="quest-team__slot" data-slot="${idx}">?</div>`;
+    return `<div class="quest-team__slot quest-team__slot--filled" data-slot="${idx}" title="${escapeHtml(tHero(h.heroId, h.nameJa))}">
+      <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="quest-team__slot-name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+    </div>`;
+  }).join("");
+
+  // ヒーロー候補リスト (questing/crafting/resting ではないもの優先表示)
+  const eligible = state.ownedHeroes.slice().sort((a, b) => {
+    // 優先: idle → resting (HP min) → questing/crafting (assigned に出てこないが念の為)
+    const rank = (h) => {
+      if (state.questTeam.includes(h.heroId)) return 0;
+      if (h.state === HERO_STATE.IDLE) return 1;
+      if (h.state === HERO_STATE.RESTING) return 2;
+      return 3;
+    };
+    return rank(a) - rank(b);
+  });
+  $("questHeroPick").innerHTML = eligible.slice(0, 30).map(h => {
+    const inTeam = state.questTeam.includes(h.heroId);
+    const stamPct = h.stamina.max > 0 ? (h.stamina.current / h.stamina.max * 100) : 0;
+    const ql = Math.round(((h.element.garuda || 0) + (h.element.ifrit || 0) +
+                           (h.element.leviathan || 0) + (h.element.tiamat || 0)) * (stamPct / 100));
+    return `<button type="button" class="quest-hero-pick${inTeam ? " quest-hero-pick--in" : ""}" data-hero="${h.heroId}" ${h.state === HERO_STATE.CRAFTING ? "disabled" : ""}>
+      <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="quest-hero-pick__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+      <span class="quest-hero-pick__ql">QL ${ql}</span>
+      <span class="quest-hero-pick__hp">HP ${h.stamina.current}/${h.stamina.max}</span>
+    </button>`;
+  }).join("");
+
+  // 成功率 + マイのコメント
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  const baseLv = QUEST_BASE_LEVEL[state.questPickedDifficulty];
+  const teamLv = teamQuestLevel(team);
+  const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
+  const commentKey = successRateCommentKey(rate);
+  const startBtn = $("questStartBtn");
+  if (rate < 0 || state.questTeam.filter(x => x != null).length === 0) {
+    startBtn.disabled = true;
+  } else {
+    startBtn.disabled = false;
+  }
+  $("questSummary").innerHTML = `
+    <div class="quest-summary__row">
+      <span class="quest-summary__label">${escapeHtml(ti18n("quest.teamLevel"))}:</span>
+      <strong>${teamLv}</strong>
+      <span class="quest-summary__sep">/</span>
+      <span class="quest-summary__base">${baseLv}</span>
+    </div>
+    <div class="quest-summary__row">
+      <span class="quest-summary__label">${escapeHtml(ti18n("quest.successRate"))}:</span>
+      <strong class="quest-summary__rate" data-rate="${rate < 0 ? "blocked" : Math.round(rate * 100)}">
+        ${rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%")}
+      </strong>
+    </div>
+    <p class="quest-summary__mai">${escapeHtml(ti18n(commentKey))}</p>
+  `;
+}
+
+function extractNote(note, lang) {
+  // "ja:..|en:.." 形式
+  const segs = (note || "").split("|");
+  for (const s of segs) {
+    const [l, ...rest] = s.split(":");
+    if (l === lang) return rest.join(":");
+  }
+  return segs[0]?.split(":").slice(1).join(":") || "";
+}
+
+function startActiveQuest() {
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  if (!node) return;
+  const diff = state.questPickedDifficulty;
+  const team = state.questTeam.slice();
+  const teamHeroes = team.map(id => id == null ? null : findHero(id));
+  const baseLv = QUEST_BASE_LEVEL[diff];
+  const teamLv = teamQuestLevel(teamHeroes);
+  const rate   = questSuccessRate(teamLv, baseLv);
+  if (rate < 0) return;
+
+  // ヒーローを QUESTING 状態に
+  for (const id of team) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (h) h.state = HERO_STATE.QUESTING;
+  }
+
+  state.activeQuest = {
+    nodeId: node.id,
+    difficulty: diff,
+    team,
+    successRate: rate,
+    startedAtTick: state.tickCount,
+    durationWeeks: QUEST_DURATION_WEEKS[diff],
+    progress: 0,
+  };
+  closeQuestView();
+  renderQuestOverlay();
+}
+
+/** ─── Quest progress overlay (top of workshop) ───────────────────── */
+function renderQuestOverlay() {
+  const host = $("questOverlay");
+  if (!host) return;
+  const aq = state.activeQuest;
+  if (!aq) {
+    host.classList.add("hidden");
+    host.innerHTML = "";
+    return;
+  }
+  host.classList.remove("hidden");
+  const node = NODE_BY_ID[aq.nodeId];
+  const pctVal = Math.floor((aq.progress || 0) * 100);
+  const teamHtml = aq.team.filter(id => id != null).slice(0, 3).map(id => {
+    const h = findHero(id);
+    if (!h) return "";
+    return `<img class="quest-overlay__hero" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />`;
+  }).join("");
+  host.innerHTML = `
+    <div class="quest-overlay__left">${teamHtml}</div>
+    <div class="quest-overlay__right">
+      <span class="quest-overlay__node">${escapeHtml(ti18n("quest.nodeLabel"))}: ${escapeHtml(node?.nameJa || aq.nodeId)}</span>
+      <span class="quest-overlay__status">${escapeHtml(ti18n("quest.inProgress"))} ${pctVal}%</span>
+    </div>
+    <div class="quest-overlay__bar"><div class="quest-overlay__bar-fill" style="width:${pctVal}%"></div></div>
+  `;
+}
+
+/** ─── Quest result screen (Phase 1C-1) ────────────────────────────── */
+
+function openQuestResultScreen() {
+  if (!state.pendingQuestResult) return;
+  pauseTime();
+  $("questResultModal")?.classList.remove("hidden");
+  renderQuestResultScreen();
+}
+
+function renderQuestResultScreen() {
+  const pq = state.pendingQuestResult;
+  if (!pq) return;
+  const node = NODE_BY_ID[pq.nodeId];
+  const titleKey = pq.success ? "quest.result.success" : "quest.result.failure";
+  $("questResultTitle").textContent = ti18n(titleKey);
+  $("questResultTitle").setAttribute("data-success", pq.success ? "1" : "0");
+  const subText = ti18n("quest.result.summary")
+    .replace("{node}", node?.nameJa || pq.nodeId)
+    .replace("{diff}", QUEST_DIFFICULTY_LABEL[pq.difficulty][getLang() === "en" ? "en" : "ja"]);
+  $("questResultSummary").textContent = subText;
+
+  // 報酬一覧
+  const rewards = pq.rewards || {};
+  const rewardItems = Object.entries(rewards);
+  if (rewardItems.length === 0) {
+    $("questResultRewards").innerHTML = `<p class="quest-result__no-reward">${escapeHtml(ti18n("quest.result.noReward"))}</p>`;
+  } else {
+    $("questResultRewards").innerHTML = rewardItems.map(([id, qty]) => {
+      return `<div class="quest-result__reward">
+        <img src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, getLang()))}" onerror="this.style.opacity='0.2'" />
+        <span class="quest-result__reward-name">${escapeHtml(materialName(id, getLang()))}</span>
+        <strong class="quest-result__reward-qty">×${qty}</strong>
+      </div>`;
+    }).join("");
+  }
+
+  // 配属ヒーロー (HP 0 で帰還)
+  $("questResultTeam").innerHTML = pq.team.filter(id => id != null).map(id => {
+    const h = findHero(id);
+    if (!h) return "";
+    return `<div class="quest-result__hero">
+      <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span>${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+      <span class="quest-result__hero-hp">HP 0/${h.stamina.max}</span>
+    </div>`;
+  }).join("");
+}
+
+function closeQuestResultScreen() {
+  $("questResultModal")?.classList.add("hidden");
+  state.pendingQuestResult = null;
+  // クエストチームを reset (体力 0 のため再選択は別途)
+  state.questTeam = [null, null, null];
+  resumeTime();
+  renderQuestOverlay();
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える) */
@@ -1463,6 +1768,7 @@ async function init() {
   renderHeroList();
   renderWorkshop();
   renderNotifications();
+  renderQuestOverlay();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");
@@ -1513,6 +1819,11 @@ async function init() {
         return;
       }
       if (key === "market") { openMarketView(); return; }
+      if (key === "quest")  {
+        if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+        openQuestView();
+        return;
+      }
       openStub(key);
     });
   });
@@ -1545,6 +1856,47 @@ async function init() {
 
   // ── Market view: 倉庫タブ (Phase 1B-5) ──
   $("marketViewBack")?.addEventListener("click", closeMarketView);
+
+  // ── Quest view (Phase 1C-1) ──
+  $("questViewBack")?.addEventListener("click", closeQuestView);
+  $("questNodeList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-node]");
+    if (!btn) return;
+    state.questPickedNodeId = btn.getAttribute("data-node");
+    renderQuestView();
+  });
+  $("questDiffList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-diff]");
+    if (!btn) return;
+    state.questPickedDifficulty = btn.getAttribute("data-diff");
+    renderQuestView();
+  });
+  $("questHeroPick")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-hero]");
+    if (!btn) return;
+    const hid = parseInt(btn.getAttribute("data-hero"), 10);
+    if (!Number.isFinite(hid)) return;
+    // toggle: 既に居れば外す、いなければ空きスロットへ
+    const idx = state.questTeam.indexOf(hid);
+    if (idx >= 0) {
+      state.questTeam[idx] = null;
+    } else {
+      const empty = state.questTeam.indexOf(null);
+      if (empty >= 0) state.questTeam[empty] = hid;
+    }
+    renderQuestView();
+  });
+  $("questTeamSlots")?.addEventListener("click", (ev) => {
+    const slot = ev.target.closest(".quest-team__slot--filled");
+    if (!slot) return;
+    const idx = parseInt(slot.getAttribute("data-slot"), 10);
+    if (Number.isFinite(idx)) {
+      state.questTeam[idx] = null;
+      renderQuestView();
+    }
+  });
+  $("questStartBtn")?.addEventListener("click", startActiveQuest);
+  $("questResultClose")?.addEventListener("click", closeQuestResultScreen);
 
   // ── Craft view bindings (Phase 1B) ──
   $("craftViewBack")?.addEventListener("click", () => {
@@ -1638,6 +1990,11 @@ async function init() {
       renderAppraisalScreen();
     }
     if (!$("marketView")?.classList.contains("hidden")) renderMarketWarehouse();
+    if (!$("questView")?.classList.contains("hidden")) renderQuestView();
+    if (state.pendingQuestResult != null && !$("questResultModal")?.classList.contains("hidden")) {
+      renderQuestResultScreen();
+    }
+    renderQuestOverlay();
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -1657,6 +2014,8 @@ async function init() {
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
     if (!$("stubView")?.classList.contains("hidden")) { closeStub(); return; }
     if (!$("marketView")?.classList.contains("hidden")) { closeMarketView(); return; }
+    if (!$("questView")?.classList.contains("hidden")) { closeQuestView(); return; }
+    if (!$("questResultModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("menuOverlay")?.classList.contains("hidden")) { closeMenu(); return; }
   });
 }
