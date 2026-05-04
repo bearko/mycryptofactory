@@ -110,6 +110,7 @@ import {
   NORMAL_NODES,
   NODE_BY_ID,
   teamQuestLevel,
+  heroQuestLevelBreakdown,
   questSuccessRate,
   successRateCommentKey,
   rollQuestRewards,
@@ -511,47 +512,105 @@ function closeQuestView() {
 }
 
 function renderQuestView() {
-  // ノード一覧 (4 通常ノード)。Phase 1D-9: 名前に "node : " 接頭辞 +
-  // 難易度に応じた取得可能素材アイコンを動的表示 (上級だけレア素材)
   const lang = getLang() === "en" ? "en" : "ja";
-  const isHard = state.questPickedDifficulty === "hard";
-  $("questNodeList").innerHTML = NORMAL_NODES.map(n => {
-    const sel = n.id === state.questPickedNodeId ? " quest-node--sel" : "";
-    // 表示する素材: 通常素材は常に、レア素材 (poolHighTier) は hard のみ
+
+  // 1. ノードカード (4 通常ノード) — 背景画像 + 名前 + 素材アイコン (常に rare 含む) + 選択 ボタン
+  $("questNodeCards").innerHTML = NORMAL_NODES.map(n => {
+    const sel = n.id === state.questPickedNodeId ? " quest-node-card--sel" : "";
+    const bg = `./Image/Factory/quest-node-${n.id}.png`;
     const matIds = [];
     const seen = new Set();
     for (const id of (n.poolNormal || [])) {
       if (!seen.has(id)) { seen.add(id); matIds.push(id); }
     }
+    for (const id of (n.poolHighTier || [])) {
+      if (!seen.has(id)) { seen.add(id); matIds.push(id); }
+    }
+    const matsHtml = matIds.map(id => {
+      const isRare = (n.poolHighTier || []).includes(id);
+      return `<img class="quest-node-card__mat${isRare ? " quest-node-card__mat--rare" : ""}" src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" title="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />`;
+    }).join("");
+    const displayName = `node : ${lang === "en" ? (n.nameEn || n.nameJa) : n.nameJa}`;
+    return `<div class="quest-node-card${sel}" data-node-card="${n.id}">
+      <div class="quest-node-card__bg" style="background-image:url('${bg}')"></div>
+      <span class="quest-node-card__name">${escapeHtml(displayName)}</span>
+      <div class="quest-node-card__mats">${matsHtml}</div>
+      <button type="button" class="quest-node-card__sel-btn" data-node="${n.id}">${escapeHtml(ti18n("quest.pickBtn"))}</button>
+    </div>`;
+  }).join("");
+
+  // 2-A. 詳細プレビュー (左)
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  const team = state.questTeam.map(id => id == null ? null : findHero(id));
+  const baseLv = QUEST_BASE_LEVEL[state.questPickedDifficulty];
+  const teamLv = teamQuestLevel(team);
+  const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
+  const commentKey = successRateCommentKey(rate);
+  const isHard = state.questPickedDifficulty === "hard";
+  const detailMatIds = [];
+  if (node) {
+    const seen2 = new Set();
+    for (const id of (node.poolNormal || [])) {
+      if (!seen2.has(id)) { seen2.add(id); detailMatIds.push(id); }
+    }
     if (isHard) {
-      for (const id of (n.poolHighTier || [])) {
-        if (!seen.has(id)) { seen.add(id); matIds.push(id); }
+      for (const id of (node.poolHighTier || [])) {
+        if (!seen2.has(id)) { seen2.add(id); detailMatIds.push(id); }
       }
     }
-    const matsHtml = matIds.length === 0 ? "" : `<span class="quest-node__mats">${matIds.map(id => {
-      const isRare = (n.poolHighTier || []).includes(id);
-      return `<img class="quest-node__mat${isRare ? " quest-node__mat--rare" : ""}" src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" title="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />`;
-    }).join("")}</span>`;
-    const displayName = `node : ${lang === "en" ? (n.nameEn || n.nameJa) : n.nameJa}`;
-    return `<button type="button" class="quest-node${sel}" data-node="${n.id}">
-      <span class="quest-node__name">${escapeHtml(displayName)}</span>
-      <span class="quest-node__note">${escapeHtml(extractNote(n.note, getLang()))}</span>
-      ${matsHtml}
-    </button>`;
+  }
+  const diffLabel = QUEST_DIFFICULTY_LABEL[state.questPickedDifficulty][lang];
+  const rateText = rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%");
+  const rateAttr  = rate < 0 ? "blocked" : Math.round(rate * 100);
+  $("questDetailPanel").innerHTML = node ? `
+    <div class="quest-detail-panel__head">
+      <span class="quest-detail-panel__name">node : ${escapeHtml(lang === "en" ? (node.nameEn || node.nameJa) : node.nameJa)}</span>
+      <span class="quest-detail-panel__diff">${escapeHtml(diffLabel)}</span>
+    </div>
+    <div class="quest-detail-panel__mats-label">${escapeHtml(ti18n("quest.detail.mats"))}</div>
+    <div class="quest-detail-panel__mats">
+      ${detailMatIds.map(id => {
+        const isRare = (node.poolHighTier || []).includes(id);
+        return `<div class="quest-detail-panel__mat${isRare ? " quest-detail-panel__mat--rare" : ""}">
+          <img src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />
+          <span>${escapeHtml(materialName(id, lang))}</span>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="quest-detail-panel__lv">${escapeHtml(ti18n("quest.detail.questLv"))}: <strong>${teamLv}</strong> / ${baseLv}</div>
+    <div class="quest-detail-panel__rate">${escapeHtml(ti18n("quest.detail.rate"))}: <strong data-rate="${rateAttr}">${escapeHtml(rateText)}</strong></div>
+    <div class="quest-detail-panel__mai">
+      <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
+      <p>${escapeHtml(ti18n(commentKey))}</p>
+    </div>
+  ` : `<p style="color:var(--muted);text-align:center;padding:1rem;">${escapeHtml(ti18n("quest.detail.empty"))}</p>`;
+
+  // 2-B. 難易度行 (右)
+  $("questDiffRows").innerHTML = ["easy", "normal", "hard"].map(d => {
+    const sel = d === state.questPickedDifficulty ? " quest-diff-row__btn--sel" : "";
+    const label = QUEST_DIFFICULTY_LABEL[d][lang];
+    const baseLvD = QUEST_BASE_LEVEL[d];
+    const weeksD  = QUEST_DURATION_WEEKS[d];
+    // 当該難易度で取れる素材
+    const matsForD = [];
+    if (node) {
+      const seen3 = new Set();
+      for (const id of (node.poolNormal || [])) { if (!seen3.has(id)) { seen3.add(id); matsForD.push({ id, rare: false }); } }
+      if (d === "hard") {
+        for (const id of (node.poolHighTier || [])) { if (!seen3.has(id)) { seen3.add(id); matsForD.push({ id, rare: true }); } }
+      }
+    }
+    const matsHtml = matsForD.slice(0, 6).map(m => `<img class="${m.rare ? "quest-diff-row__mat--rare" : ""}" src="${materialIcon(m.id)}" alt="${escapeHtml(materialName(m.id, lang))}" title="${escapeHtml(materialName(m.id, lang))}" onerror="this.style.opacity='0.2'" />`).join("");
+    return `<div class="quest-diff-row__btn${sel}">
+      <span class="quest-diff-row__diff-name">${escapeHtml(label)}</span>
+      <span class="quest-diff-row__field"><span class="quest-diff-row__field-label">Quest Lv.</span><span class="quest-diff-row__field-val">${baseLvD.toLocaleString()}</span></span>
+      <span class="quest-diff-row__field"><span class="quest-diff-row__field-label">Week</span><span class="quest-diff-row__field-val">${weeksD}週</span></span>
+      <span class="quest-diff-row__mats">${matsHtml}</span>
+      <button type="button" class="quest-diff-row__sel-btn" data-diff="${d}">${escapeHtml(ti18n("quest.pickBtn"))}</button>
+    </div>`;
   }).join("");
 
-  // 難易度ボタン
-  $("questDiffList").innerHTML = ["easy", "normal", "hard"].map(d => {
-    const sel = d === state.questPickedDifficulty ? " quest-diff--sel" : "";
-    const label = QUEST_DIFFICULTY_LABEL[d][getLang() === "en" ? "en" : "ja"];
-    return `<button type="button" class="quest-diff${sel}" data-diff="${d}">
-      <span class="quest-diff__label">${escapeHtml(label)}</span>
-      <span class="quest-diff__weeks">${QUEST_DURATION_WEEKS[d]}${ti18n("craft.weeks").replace("{n}", "").trim() || "wk"}</span>
-    </button>`;
-  }).join("");
-
-  // パーティ (3 枠) — クラフト編成と同じノリで heroes 一覧から pick
-  const team = state.questTeam.map(id => id == null ? null : findHero(id));
+  // 3. パーティ (3 枠) — クラフト編成と同じノリで heroes 一覧から pick
   $("questTeamSlots").innerHTML = state.questTeam.map((id, idx) => {
     if (id == null) return `<div class="quest-team__slot" data-slot="${idx}">+</div>`;
     const h = findHero(id);
@@ -562,9 +621,8 @@ function renderQuestView() {
     </div>`;
   }).join("");
 
-  // ヒーロー候補リスト (questing/crafting/resting ではないもの優先表示)
+  // Phase 1D-11: ヒーロー候補リスト — クエストレベル + ⓘ + HP
   const eligible = state.ownedHeroes.slice().sort((a, b) => {
-    // 優先: idle → resting (HP min) → questing/crafting (assigned に出てこないが念の為)
     const rank = (h) => {
       if (state.questTeam.includes(h.heroId)) return 0;
       if (h.state === HERO_STATE.IDLE) return 1;
@@ -576,43 +634,60 @@ function renderQuestView() {
   $("questHeroPick").innerHTML = eligible.slice(0, 30).map(h => {
     const inTeam = state.questTeam.includes(h.heroId);
     const stamPct = h.stamina.max > 0 ? (h.stamina.current / h.stamina.max * 100) : 0;
-    const ql = Math.round(((h.element.garuda || 0) + (h.element.ifrit || 0) +
-                           (h.element.leviathan || 0) + (h.element.tiamat || 0)) * (stamPct / 100));
+    const bd = heroQuestLevelBreakdown(h);
     return `<button type="button" class="quest-hero-pick${inTeam ? " quest-hero-pick--in" : ""}" data-hero="${h.heroId}" ${h.state === HERO_STATE.CRAFTING ? "disabled" : ""}>
       <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
       <span class="quest-hero-pick__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
-      <span class="quest-hero-pick__ql">QL ${ql}</span>
+      <span class="quest-hero-pick__ql-row">
+        <span class="quest-hero-pick__ql">QL ${bd.ql}</span>
+        <span class="quest-hero-pick__ql-info" data-ql-info="${h.heroId}" title="${escapeHtml(ti18n("quest.qlInfo.title"))}">i</span>
+      </span>
       <span class="quest-hero-pick__hp">HP ${h.stamina.current}/${h.stamina.max}</span>
     </button>`;
   }).join("");
 
-  // 成功率 + マイのコメント
-  const node = NODE_BY_ID[state.questPickedNodeId];
-  const baseLv = QUEST_BASE_LEVEL[state.questPickedDifficulty];
-  const teamLv = teamQuestLevel(team);
-  const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
-  const commentKey = successRateCommentKey(rate);
+  // 出発 ボタン enable/disable
   const startBtn = $("questStartBtn");
   if (rate < 0 || state.questTeam.filter(x => x != null).length === 0) {
     startBtn.disabled = true;
   } else {
     startBtn.disabled = false;
   }
-  $("questSummary").innerHTML = `
-    <div class="quest-summary__row">
-      <span class="quest-summary__label">${escapeHtml(ti18n("quest.teamLevel"))}:</span>
-      <strong>${teamLv}</strong>
-      <span class="quest-summary__sep">/</span>
-      <span class="quest-summary__base">${baseLv}</span>
+}
+
+/** Phase 1D-11: ヒーロークエストレベル内訳ポップアップ */
+function openQlInfoModal(heroId) {
+  const hero = findHero(heroId);
+  if (!hero) return;
+  const bd = heroQuestLevelBreakdown(hero);
+  const name = tHero(hero.heroId, hero.nameJa);
+  const body = $("qlInfoBody");
+  if (!body) return;
+  body.innerHTML = `
+    <div class="ql-info-row"><span style="font-weight:700">${escapeHtml(name)}</span></div>
+    <div class="ql-info-row">
+      <span>${escapeHtml(ti18n("quest.qlInfo.base"))}</span>
+      <strong>${bd.base}</strong>
     </div>
-    <div class="quest-summary__row">
-      <span class="quest-summary__label">${escapeHtml(ti18n("quest.successRate"))}:</span>
-      <strong class="quest-summary__rate" data-rate="${rate < 0 ? "blocked" : Math.round(rate * 100)}">
-        ${rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%")}
-      </strong>
+    <div class="ql-info-row">
+      <span>${escapeHtml(ti18n("quest.qlInfo.hpRatio"))} (${bd.currentHp}/${bd.maxHp})</span>
+      <strong>×${bd.hpRatioPct}%</strong>
     </div>
-    <p class="quest-summary__mai">${escapeHtml(ti18n(commentKey))}</p>
+    <div class="ql-info-row">
+      <span>${escapeHtml(ti18n("quest.qlInfo.noBoost"))} ${bd.hasNo ? "✓ 農" : "—"}</span>
+      <strong>×${bd.noBoost.toFixed(1)}</strong>
+    </div>
+    <div class="ql-info-row ql-info-row--total">
+      <span>${escapeHtml(ti18n("quest.qlInfo.total"))}</span>
+      <strong>${bd.ql}</strong>
+    </div>
   `;
+  $("qlInfoModal")?.classList.remove("hidden");
+  pauseTime();
+}
+function closeQlInfoModal() {
+  $("qlInfoModal")?.classList.add("hidden");
+  resumeTime();
 }
 
 function extractNote(note, lang) {
@@ -3066,19 +3141,35 @@ async function init() {
     if (e.target.id === "sellModal") closeSellModal();
   });
 
-  // ── Quest view (Phase 1C-1) ──
+  // ── Quest view (Phase 1C-1 / 1D-11) ──
   $("questViewBack")?.addEventListener("click", closeQuestView);
-  $("questNodeList")?.addEventListener("click", (ev) => {
-    const btn = ev.target.closest("[data-node]");
+  // ノードカード「選択」ボタン (or カード自体)
+  $("questNodeCards")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-node]") || ev.target.closest("[data-node-card]");
     if (!btn) return;
-    state.questPickedNodeId = btn.getAttribute("data-node");
+    state.questPickedNodeId = btn.getAttribute("data-node") || btn.getAttribute("data-node-card");
     renderQuestView();
   });
-  $("questDiffList")?.addEventListener("click", (ev) => {
+  // 難易度行「選択」ボタン
+  $("questDiffRows")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-diff]");
     if (!btn) return;
     state.questPickedDifficulty = btn.getAttribute("data-diff");
     renderQuestView();
+  });
+  // ヒーローカードの ⓘ ボタン (event 委譲: questHeroPick の click hook で吸収)
+  $("questHeroPick")?.addEventListener("click", (ev) => {
+    const info = ev.target.closest("[data-ql-info]");
+    if (info) {
+      ev.stopPropagation();
+      const hid = parseInt(info.getAttribute("data-ql-info"), 10);
+      if (Number.isFinite(hid)) openQlInfoModal(hid);
+    }
+  }, true);  // capture phase でヒーロー toggle より先に拾う
+  // QL info popup close
+  $("qlInfoClose")?.addEventListener("click", closeQlInfoModal);
+  $("qlInfoModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "qlInfoModal") closeQlInfoModal();
   });
   $("questHeroPick")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-hero]");
@@ -3221,6 +3312,7 @@ async function init() {
     if (ev.key !== "Escape") return;
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
+    if (!$("qlInfoModal")?.classList.contains("hidden")) { closeQlInfoModal(); return; }
     if (!$("sellModal")?.classList.contains("hidden")) { closeSellModal(); return; }
     if (!$("hireSuccessModal")?.classList.contains("hidden")) { closeHireSuccessModal(); return; }
     if (!$("fireModal")?.classList.contains("hidden")) { cancelFire(); return; }
