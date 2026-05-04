@@ -1319,33 +1319,54 @@
       font-size: 0.7rem; color: var(--accent);
       font-variant-numeric: tabular-nums;
     }
+    /* Phase 1D-9: 編成エリアと候補一覧を横並び */
+    .quest-edit-row {
+      display: grid;
+      grid-template-columns: minmax(240px, 320px) 1fr;
+      gap: 0.6rem;
+    }
+    @media (max-width: 720px) {
+      .quest-edit-row { grid-template-columns: 1fr; }
+    }
+    .quest-section--team { min-width: 0; }
+    .quest-section--pick { min-width: 0; }
+
+    /* 編成スロットを縦積み (横並び時に左カラム幅に収まるように) */
     .quest-team-slots {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+      display: grid; grid-template-columns: 1fr; gap: 0.35rem;
+    }
+    @media (min-width: 721px) {
+      .quest-team-slots { max-width: 320px; }
     }
     .quest-team__slot {
-      aspect-ratio: 1 / 1;
       background: var(--panel-2);
       border: 2px dashed var(--border);
       border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.85rem; color: var(--muted);
+      gap: 0.5rem;
+      padding: 0.4rem 0.55rem;
+      font-size: 0.78rem; color: var(--muted);
       overflow: hidden;
       position: relative;
       cursor: pointer;
+      min-height: 56px;
     }
     .quest-team__slot--filled {
       border-style: solid;
       border-color: var(--accent);
+      color: var(--text);
+      font-weight: 700;
+      justify-content: flex-start;
     }
     .quest-team__slot img {
-      width: 100%; height: 100%; object-fit: cover;
+      width: 44px; height: 44px;
+      flex-shrink: 0;
+      object-fit: contain;
       image-rendering: pixelated;
     }
     .quest-team__slot-name {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.65); color: #fff;
-      font-size: 0.55rem; line-height: 1; padding: 1px 2px;
-      text-align: center;
+      flex: 1; min-width: 0;
+      font-size: 0.78rem; line-height: 1.2;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .quest-summary {
@@ -1370,7 +1391,9 @@
       line-height: 1.4;
     }
     .quest-hero-pick {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.35rem;
     }
     .quest-hero-pick > button {
       appearance: none;
@@ -2930,6 +2953,7 @@
     </div>
     <div class="menu-card hidden" id="heroSubmenu" aria-label="Hero submenu">
       <button type="button" class="menu-item" data-hero-action="craft-team" data-i18n="menu.hero.craftTeam">クラフトチーム</button>
+      <button type="button" class="menu-item" data-hero-action="hire" data-i18n="menu.hero.hire">雇用</button>
     </div>
     <div class="menu-card hidden" id="questSubmenu" aria-label="Quest submenu">
       <button type="button" class="menu-item" data-quest-filter="normal" data-i18n="menu.quest.normal">通常node</button>
@@ -2937,7 +2961,6 @@
     </div>
     <div class="menu-card hidden" id="marketSubmenu" aria-label="Market submenu">
       <button type="button" class="menu-item" data-market-tab-direct="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
-      <button type="button" class="menu-item" data-market-tab-direct="hire" data-i18n="market.tab.hire">雇用</button>
       <button type="button" class="menu-item" data-market-tab-direct="sell" data-i18n="market.tab.sell">出品</button>
     </div>
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
@@ -3135,15 +3158,18 @@
         <h3 class="quest-section__title" data-i18n="quest.diff.label">難易度</h3>
         <div class="quest-diff-list" id="questDiffList"></div>
       </section>
-      <section class="quest-section">
-        <h3 class="quest-section__title" data-i18n="quest.team.label">編成 (最大 3 体)</h3>
-        <div class="quest-team-slots" id="questTeamSlots"></div>
-        <div class="quest-summary" id="questSummary"></div>
-      </section>
-      <section class="quest-section">
-        <h3 class="quest-section__title" data-i18n="quest.candidates.label">ヒーローを選んで配属</h3>
-        <div class="quest-hero-pick" id="questHeroPick"></div>
-      </section>
+      <!-- Phase 1D-9: 編成 + ヒーロー一覧を横並び (wide ≥ 720px) -->
+      <div class="quest-edit-row">
+        <section class="quest-section quest-section--team">
+          <h3 class="quest-section__title" data-i18n="quest.team.label">編成 (最大 3 体)</h3>
+          <div class="quest-team-slots" id="questTeamSlots"></div>
+          <div class="quest-summary" id="questSummary"></div>
+        </section>
+        <section class="quest-section quest-section--pick">
+          <h3 class="quest-section__title" data-i18n="quest.candidates.label">ヒーローを選んで配属</h3>
+          <div class="quest-hero-pick" id="questHeroPick"></div>
+        </section>
+      </div>
       <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
     </div>
   </div>
