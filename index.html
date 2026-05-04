@@ -13,13 +13,13 @@
   <meta property="og:type" content="website" />
   <meta property="og:title" content="MyCryptoFactory — α version" />
   <meta property="og:description" content="MCH 経済圏ベースの工房経営シム。クラフト受注・クエストで素材調達・GUM を稼ぐサイクルを楽しもう。" />
-  <meta property="og:url" content="https://mycryptotactics.vercel.app/" />
-  <meta property="og:image" content="https://mycryptotactics.vercel.app/og-image.png" />
+  <meta property="og:url" content="https://mycryptofactory.vercel.app/" />
+  <meta property="og:image" content="https://mycryptofactory.vercel.app/og-image.png" />
   <meta property="og:site_name" content="MyCryptoFactory" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="MyCryptoFactory — α version" />
   <meta name="twitter:description" content="MCH 経済圏ベースの工房経営シム。" />
-  <meta name="twitter:image" content="https://mycryptotactics.vercel.app/og-image.png" />
+  <meta name="twitter:image" content="https://mycryptofactory.vercel.app/og-image.png" />
 
   <style>html, body { background: #121018; color: #e6e0f0; margin: 0; }</style>
   <link rel="preconnect" href="https://raw.githubusercontent.com" />
@@ -1188,6 +1188,51 @@
       font-size: 0.72rem;
     }
 
+    /* Sale progress overlay (Phase 1D-10) — 出品中の ext を縦に列挙 */
+    .sale-overlay {
+      position: relative;
+      width: 100%;
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 0;
+    }
+    .sale-overlay.hidden { display: none !important; }
+    .sale-overlay__row {
+      width: 100%;
+      background: linear-gradient(90deg, rgba(94,72,30,0.92) 0%, rgba(60,46,18,0.92) 100%);
+      backdrop-filter: blur(2px);
+      color: #fdf3d3;
+      display: grid;
+      grid-template-columns: 24px 1fr auto auto;
+      align-items: center; gap: 0.5rem;
+      padding: 0.32rem 0.6rem;
+      font-size: 0.74rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .sale-overlay__icon {
+      width: 24px; height: 24px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 3px;
+    }
+    .sale-overlay__main { display: flex; flex-direction: column; min-width: 0; }
+    .sale-overlay__name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sale-overlay__seller { color: #ddd; font-size: 0.68rem; opacity: 0.85; }
+    .sale-overlay__remain {
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.3);
+      font-size: 0.68rem;
+    }
+    .sale-overlay__bar {
+      width: 80px; height: 6px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 3px; overflow: hidden;
+    }
+    .sale-overlay__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, #ffe79c 100%);
+      transition: width 1s linear;
+    }
+
     /* Quest progress overlay (Phase 1C-1) — ホーム画面の上部にバー表示。
        Phase 1D で workshop 内 overlay 化したので背景に半透明の黒を被せて
        コントラストを確保 + backdrop-filter で workshop 画像を少しぼかす。 */
@@ -1314,6 +1359,22 @@
     }
     .quest-node__note {
       font-size: 0.68rem; color: var(--muted);
+    }
+    /* Phase 1D-10: ノードごとの取得可能素材アイコン (上級でレア素材も表示) */
+    .quest-node__mats {
+      display: flex; gap: 0.2rem; flex-wrap: wrap;
+      margin-top: 0.25rem;
+    }
+    .quest-node__mat {
+      width: 18px; height: 18px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .quest-node__mat--rare {
+      box-shadow: 0 0 0 1.5px var(--accent);
+      background: rgba(196, 163, 90, 0.18);
     }
     .quest-diff__weeks {
       font-size: 0.7rem; color: var(--accent);
@@ -2912,6 +2973,8 @@
         <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
         <!-- Hire progress overlay (Phase 1D-7) — 雇用中のみ表示 -->
         <div class="hire-overlay hidden" id="hireOverlay" aria-live="polite"></div>
+        <!-- Sale progress overlay (Phase 1D-10) — 出品中のみ表示 (1〜複数件) -->
+        <div class="sale-overlay hidden" id="saleOverlay" aria-live="polite"></div>
         <!-- Notification banner (Phase 1B-2) — passive 発動などで表示、3 秒で消える -->
         <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
       </div>
