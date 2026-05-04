@@ -458,21 +458,24 @@
     .order-panel--empty .order-panel__icon { background: #4a4438; }
     .order-panel--empty .order-panel__bar-fill { width: 0; }
 
-    /* Menu modal */
+    /* Menu modal — Phase 1D-7: 左寄せ + サブメニュー対応 */
     .menu-overlay {
       position: fixed; inset: 0; z-index: 200;
       background: transparent;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding-top: 4rem;
+      display: flex; align-items: flex-start; justify-content: flex-start;
+      padding: 4rem 0 0 5%;
+      gap: 0.6rem;
+      pointer-events: none;
     }
     .menu-overlay.hidden { display: none !important; }
+    .menu-overlay > * { pointer-events: auto; }
     .menu-card {
       background: #ece6d6;
       border: 2px solid #1a1420;
       border-radius: 4px;
       padding: 0.6rem;
       display: flex; flex-direction: column; gap: 0.5rem;
-      min-width: 200px;
+      min-width: 180px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     .menu-item {
@@ -487,6 +490,7 @@
       text-align: center;
     }
     .menu-item:hover { background: #fdf3d3; }
+    .menu-item--active { background: #fdf3d3; border-color: #1a1420; }
     .menu-item:disabled {
       opacity: 0.5; cursor: not-allowed;
       background: #d2c7a8; color: #5a4f3f;
@@ -1132,6 +1136,46 @@
     }
     .warehouse-item__score-num strong { color: var(--accent); font-size: 0.9rem; }
 
+    /* Hire progress overlay (Phase 1D-7) — 雇用中のみホーム画面上部に表示 */
+    .hire-overlay {
+      position: relative;
+      width: 100%;
+      background: linear-gradient(90deg, rgba(196,163,90,0.92) 0%, rgba(150,118,52,0.92) 70%, rgba(94,72,30,0.92) 100%);
+      backdrop-filter: blur(2px);
+      color: #1a1420;
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.6rem 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .hire-overlay.hidden { display: none !important; }
+    .hire-overlay__label { color: #4a3f33; font-weight: 700; }
+    .hire-overlay__plan { font-weight: 800; }
+    .hire-overlay__bar {
+      flex: 1;
+      display: inline-block;
+      height: 8px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .hire-overlay__bar-fill {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #fff 0%, #ece6d6 100%);
+      transition: width 1s linear;
+    }
+    .hire-overlay__pct { font-weight: 800; min-width: 2.5rem; text-align: right; }
+    .hire-overlay__remain {
+      margin-left: auto;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.25);
+      color: #fdf3d3;
+      font-size: 0.72rem;
+    }
+
     /* Quest progress overlay (Phase 1C-1) — ホーム画面の上部にバー表示。
        Phase 1D で workshop 内 overlay 化したので背景に半透明の黒を被せて
        コントラストを確保 + backdrop-filter で workshop 画像を少しぼかす。 */
@@ -1614,6 +1658,214 @@
       font-size: 0.78rem;
     }
     .hire-cand-skip:hover { color: var(--text); border-color: var(--accent); }
+
+    /* Phase 1D-7: 詳細候補カード (portrait + 元素値 + コスト + 雇用ボタン) */
+    .hire-cand-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.5rem; }
+    .hire-cand-card {
+      background: var(--panel-2);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem;
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .hire-cand-card[data-rarity="legendary"] { border-color: #c45c6a; }
+    .hire-cand-card[data-rarity="epic"]      { border-color: #c4a35a; }
+    .hire-cand-card[data-rarity="rare"]      { border-color: #5ab4c4; }
+    .hire-cand-card[data-rarity="uncommon"]  { border-color: #5ecf8a; }
+    .hire-cand-card__head { display: flex; gap: 0.5rem; align-items: center; }
+    .hire-cand-card__portrait {
+      width: 56px; height: 56px;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border-radius: 6px;
+      background: #1a1420;
+      flex-shrink: 0;
+    }
+    .hire-cand-card__name-block { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+    .hire-cand-card__name-row { display: flex; gap: 0.3rem; align-items: center; flex-wrap: wrap; }
+    .hire-cand-card__name { font-weight: 800; font-size: 0.85rem; color: var(--text); }
+    .hire-cand-card__rarity {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      align-self: flex-start;
+      background: #5b6b8a; color: #fff;
+    }
+    .hire-cand-card__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hire-cand-card__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hire-cand-card__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-cand-card__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hire-cand-card__elements {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.2rem;
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .hire-cand__el {
+      display: inline-flex; align-items: center; gap: 0.18rem;
+    }
+    .hire-cand__el img { width: 14px; height: 14px; image-rendering: pixelated; }
+    .hire-cand-card__foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.4rem;
+    }
+    .hire-cand-card__cost { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .hire-cand-card__hire-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.35rem 0.8rem;
+      font-weight: 800; font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .hire-cand-card__hire-btn:disabled { opacity: 0.45; cursor: not-allowed; background: var(--panel-2); color: var(--muted); }
+
+    /* Phase 1D-7: 雇用成功ポップアップ */
+    .hire-success {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.85);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+      animation: hire-success-fade 0.32s ease-out;
+    }
+    .hire-success.hidden { display: none !important; }
+    @keyframes hire-success-fade { from { opacity: 0; } to { opacity: 1; } }
+    .hire-success__card {
+      max-width: 360px; width: 100%;
+      background: var(--panel);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.2rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+      color: var(--text);
+      animation: hire-success-pop 0.42s cubic-bezier(0.18, 1.16, 0.5, 1.05);
+    }
+    @keyframes hire-success-pop {
+      from { transform: scale(0.85); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .hire-success__title {
+      margin: 0;
+      color: var(--accent);
+      font-size: 1.1rem;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+    .hire-success__portrait {
+      width: 96px; height: 96px;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border-radius: 8px;
+      background: #2a2438;
+      border: 2px solid var(--accent);
+      filter: drop-shadow(0 0 12px rgba(196,163,90,0.55));
+    }
+    .hire-success__head-info {
+      display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+    }
+    .hire-success__name { font-weight: 800; font-size: 1rem; }
+    .hire-success__rarity {
+      padding: 0.06rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .hire-success__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hire-success__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hire-success__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-success__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hire-success__msg { margin: 0; font-size: 0.85rem; color: var(--muted); text-align: center; }
+    .hire-success__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.5rem;
+      font-weight: 800; cursor: pointer;
+    }
+
+    /* Phase 1D-7: 解雇 modal */
+    .fire-modal {
+      position: fixed; inset: 0; z-index: 296;
+      background: rgba(15, 12, 22, 0.86);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .fire-modal.hidden { display: none !important; }
+    .fire-modal__card {
+      max-width: 480px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      max-height: 90vh; overflow-y: auto;
+      color: var(--text);
+    }
+    .fire-modal__title {
+      margin: 0; color: var(--ifrit);
+      font-size: 1.05rem; text-align: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+    }
+    .fire-modal__desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+    .fire-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+    .fire-cand {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      color: var(--text);
+      position: relative;
+    }
+    .fire-cand:hover { border-color: var(--ifrit); }
+    .fire-cand--disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+    .fire-cand--disabled:hover { border-color: var(--border); }
+    .fire-cand img {
+      width: 56px; height: 56px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .fire-cand__name { font-weight: 700; font-size: 0.78rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fire-cand__rarity {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.6rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .fire-cand__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .fire-cand__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .fire-cand__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .fire-cand__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .fire-cand__cl { font-size: 0.7rem; color: var(--muted); }
+    .fire-cand__lock {
+      position: absolute; top: 4px; right: 4px;
+      font-size: 0.6rem; color: var(--muted);
+      background: rgba(0,0,0,0.5); padding: 0.05rem 0.25rem; border-radius: 4px;
+    }
+    .fire-modal__buttons { display: flex; gap: 0.4rem; justify-content: flex-end; }
+    .fire-modal__cancel {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.45rem 1.2rem;
+      cursor: pointer; font-weight: 700;
+    }
 
     /* Market 出品タブ (Phase 1D-4) */
     .market-sell__section { margin-bottom: 0.85rem; }
@@ -2623,6 +2875,8 @@
       <div class="workshop__overlays">
         <!-- Quest progress overlay (Phase 1C-1) — クエスト中のみ表示 -->
         <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
+        <!-- Hire progress overlay (Phase 1D-7) — 雇用中のみ表示 -->
+        <div class="hire-overlay hidden" id="hireOverlay" aria-live="polite"></div>
         <!-- Notification banner (Phase 1B-2) — passive 発動などで表示、3 秒で消える -->
         <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
       </div>
@@ -2648,7 +2902,7 @@
     </div>
   </div>
 
-  <!-- Menu overlay -->
+  <!-- Menu overlay (Phase 1D-7: 左寄せ + マーケットサブメニュー) -->
   <div class="menu-overlay hidden" id="menuOverlay" role="dialog" aria-modal="true" aria-label="Menu">
     <div class="menu-card">
       <button type="button" class="menu-item" data-menu="craft" data-i18n="menu.craft">クラフト</button>
@@ -2657,6 +2911,12 @@
       <button type="button" class="menu-item" data-menu="shop" data-i18n="menu.shop">ショップ</button>
       <button type="button" class="menu-item" data-menu="market" data-i18n="menu.market">マーケット</button>
       <button type="button" class="menu-item" data-menu="settings" data-i18n="menu.settings">設定</button>
+    </div>
+    <!-- Market submenu — マーケットを選んだときだけ表示 -->
+    <div class="menu-card hidden" id="marketSubmenu" aria-label="Market submenu">
+      <button type="button" class="menu-item" data-market-tab-direct="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
+      <button type="button" class="menu-item" data-market-tab-direct="hire" data-i18n="market.tab.hire">雇用</button>
+      <button type="button" class="menu-item" data-market-tab-direct="sell" data-i18n="market.tab.sell">出品</button>
     </div>
   </div>
 
@@ -2698,6 +2958,32 @@
       <div class="sell-modal__buttons">
         <button type="button" class="sell-modal__cancel" id="sellCancelBtn" data-i18n="sell.cancel">キャンセル</button>
         <button type="button" class="sell-modal__list-btn" id="sellListBtn" data-i18n="sell.list" disabled>この内容で出品</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hire success popup (Phase 1D-7) — 雇用成立した時に portrait 付きで表示 -->
+  <div class="hire-success hidden" id="hireSuccessModal" role="dialog" aria-modal="true">
+    <div class="hire-success__card">
+      <h2 class="hire-success__title" data-i18n="hire.successTitle">採用！</h2>
+      <img class="hire-success__portrait" id="hireSuccessPortrait" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="hire-success__head-info">
+        <span class="hire-success__name" id="hireSuccessName">—</span>
+        <span class="hire-success__rarity" id="hireSuccessRarity" data-rarity="common">—</span>
+      </div>
+      <p class="hire-success__msg" id="hireSuccessMsg">—</p>
+      <button type="button" class="hire-success__close" id="hireSuccessClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Fire modal (Phase 1D-7) — 定員溢れ時に解雇するヒーローを選ばせる -->
+  <div class="fire-modal hidden" id="fireModal" role="dialog" aria-modal="true" aria-labelledby="fireModalTitle">
+    <div class="fire-modal__card">
+      <h2 class="fire-modal__title" id="fireModalTitle" data-i18n="fire.title">解雇するヒーローを選択</h2>
+      <p class="fire-modal__desc" data-i18n="fire.desc">割当中のヒーロー (採用担当 / クラフト / クエスト / 出品担当) は解雇できません。</p>
+      <div class="fire-list" id="fireList"></div>
+      <div class="fire-modal__buttons">
+        <button type="button" class="fire-modal__cancel" id="fireCancelBtn" data-i18n="btn.cancel">キャンセル</button>
       </div>
     </div>
   </div>

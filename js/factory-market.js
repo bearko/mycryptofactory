@@ -214,6 +214,22 @@ export function heroCapAtFactoryLevel(level) {
 /** 待機時間 (週) ─ ユーザー仕様: プラン利用後 1 か月 */
 export const HIRE_WAIT_WEEKS = 4;
 
+/** Phase 1D-7: 1 名の雇用契約金 (rarity 別)。
+ *  プラン費用は候補生成のための先行投資、こちらは候補ごとに個別契約
+ *  するための一時金。ノービス系 (Common) ほど安い。 */
+export const HIRE_COST_BY_RARITY = {
+  common:    100,
+  uncommon:  300,
+  rare:      800,
+  epic:     2500,
+  legendary: 8000,
+};
+
+export function hireCostFor(hero) {
+  const r = hero?.rarity || "common";
+  return HIRE_COST_BY_RARITY[r] || HIRE_COST_BY_RARITY.common;
+}
+
 /**
  * プランの rarityWeights に基づき、HERO_ROSTER の中で「未所有」の
  * ヒーローからランダムに candidateCount 名抽選する。
