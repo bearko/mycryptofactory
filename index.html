@@ -149,15 +149,28 @@
     }
     .factory-header__btn:hover { border-color: var(--accent); }
 
+    /* Workshop overlays container (Phase 1D): クエスト/通知バナーを画像上に
+       重ねる。ワークショップの絶対配置子なので、表示・非表示でレイアウトが
+       押されない。 */
+    .workshop__overlays {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: flex; flex-direction: column;
+      gap: 4px;
+      z-index: 5;
+      pointer-events: none; /* 子要素で個別に有効化 */
+    }
+    .workshop__overlays > * { pointer-events: auto; }
+
     /* Notification banner (passive triggers etc.) */
     .notif-banner {
       width: 100%;
       display: flex; flex-direction: column;
       gap: 2px;
       padding: 4px 8px;
-      background: rgba(20, 16, 30, 0.55);
+      background: rgba(20, 16, 30, 0.78);
+      backdrop-filter: blur(2px);
       border-bottom: 1px solid var(--border);
-      pointer-events: none;
     }
     .notif-banner.hidden { display: none !important; }
     .notif {
@@ -390,7 +403,9 @@
     .order-panel__bar-fill {
       height: 100%;
       background: linear-gradient(90deg, #4caf50 0%, #2e8b32 100%);
-      transition: width 0.3s ease-out;
+      /* Phase 1B 改修: tick (1s) ごとの値変化を 1 秒かけて線形補間し、
+         「フレーム単位で徐々に変化する」進捗ゲージを実現する */
+      transition: width 1s linear;
     }
     .order-panel__pct {
       font-weight: 800; font-size: 1.4rem; color: #1a1420;
@@ -470,9 +485,18 @@
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
     }
     .mai-modal__head {
-      display: flex; align-items: center; gap: 0.5rem;
+      display: flex; align-items: center; gap: 0.55rem;
       border-bottom: 1px solid var(--border);
       padding-bottom: 0.45rem;
+    }
+    .mai-modal__portrait {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
     }
     .mai-modal__name {
       color: var(--accent);
@@ -721,11 +745,24 @@
     .craft-done__el--under     { border-left-color: var(--ifrit); }
     .craft-done__el--under     .craft-done__el-val { color: var(--ifrit); }
     .craft-done__mai {
-      display: flex; flex-direction: column; gap: 0.35rem;
+      display: flex; gap: 0.6rem; align-items: flex-start;
       padding: 0.7rem 0.8rem;
       background: var(--panel-2);
       border-left: 4px solid var(--accent);
       border-radius: 6px;
+    }
+    .craft-done__mai-portrait {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
+    }
+    .craft-done__mai-text {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      flex: 1; min-width: 0;
     }
     .craft-done__mai-name {
       color: var(--accent);
@@ -748,6 +785,1010 @@
       cursor: pointer;
       letter-spacing: 0.06em;
     }
+
+    /* Appraisal modal (Phase 1B-4) */
+    .appraisal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem; overflow-y: auto;
+    }
+    .appraisal.hidden { display: none !important; }
+    .appraisal__card {
+      max-width: 480px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .appraisal__title {
+      margin: 0;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
+    .appraisal__subtitle {
+      margin: 0 0 0.2rem;
+      text-align: center;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .appraisal__head {
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .appraisal__ext-icon {
+      width: 48px; height: 48px;
+      border-radius: 4px;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+    .appraisal__ext-name {
+      font-weight: 700; font-size: 0.92rem;
+    }
+    .appraisal__judges {
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .appraisal-judge {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 0.3rem 0.55rem;
+      padding: 0.5rem 0.6rem;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 6px;
+      transition: border-color 0.32s, background 0.32s;
+    }
+    .appraisal-judge--revealed {
+      border-left-color: var(--accent);
+      animation: appraisal-judge-reveal 0.42s ease-out;
+    }
+    @keyframes appraisal-judge-reveal {
+      from { transform: scale(0.96); opacity: 0.6; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .appraisal-judge__portrait {
+      grid-column: 1; grid-row: 1 / span 2;
+      width: 48px; height: 48px;
+      border-radius: 4px;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .appraisal-judge__name {
+      grid-column: 2; grid-row: 1;
+      font-weight: 700; font-size: 0.85rem;
+      align-self: end;
+    }
+    .appraisal-judge__score {
+      grid-column: 3; grid-row: 1;
+      align-self: center;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+    }
+    .appraisal-judge__score strong {
+      font-size: 1.4rem;
+      color: var(--accent);
+      line-height: 1;
+      font-weight: 900;
+    }
+    .appraisal-judge__score-max {
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin-left: 1px;
+    }
+    .appraisal-judge__thinking {
+      color: var(--muted);
+      font-size: 1.4rem;
+      animation: appraisal-thinking 0.7s ease-in-out infinite alternate;
+    }
+    @keyframes appraisal-thinking {
+      from { opacity: 0.3; }
+      to   { opacity: 0.95; }
+    }
+    .appraisal-judge__comment {
+      grid-column: 2 / span 2; grid-row: 2;
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .appraisal__total {
+      display: flex; align-items: baseline; justify-content: center;
+      gap: 0.4rem;
+      padding: 0.6rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+      animation: craft-done-pop 0.42s cubic-bezier(0.18, 1.16, 0.5, 1.05);
+    }
+    .appraisal__total.hidden { display: none !important; }
+    .appraisal-total__label {
+      font-size: 0.85rem; color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .appraisal-total__num {
+      font-size: 2rem;
+      color: var(--accent);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .appraisal-total__max {
+      font-size: 0.95rem; color: var(--muted);
+      font-weight: 600;
+    }
+    .appraisal__tier {
+      align-self: center;
+      padding: 0.25rem 0.85rem;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      font-size: 0.85rem;
+    }
+    .appraisal__tier.hidden { display: none !important; }
+    .appraisal__tier[data-tier="poor"]        { background: #4a4458; color: #d8d2e6; }
+    .appraisal__tier[data-tier="decent"]      { background: #2f6b3e; color: #d8f5d8; }
+    .appraisal__tier[data-tier="fine"]        { background: #2f6b8a; color: #d8edf5; }
+    .appraisal__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .appraisal__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a 0%, var(--accent) 50%, #5ecf8a 100%); color: #1a1420; }
+    .appraisal__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: opacity 0.18s;
+    }
+    .appraisal__close:disabled {
+      opacity: 0.45; cursor: not-allowed;
+    }
+
+    /* Market view (Phase 1B-5): タブ式 (現状 倉庫 のみ) */
+    .market-view {
+      position: fixed; inset: 0; z-index: 150;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      color: var(--text);
+      overflow: hidden;
+    }
+    .market-view.hidden { display: none !important; }
+    .market-view__header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      background: linear-gradient(180deg, #2a2438 0%, #1e1a28 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .market-view__title { margin: 0; font-size: 1rem; color: var(--accent); flex: 1; }
+    .market-view__back {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .market-view__tabs {
+      display: flex; gap: 4px;
+      padding: 0.4rem 0.75rem 0;
+      background: linear-gradient(180deg, #1e1a28 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .market-view__tab {
+      appearance: none;
+      background: var(--panel);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.5rem 0.95rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .market-view__tab--active {
+      background: var(--bg);
+      color: var(--accent);
+      border-color: var(--border);
+    }
+    .market-view__body {
+      flex: 1; overflow-y: auto;
+      padding: 0.6rem 0.6rem 1.2rem;
+    }
+    .warehouse-empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem 1rem;
+      line-height: 1.6;
+    }
+    .warehouse-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    @media (max-width: 460px) {
+      .warehouse-list { grid-template-columns: 1fr; }
+    }
+    .warehouse-item {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 0.5rem;
+      padding: 0.55rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .warehouse-item[data-tier="masterpiece"] { border-color: var(--accent); box-shadow: 0 0 8px rgba(196,163,90,0.35); }
+    .warehouse-item[data-tier="great"]       { border-color: var(--accent); }
+    .warehouse-item__icon {
+      width: 64px; height: 64px;
+      background: #2a2438;
+      border-radius: 4px;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .warehouse-item__main {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      min-width: 0;
+    }
+    .warehouse-item__name-row {
+      display: flex; align-items: center; gap: 0.35rem;
+    }
+    .warehouse-item__name {
+      font-weight: 700; font-size: 0.84rem;
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .warehouse-item__rarity {
+      padding: 0.06rem 0.32rem;
+      border-radius: 999px;
+      font-size: 0.58rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+      flex-shrink: 0;
+    }
+    .warehouse-item__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .warehouse-item__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .warehouse-item__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .warehouse-item__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .warehouse-item__meta {
+      display: flex; gap: 0.5rem;
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .warehouse-item__score {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-top: 0.15rem;
+    }
+    .warehouse-item__tier {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .warehouse-item__tier[data-tier="poor"]        { background: #4a4458; color: #d8d2e6; }
+    .warehouse-item__tier[data-tier="decent"]      { background: #2f6b3e; color: #d8f5d8; }
+    .warehouse-item__tier[data-tier="fine"]        { background: #2f6b8a; color: #d8edf5; }
+    .warehouse-item__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .warehouse-item__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a 0%, var(--accent) 50%, #5ecf8a 100%); color: #1a1420; }
+    .warehouse-item__score-num {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+    .warehouse-item__score-num strong { color: var(--accent); font-size: 0.9rem; }
+
+    /* Quest progress overlay (Phase 1C-1) — ホーム画面の上部にバー表示。
+       Phase 1D で workshop 内 overlay 化したので背景に半透明の黒を被せて
+       コントラストを確保 + backdrop-filter で workshop 画像を少しぼかす。 */
+    .quest-overlay {
+      position: relative;
+      width: 100%;
+      background: linear-gradient(90deg, rgba(74,138,62,0.92) 0%, rgba(47,107,62,0.92) 70%, rgba(31,77,42,0.92) 100%);
+      backdrop-filter: blur(2px);
+      color: #f6f7e8;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem 0.5rem;
+      font-size: 0.78rem;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.3);
+    }
+    .quest-overlay.hidden { display: none !important; }
+    .quest-overlay__left {
+      display: flex; gap: 0.18rem;
+      align-items: center;
+    }
+    .quest-overlay__hero {
+      width: 36px; height: 36px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
+    }
+    .quest-overlay__right {
+      display: flex; flex-direction: column;
+      align-items: flex-end;
+      gap: 0.1rem;
+      line-height: 1.15;
+    }
+    .quest-overlay__node {
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+    .quest-overlay__status {
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-overlay__bar {
+      grid-column: 1 / span 2;
+      height: 6px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .quest-overlay__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f6f7e8 0%, #c4a35a 100%);
+      transition: width 0.3s ease-out;
+    }
+
+    /* Quest selection view (Phase 1C-1) */
+    .quest-view {
+      position: fixed; inset: 0; z-index: 150;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      color: var(--text);
+      overflow: hidden;
+    }
+    .quest-view.hidden { display: none !important; }
+    .quest-view__header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      background: linear-gradient(180deg, #2a2438 0%, #1e1a28 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .quest-view__title { margin: 0; font-size: 1rem; color: var(--accent); flex: 1; }
+    .quest-view__back {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .quest-view__body {
+      flex: 1; overflow-y: auto;
+      padding: 0.7rem 0.6rem 1.2rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .quest-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .quest-section__title {
+      margin: 0;
+      font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .quest-node-list, .quest-diff-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.4rem;
+    }
+    .quest-diff-list { grid-template-columns: repeat(3, 1fr); }
+    .quest-node, .quest-diff {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.55rem 0.55rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      text-align: left;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .quest-node:hover, .quest-diff:hover { border-color: var(--accent); }
+    .quest-node--sel, .quest-diff--sel {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%);
+    }
+    .quest-node__name, .quest-diff__label {
+      font-weight: 800; font-size: 0.85rem;
+    }
+    .quest-node__note {
+      font-size: 0.68rem; color: var(--muted);
+    }
+    .quest-diff__weeks {
+      font-size: 0.7rem; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-team-slots {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+    }
+    .quest-team__slot {
+      aspect-ratio: 1 / 1;
+      background: var(--panel-2);
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; color: var(--muted);
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+    .quest-team__slot--filled {
+      border-style: solid;
+      border-color: var(--accent);
+    }
+    .quest-team__slot img {
+      width: 100%; height: 100%; object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .quest-team__slot-name {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.65); color: #fff;
+      font-size: 0.55rem; line-height: 1; padding: 1px 2px;
+      text-align: center;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .quest-summary {
+      background: var(--panel-2);
+      border-radius: 4px;
+      padding: 0.45rem 0.55rem;
+      display: flex; flex-direction: column; gap: 0.25rem;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-summary__row {
+      display: flex; gap: 0.4rem; align-items: baseline;
+    }
+    .quest-summary__label { color: var(--muted); }
+    .quest-summary__sep   { color: var(--muted); }
+    .quest-summary__base  { color: var(--muted); }
+    .quest-summary__rate strong { color: var(--text); }
+    .quest-summary__rate[data-rate="blocked"] { color: var(--ifrit); }
+    .quest-summary__rate[data-rate="100"]     { color: #5ecf8a; }
+    .quest-summary__mai {
+      margin: 0; font-size: 0.72rem; color: var(--accent);
+      line-height: 1.4;
+    }
+    .quest-hero-pick {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+    }
+    .quest-hero-pick > button {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.4rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      font-size: 0.65rem;
+      text-align: center;
+    }
+    .quest-hero-pick > button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .quest-hero-pick > button:hover:not(:disabled) { border-color: var(--accent); }
+    .quest-hero-pick--in {
+      border-color: var(--accent) !important;
+      background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%) !important;
+    }
+    .quest-hero-pick > button img {
+      width: 44px; height: 44px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .quest-hero-pick__name {
+      font-weight: 700;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .quest-hero-pick__ql, .quest-hero-pick__hp {
+      color: var(--muted); font-size: 0.62rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .quest-start-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.7rem;
+      font-weight: 800; font-size: 1rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: opacity 0.18s;
+    }
+    .quest-start-btn:disabled {
+      opacity: 0.45; cursor: not-allowed;
+    }
+
+    /* Quest result modal */
+    .quest-result {
+      position: fixed; inset: 0; z-index: 290;
+      background: rgba(15, 12, 22, 0.88);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .quest-result.hidden { display: none !important; }
+    .quest-result__card {
+      max-width: 420px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .quest-result__title {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0.06em;
+      text-align: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .quest-result__title[data-success="1"] { color: #5ecf8a; }
+    .quest-result__title[data-success="0"] { color: var(--ifrit); }
+    .quest-result__summary {
+      margin: 0; text-align: center;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .quest-result__section {
+      background: var(--panel-2);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+    }
+    .quest-result__sec-title {
+      margin: 0 0 0.3rem;
+      font-size: 0.7rem; color: var(--muted);
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .quest-result__rewards { display: flex; flex-direction: column; gap: 0.25rem; }
+    .quest-result__reward {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.85rem;
+    }
+    .quest-result__reward img {
+      width: 22px; height: 22px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .quest-result__reward-name { flex: 1; }
+    .quest-result__reward-qty { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .quest-result__no-reward { margin: 0; color: var(--muted); font-size: 0.78rem; }
+    .quest-result__team { display: flex; flex-direction: column; gap: 0.25rem; }
+    .quest-result__hero {
+      display: grid; grid-template-columns: 32px 1fr auto; gap: 0.4rem;
+      align-items: center;
+      font-size: 0.78rem;
+    }
+    .quest-result__hero img {
+      width: 32px; height: 32px; object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .quest-result__hero-hp { color: var(--ifrit); font-variant-numeric: tabular-nums; }
+    .quest-result__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+
+    /* Market 雇用タブ (Phase 1D-3) */
+    .hire-cap {
+      display: flex; align-items: baseline; gap: 0.4rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 0.55rem;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .hire-cap__label { color: var(--muted); }
+    .hire-cap__num   { color: var(--accent); font-size: 1.3rem; font-weight: 800; }
+    .hire-cap__num--full { color: var(--ifrit); }
+    .hire-cap__sep   { color: var(--muted); }
+    .hire-cap__max   { color: var(--text); font-size: 1rem; font-weight: 700; }
+    .hire-cap__lv    { margin-left: auto; color: var(--accent); font-size: 0.78rem; }
+
+    .hire-plan-list {
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .hire-plan {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 0.8rem;
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    .hire-plan--disabled { opacity: 0.55; }
+    .hire-plan__head {
+      display: flex; align-items: baseline; justify-content: space-between;
+    }
+    .hire-plan__name { font-weight: 800; font-size: 0.95rem; color: var(--text); }
+    .hire-plan__cost { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .hire-plan__desc { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+    .hire-plan__meta {
+      display: flex; gap: 0.7rem;
+      font-size: 0.72rem; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .hire-plan__btn {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.45rem;
+      font-weight: 800; font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      margin-top: 0.2rem;
+    }
+    .hire-plan__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hire-recruit {
+      display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .hire-recruit__head {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .hire-recruit__back {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .hire-recruit__title {
+      margin: 0; flex: 1;
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--accent);
+    }
+    .hire-recruit__list {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;
+    }
+    .hire-recruit__cand {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      color: var(--text);
+    }
+    .hire-recruit__cand:hover { border-color: var(--accent); }
+    .hire-recruit__cand img {
+      width: 56px; height: 56px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .hire-recruit__name {
+      font-weight: 700; font-size: 0.78rem;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hire-recruit__rarity {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .hire-recruit__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hire-recruit__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hire-recruit__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-recruit__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hire-recruit__empty { color: var(--muted); padding: 1rem; text-align: center; font-size: 0.85rem; }
+
+    .hire-progress {
+      display: flex; flex-direction: column; gap: 0.6rem;
+      padding: 0.7rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .hire-progress__info p { margin: 0 0 0.3rem; font-size: 0.85rem; }
+    .hire-progress__msg {
+      margin: 0;
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+    .hire-progress__bar {
+      height: 12px;
+      background: var(--panel-2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .hire-progress__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, #f6e2a4 100%);
+      transition: width 0.3s ease-out;
+    }
+    .hire-progress__pct {
+      align-self: flex-end;
+      font-weight: 800; font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+    .hire-cand-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem;
+    }
+    .hire-cand {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      align-items: flex-start;
+      color: var(--text);
+    }
+    .hire-cand:hover { border-color: var(--accent); }
+    .hire-cand__name { font-weight: 700; font-size: 0.85rem; }
+    .hire-cand__rarity {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .hire-cand__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hire-cand__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hire-cand__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-cand__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hire-cand-skip {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 0.45rem;
+      cursor: pointer;
+      font-size: 0.78rem;
+    }
+    .hire-cand-skip:hover { color: var(--text); border-color: var(--accent); }
+
+    /* Market 出品タブ (Phase 1D-4) */
+    .market-sell__section { margin-bottom: 0.85rem; }
+    .market-sell__sec-title {
+      margin: 0 0 0.35rem;
+      font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .market-sell__empty-active, .market-sell__empty-cand {
+      color: var(--muted); padding: 0.6rem; font-size: 0.78rem;
+      text-align: center;
+    }
+    .active-sales-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .active-sale {
+      display: grid; grid-template-columns: 56px 1fr; gap: 0.5rem;
+      padding: 0.55rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .active-sale__icon {
+      width: 56px; height: 56px;
+      object-fit: cover; image-rendering: pixelated;
+      background: #2a2438; border-radius: 4px;
+    }
+    .active-sale__main {
+      display: flex; flex-direction: column; gap: 0.18rem;
+      min-width: 0;
+    }
+    .active-sale__name-row { display: flex; gap: 0.35rem; align-items: baseline; }
+    .active-sale__name { font-weight: 700; font-size: 0.85rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .active-sale__speed { color: var(--accent); font-size: 0.7rem; }
+    .active-sale__meta { display: flex; gap: 0.5rem; font-size: 0.72rem; color: var(--muted); justify-content: space-between; }
+    .active-sale__price { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .active-sale__bar { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+    .active-sale__bar-fill { height: 100%; background: linear-gradient(90deg, #5ecf8a 0%, #2e8b32 100%); transition: width 0.3s ease-out; }
+    .active-sale__pct { align-self: flex-end; font-weight: 700; font-size: 0.72rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+    .sellable-list {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;
+    }
+    .sellable {
+      appearance: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.45rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      color: var(--text);
+    }
+    .sellable:hover { border-color: var(--accent); }
+    .sellable__icon {
+      width: 56px; height: 56px;
+      object-fit: cover; image-rendering: pixelated;
+      background: #2a2438; border-radius: 4px;
+    }
+    .sellable__name {
+      font-weight: 700; font-size: 0.8rem;
+      max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sellable__rarity, .sellable__tier {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+    }
+    .sellable__rarity[data-rarity="common"]    { background: #5b6b8a; color: #fff; }
+    .sellable__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .sellable__rarity[data-rarity="rare"]      { background: #5ab4c4; color: #fff; }
+    .sellable__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sellable__rarity[data-rarity="legendary"] { background: #c45c6a; color: #fff; }
+    .sellable__tier[data-tier="poor"]        { background: #4a4458; color: #d8d2e6; }
+    .sellable__tier[data-tier="decent"]      { background: #2f6b3e; color: #d8f5d8; }
+    .sellable__tier[data-tier="fine"]        { background: #2f6b8a; color: #d8edf5; }
+    .sellable__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .sellable__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a, var(--accent), #5ecf8a); color: #1a1420; }
+
+    /* Sell modal */
+    .sell-modal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.88);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem; overflow-y: auto;
+    }
+    .sell-modal.hidden { display: none !important; }
+    .sell-modal__card {
+      max-width: 460px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .sell-modal__title {
+      margin: 0; font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.06em; text-align: center;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sell-modal__head { display: grid; grid-template-columns: 64px 1fr; gap: 0.5rem; align-items: center; }
+    .sell-modal__icon { width: 64px; height: 64px; object-fit: cover; image-rendering: pixelated; background: #2a2438; border-radius: 6px; }
+    .sell-modal__head-info { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+    .sell-modal__name { font-weight: 800; font-size: 0.95rem; }
+    .sell-modal__head-tags { display: flex; gap: 0.35rem; align-items: center; }
+    .sell-modal__rarity, .sell-modal__tier {
+      padding: 0.06rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+    }
+    .sell-modal__rarity[data-rarity="legendary"] { background: #c45c6a; color: #fff; }
+    .sell-modal__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sell-modal__rarity[data-rarity="rare"]      { background: #5ab4c4; color: #fff; }
+    .sell-modal__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .sell-modal__rarity[data-rarity="common"]    { background: #5b6b8a; color: #fff; }
+    .sell-modal__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
+    .sell-modal__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a, var(--accent), #5ecf8a); color: #1a1420; }
+
+    .sell-modal__section { display: flex; flex-direction: column; gap: 0.35rem; }
+    .sell-modal__sec-title {
+      margin: 0;
+      font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .sell-speed-list { display: flex; flex-direction: column; gap: 0.3rem; }
+    .sell-speed {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      cursor: pointer;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 0.25rem;
+      color: var(--text);
+      text-align: left;
+    }
+    .sell-speed--sel { border-color: var(--accent); background: linear-gradient(135deg, #2f2740, #3a2f4a); }
+    .sell-speed__name { font-weight: 800; font-size: 0.85rem; }
+    .sell-speed__weeks { color: var(--accent); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+    .sell-speed__desc { grid-column: 1 / span 2; color: var(--muted); font-size: 0.7rem; }
+
+    .sell-seller-list {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.35rem;
+    }
+    .sell-seller {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.45rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      color: var(--text);
+      position: relative;
+    }
+    .sell-seller--sel { border-color: var(--accent); background: linear-gradient(135deg, #2f2740, #3a2f4a); }
+    .sell-seller img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+    .sell-seller__name { font-weight: 700; font-size: 0.72rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sell-seller__rarity {
+      padding: 0.06rem 0.32rem;
+      border-radius: 999px;
+      font-size: 0.6rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .sell-seller__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .sell-seller__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sell-seller__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .sell-seller__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .sell-seller .attr-badge--sho {
+      position: absolute; top: 4px; right: 4px;
+      width: 16px; height: 16px;
+      font-size: 0.62rem;
+    }
+    .sell-seller__empty { color: var(--muted); font-size: 0.78rem; padding: 0.5rem; text-align: center; grid-column: 1 / -1; }
+
+    .sell-est {
+      background: var(--panel-2);
+      border-radius: 6px;
+      padding: 0.5rem 0.7rem;
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .sell-est__row { display: flex; justify-content: space-between; gap: 0.5rem; }
+    .sell-est__row--small { color: var(--muted); font-size: 0.72rem; }
+    .sell-est__row--total { border-top: 1px solid var(--border); padding-top: 0.25rem; margin-top: 0.15rem; }
+    .sell-est__row--total strong { color: var(--accent); font-size: 1.05rem; }
+
+    .sell-modal__buttons { display: flex; gap: 0.4rem; }
+    .sell-modal__cancel, .sell-modal__list-btn {
+      flex: 1;
+      appearance: none;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-weight: 700; cursor: pointer;
+    }
+    .sell-modal__cancel { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+    .sell-modal__list-btn { background: var(--accent); color: #1a1420; font-weight: 800; }
+    .sell-modal__list-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Hero list 「休憩」ボタン (Phase 1B-5: 手動 RESTING) */
+    .hero-card__rest-btn {
+      appearance: none;
+      background: #5ecf8a; color: #1a1420;
+      border: none; border-radius: 4px;
+      padding: 0.22rem 0.55rem;
+      font-size: 0.7rem; font-weight: 700;
+      cursor: pointer;
+      align-self: center;
+      margin-left: auto;
+      transition: background 0.18s;
+    }
+    .hero-card__rest-btn:hover { background: #7be0a3; }
 
     /* ── Hero view ─────────────────────────────────────── */
     .hero-view {
@@ -1320,6 +2361,144 @@
     }
     footer a { color: var(--muted); }
 
+    /* ── Mai navigator (Phase 1D-2) ─────────────────────────────────
+     * 各画面右上のマイアイコン + 文脈ヘルプモーダル
+     * ─────────────────────────────────────────────────────────────── */
+    .factory-header__mai-btn {
+      width: 36px; height: 28px;
+      padding: 0;
+      overflow: hidden;
+      background: var(--panel-2);
+      border: 1px solid var(--accent);
+      cursor: pointer;
+    }
+    .factory-header__mai-btn img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .factory-header__mai-btn:hover { border-color: #fff; }
+    .view-mai-btn {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      width: 36px; height: 32px;
+      padding: 0;
+      overflow: hidden;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .view-mai-btn img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .view-mai-btn:hover { border-color: #fff; }
+    .mai-help {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.86);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .mai-help.hidden { display: none !important; }
+    .mai-help__card {
+      max-width: 420px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .mai-help__head {
+      display: flex; gap: 0.6rem; align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .mai-help__portrait {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
+    }
+    .mai-help__head-text {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      min-width: 0;
+    }
+    .mai-help__name {
+      color: var(--accent);
+      font-weight: 800; font-size: 0.78rem;
+      letter-spacing: 0.05em;
+    }
+    .mai-help__title {
+      margin: 0;
+      color: var(--text);
+      font-weight: 800; font-size: 1.05rem;
+      line-height: 1.2;
+    }
+    .mai-help__body {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 0.88rem;
+      white-space: pre-line;
+    }
+    .mai-help__close {
+      align-self: flex-end;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.45rem 1.2rem;
+      font-weight: 700; cursor: pointer;
+    }
+
+    /* ───────────────────────────────────────────────────────────────
+     * 士農工商 attribute badges (Phase 1D-1)
+     * ヒーローカード / 詳細 / チームスロット に表示する 1 文字バッジ
+     * ─────────────────────────────────────────────────────────────── */
+    .attr-badges {
+      display: inline-flex; gap: 2px;
+      margin-left: 0.3rem;
+      vertical-align: middle;
+    }
+    .attr-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0;
+      line-height: 1;
+      text-shadow: 0 0 1px rgba(0,0,0,0.6);
+      flex-shrink: 0;
+    }
+    .attr-badge--shi { background: #c14a4a; }   /* 士 (赤) */
+    .attr-badge--no  { background: #4ea96d; }   /* 農 (緑) */
+    .attr-badge--ko  { background: #4f95a5; }   /* 工 (青) */
+    .attr-badge--sho { background: #c4a35a; color: #1a1420; }   /* 商 (金) */
+
+    /* hero-card__name-row (バッジ統合のため inline-flex に変更) */
+    .hero-card__name-row {
+      display: flex; align-items: center; gap: 0.2rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .hero-card__name-row .hero-card__name {
+      flex-shrink: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hero-card__head-info {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+      flex: 1;
+    }
+
     /* ───────────────────────────────────────────────────────────────
      * Pixel-art rendering policy (top-priority override)
      *
@@ -1327,6 +2506,11 @@
      * すべてニアレストネイバーで拡大表示する。各コンポーネントの個別
      * image-rendering 指定を上書きするため、style ブロック末尾にまとめる。
      * ─────────────────────────────────────────────────────────────── */
+    .mai-modal__portrait,
+    .mai-help__portrait,
+    .craft-done__mai-portrait,
+    .factory-header__mai-btn img,
+    .view-mai-btn img,
     .hero-card__portrait,
     .hero-card__elem img,
     .hero-team__slot img,
@@ -1380,16 +2564,23 @@
         <span class="factory-header__gum-icon" aria-hidden="true">G</span>
         <span id="factoryGum">500</span>
       </div>
+      <button type="button" class="factory-header__btn factory-header__mai-btn" data-mai-help-btn title="マイのアドバイス">
+        <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
+      </button>
       <button type="button" class="factory-header__btn" id="btnLangToggle" data-i18n-attr-title="lang.toggle.label" title="言語 / Language">JP</button>
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
 
-    <!-- Notification banner (Phase 1B-2): passive triggers etc. Auto-fades. -->
-    <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
-
     <!-- Workshop view -->
     <div class="workshop" id="workshopView">
       <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
+      <!-- ── オーバーレイ群 (workshop 画像の上に重ねる: 縦方向にレイアウトを押さない) ── -->
+      <div class="workshop__overlays">
+        <!-- Quest progress overlay (Phase 1C-1) — クエスト中のみ表示 -->
+        <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
+        <!-- Notification banner (Phase 1B-2) — passive 発動などで表示、3 秒で消える -->
+        <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
+      </div>
       <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
       <div class="workshop__heroes" id="workshopHeroes"></div>
       <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
@@ -1431,10 +2622,61 @@
     <button type="button" id="stubClose" data-i18n="btn.close">閉じる</button>
   </div>
 
+  <!-- Sell modal (Phase 1D-4) — warehouse の ext を選んで出品設定 -->
+  <div class="sell-modal hidden" id="sellModal" role="dialog" aria-modal="true" aria-labelledby="sellModalTitle">
+    <div class="sell-modal__card">
+      <h2 class="sell-modal__title" id="sellModalTitle" data-i18n="sell.title">出品</h2>
+
+      <div class="sell-modal__head">
+        <img class="sell-modal__icon" id="sellExtIcon" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="sell-modal__head-info">
+          <span class="sell-modal__name" id="sellExtName">—</span>
+          <div class="sell-modal__head-tags">
+            <span class="sell-modal__rarity" id="sellExtRarity" data-rarity="common">—</span>
+            <span class="sell-modal__tier" id="sellExtTier" data-tier="fine">—</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="sell-modal__section">
+        <h3 class="sell-modal__sec-title" data-i18n="sell.pickSpeed">出品方式を選択</h3>
+        <div class="sell-speed-list" id="sellSpeedList"></div>
+      </section>
+
+      <section class="sell-modal__section">
+        <h3 class="sell-modal__sec-title" data-i18n="sell.pickSeller">出品担当者を選択</h3>
+        <div class="sell-seller-list" id="sellSellerList"></div>
+      </section>
+
+      <div class="sell-est" id="sellEstPrice"></div>
+
+      <div class="sell-modal__buttons">
+        <button type="button" class="sell-modal__cancel" id="sellCancelBtn" data-i18n="sell.cancel">キャンセル</button>
+        <button type="button" class="sell-modal__list-btn" id="sellListBtn" data-i18n="sell.list" disabled>この内容で出品</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mai help modal (Phase 1D-2) — 各画面右上のマイアイコン → 文脈ヘルプ表示 -->
+  <div class="mai-help hidden" id="maiHelpModal" role="dialog" aria-modal="true" aria-labelledby="maiHelpTitle">
+    <div class="mai-help__card">
+      <div class="mai-help__head">
+        <img class="mai-help__portrait" src="./Image/Factory/MAI_SD.png" alt="マイ" />
+        <div class="mai-help__head-text">
+          <span class="mai-help__name" data-i18n="mai.name">マイ</span>
+          <h2 class="mai-help__title" id="maiHelpTitle">—</h2>
+        </div>
+      </div>
+      <p class="mai-help__body" id="maiHelpBody">—</p>
+      <button type="button" class="mai-help__close" id="maiHelpClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
   <!-- Mai modal — chat-style popup for in-game messages (busy/done/etc.) -->
   <div class="mai-modal hidden" id="maiModal" role="dialog" aria-labelledby="maiModalName" aria-modal="true">
     <div class="mai-modal__card">
       <div class="mai-modal__head">
+        <img class="mai-modal__portrait" src="./Image/Factory/MAI_SD.png" alt="マイ" />
         <span class="mai-modal__name" id="maiModalName" data-i18n="mai.name">マイ</span>
       </div>
       <p class="mai-modal__body" id="maiModalBody">—</p>
@@ -1452,6 +2694,7 @@
           <div class="hero-detail__head-tags">
             <span class="hero-detail__rarity" id="heroDetailRarity" data-rarity="common">—</span>
             <span class="hero-detail__state" id="heroDetailState" data-state="idle">—</span>
+            <span id="heroDetailAttrs"></span>
           </div>
         </div>
       </div>
@@ -1490,11 +2733,131 @@
       <div class="craft-done__elements" id="craftDoneElements"></div>
 
       <div class="craft-done__mai">
-        <span class="craft-done__mai-name" data-i18n="mai.name">マイ</span>
-        <p class="craft-done__mai-says" id="craftDoneMaiSays">—</p>
+        <img class="craft-done__mai-portrait" src="./Image/Factory/MAI_SD.png" alt="マイ" />
+        <div class="craft-done__mai-text">
+          <span class="craft-done__mai-name" data-i18n="mai.name">マイ</span>
+          <p class="craft-done__mai-says" id="craftDoneMaiSays">—</p>
+        </div>
       </div>
 
       <button type="button" class="craft-done__close" id="craftDoneClose" data-i18n="comp.toMarket">OK</button>
+    </div>
+  </div>
+
+  <!-- Appraisal modal (Phase 1B-4) — 完成画面 → 本モーダル → 倉庫格納 -->
+  <div class="appraisal hidden" id="appraisalModal" role="dialog" aria-modal="true" aria-labelledby="appraisalTitle">
+    <div class="appraisal__card">
+      <h2 class="appraisal__title" id="appraisalTitle" data-i18n="appraisal.title">クラフト査定</h2>
+      <p class="appraisal__subtitle" data-i18n="appraisal.subtitle">美術ヒーロー 5 名による品評会</p>
+
+      <div class="appraisal__head">
+        <img class="appraisal__ext-icon" id="appraisalExtIcon" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="appraisal__ext-name" id="appraisalExtName">—</span>
+      </div>
+
+      <div class="appraisal__judges" id="appraisalJudges"></div>
+
+      <div class="appraisal__total hidden" id="appraisalTotal"></div>
+      <div class="appraisal__tier hidden" id="appraisalTier" data-tier="fine">—</div>
+
+      <button type="button" class="appraisal__close" id="appraisalClose" data-i18n="appraisal.toWarehouse" disabled>倉庫へ収納</button>
+    </div>
+  </div>
+
+  <!-- Quest view (Phase 1C-1) — node + difficulty + 3-hero party + start -->
+  <div class="quest-view hidden" id="questView" role="dialog" aria-labelledby="questViewTitle">
+    <div class="quest-view__header">
+      <h2 class="quest-view__title" id="questViewTitle" data-i18n="quest.title">クエスト</h2>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="quest-view__back" id="questViewBack" data-i18n="btn.back">← 戻る</button>
+    </div>
+    <div class="quest-view__body">
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.node.label">ノード選択</h3>
+        <div class="quest-node-list" id="questNodeList"></div>
+      </section>
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.diff.label">難易度</h3>
+        <div class="quest-diff-list" id="questDiffList"></div>
+      </section>
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.team.label">編成 (最大 3 体)</h3>
+        <div class="quest-team-slots" id="questTeamSlots"></div>
+        <div class="quest-summary" id="questSummary"></div>
+      </section>
+      <section class="quest-section">
+        <h3 class="quest-section__title" data-i18n="quest.candidates.label">ヒーローを選んで配属</h3>
+        <div class="quest-hero-pick" id="questHeroPick"></div>
+      </section>
+      <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
+    </div>
+  </div>
+
+  <!-- Quest result modal (Phase 1C-1) -->
+  <div class="quest-result hidden" id="questResultModal" role="dialog" aria-modal="true" aria-labelledby="questResultTitle">
+    <div class="quest-result__card">
+      <h2 class="quest-result__title" id="questResultTitle" data-success="1">—</h2>
+      <p class="quest-result__summary" id="questResultSummary">—</p>
+      <div class="quest-result__section">
+        <p class="quest-result__sec-title" data-i18n="quest.result.rewards">獲得素材</p>
+        <div class="quest-result__rewards" id="questResultRewards"></div>
+      </div>
+      <div class="quest-result__section">
+        <p class="quest-result__sec-title" data-i18n="quest.result.team">出撃メンバー</p>
+        <div class="quest-result__team" id="questResultTeam"></div>
+      </div>
+      <button type="button" class="quest-result__close" id="questResultClose" data-i18n="quest.result.close">OK</button>
+    </div>
+  </div>
+
+  <!-- Market view (Phase 1B-5) — 倉庫タブ最低限 (PR-5)。
+       将来的に売却 / マーケット出品タブが追加される。 -->
+  <div class="market-view hidden" id="marketView" role="dialog" aria-labelledby="marketViewTitle">
+    <div class="market-view__header">
+      <h2 class="market-view__title" id="marketViewTitle" data-i18n="market.title">マーケット</h2>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="market-view__back" id="marketViewBack" data-i18n="btn.back">← 戻る</button>
+    </div>
+    <div class="market-view__tabs">
+      <button type="button" class="market-view__tab market-view__tab--active" data-market-tab="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
+      <button type="button" class="market-view__tab" data-market-tab="hire" data-i18n="market.tab.hire">雇用</button>
+      <button type="button" class="market-view__tab" data-market-tab="sell" data-i18n="market.tab.sell">出品</button>
+    </div>
+    <div class="market-view__body">
+      <!-- 倉庫タブ (Phase 1B-5) -->
+      <div data-market-tab-body="warehouse">
+        <div class="warehouse-list" id="warehouseList"></div>
+      </div>
+
+      <!-- 出品タブ (Phase 1D-4) -->
+      <div data-market-tab-body="sell" class="hidden">
+        <section class="market-sell__section">
+          <h3 class="market-sell__sec-title" data-i18n="sell.active">出品中のエクステンション</h3>
+          <div class="active-sales-list" id="activeSalesList"></div>
+        </section>
+        <section class="market-sell__section">
+          <h3 class="market-sell__sec-title" data-i18n="sell.candidates">出品できる完成品</h3>
+          <div class="sellable-list" id="sellableList"></div>
+        </section>
+      </div>
+
+      <!-- 雇用タブ (Phase 1D-3) -->
+      <div data-market-tab-body="hire" class="hidden">
+        <div class="hire-cap" id="hireCapInfo"></div>
+        <!-- プラン選択 -->
+        <div class="hire-plan-list" id="hirePlanList"></div>
+        <!-- 採用担当者ピック -->
+        <div class="hire-recruit hidden" id="hireRecruitArea">
+          <div class="hire-recruit__head">
+            <button type="button" class="hire-recruit__back" id="hireBackToPlans" data-i18n="hire.backToPlans">← プラン選択に戻る</button>
+            <h3 class="hire-recruit__title" id="hireRecruitTitle">—</h3>
+          </div>
+          <div class="hire-recruit__list" id="hireRecruitList"></div>
+        </div>
+        <!-- 進行中の雇用 (待機 + 候補表示) -->
+        <div class="hire-progress hidden" id="hireProgressArea">
+          <div class="hire-progress__info" id="hireProgressInfo"></div>
+          <div class="hire-progress__body" id="hireProgressBody"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1502,7 +2865,7 @@
   <div class="hero-view hidden" id="heroView" role="dialog" aria-labelledby="heroViewTitle">
     <div class="hero-view__header">
       <h2 class="hero-view__title" id="heroViewTitle" data-i18n="menu.hero">ヒーロー</h2>
-      <button type="button" class="hero-view__back" id="heroViewBack" data-i18n="btn.back">← 戻る</button>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="hero-view__back" id="heroViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="hero-view__body">
 
@@ -1545,7 +2908,7 @@
   <div class="craft-view hidden" id="craftView" role="dialog" aria-labelledby="craftViewTitle" data-craft-screen="select">
     <div class="craft-view__header">
       <h2 class="craft-view__title" id="craftViewTitle" data-i18n="craft.select.title">クラフト：エクステンションを選択</h2>
-      <button type="button" class="craft-view__back" id="craftViewBack" data-i18n="btn.back">← 戻る</button>
+      <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="craft-view__back" id="craftViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="craft-view__body" id="craftViewBody">
 

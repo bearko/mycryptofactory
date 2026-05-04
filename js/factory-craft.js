@@ -13,6 +13,7 @@ import {
   NORMAL_MATERIAL_IDS,
   LAND_MATERIAL_IDS,
 } from "./factory-material.js";
+import { GARUDA_WEIGHT } from "./factory-hero.js";
 
 /** 全エクステ定義 (loadExtensions() 後に populated) */
 export const EXTENSIONS = [];
@@ -39,11 +40,13 @@ export function loadExtensions() {
   return _loadingPromise;
 }
 
-/** ext.params を 4 元素値に変換。HP→garuda / PHY→ifrit / INT→leviathan / AGI→tiamat. */
+/** ext.params を 4 元素値に変換。HP→garuda / PHY→ifrit / INT→leviathan / AGI→tiamat。
+ *  ガルーダ (HP) は他パラメータと比べて 6 倍程度大きいので、ヒーロー側 craft 値と
+ *  整合させるため GARUDA_WEIGHT (= 1/6) で割って返す (Phase 1B 改修)。 */
 export function extElementTargets(ext) {
   const p = ext.params || {};
   return {
-    garuda:    p.hp  || 0,
+    garuda:    Math.round((p.hp  || 0) * GARUDA_WEIGHT),
     ifrit:     p.phy || 0,
     leviathan: p.int || 0,
     tiamat:    p.agi || 0,
@@ -116,7 +119,7 @@ export const DEFAULT_DURATION_WEEKS = {
 export function estimateDurationWeeks(ext, team) {
   const base = DEFAULT_DURATION_WEEKS[ext?.rarity] || 12;
   if (!Array.isArray(team)) return base;
-  // ガルーダ 1/3 重みでチーム合計 craftLevel を取得
+  // ガルーダ GARUDA_WEIGHT 重みでチーム合計 craftLevel を取得
   const total = teamCraftLevelTotal(team);
   // 0 → 1.0 倍、1000 → 0.5 倍、それ以上は 0.5 倍で頭打ち
   const speedup = Math.min(0.5, total / 2000);
@@ -138,12 +141,8 @@ export function sortBySumAsc(a, b) {
   return sa - sb;
 }
 
-/** ガルーダ (HP) は他パラメータの約 3 倍大きいので、craftLevel 系の集計では
- *  1/3 の重みで扱う。factory-hero.js の GARUDA_WEIGHT と一致させる。 */
-const GARUDA_WEIGHT = 1 / 3;
-
-/** ext.params 合計値を返す (HP × 1/3 + PHY + INT + AGI)。
- *  ガルーダ (HP) は他パラメータと比べて 3 倍大きいので 1/3 で集計し、
+/** ext.params 合計値を返す (HP × GARUDA_WEIGHT + PHY + INT + AGI)。
+ *  ガルーダ (HP) は他パラメータと比べて大きいので GARUDA_WEIGHT で集計し、
  *  クラフトLv 要件 / sort などの比較が公平になるよう揃える。 */
 export function paramSum(ext) {
   const p = ext?.params || {};
@@ -162,16 +161,19 @@ export function craftLevelRequiredFor(ext) {
 }
 
 /** チームの craftLevel 合計を計算する。null スロットは 0 として扱う。
- *  ガルーダ (HP) は 1/3 の重みで集計 (paramSum と整合)。 */
+ *  - ガルーダ (HP) は GARUDA_WEIGHT の重みで集計 (paramSum と整合)
+ *  - 「工」属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1) */
 export function teamCraftLevelTotal(team) {
   if (!Array.isArray(team)) return 0;
   let total = 0;
   for (const h of team) {
     if (!h || !h.element) continue;
-    total += (h.element.garuda || 0) * GARUDA_WEIGHT +
-             (h.element.ifrit || 0) +
-             (h.element.leviathan || 0) +
-             (h.element.tiamat || 0);
+    const base = (h.element.garuda || 0) * GARUDA_WEIGHT +
+                 (h.element.ifrit || 0) +
+                 (h.element.leviathan || 0) +
+                 (h.element.tiamat || 0);
+    const ko = Array.isArray(h.attributes) && h.attributes.includes("ko") ? 1.5 : 1.0;
+    total += base * ko;
   }
   return Math.round(total);
 }
