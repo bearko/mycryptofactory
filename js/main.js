@@ -64,7 +64,7 @@ import {
   buildInitialInventory,
 } from "./factory-material.js";
 
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "alpha";
 const TEAM_SIZE = 5;
 
 /** ─── State ──────────────────────────────────────────────────────── */
