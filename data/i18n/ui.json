@@ -45,6 +45,12 @@
 
   "order.none":                { "ja": "受注なし", "en": "No order" },
   "order.duration":            { "ja": "目安 {n} 週", "en": "~{n} weeks" },
+  "order.eta":                 { "ja": "完成予定", "en": "ETA" },
+
+  "notif.passive":             { "ja": "{hero}の「{passive}」発動！ {element}+{value}", "en": "{hero} triggered \"{passive}\"! {element}+{value}" },
+
+  "hero.passive":              { "ja": "パッシブ", "en": "Passive" },
+  "hero.detail.title":         { "ja": "ヒーロー詳細", "en": "Hero detail" },
 
   "rarity.common":             { "ja": "コモン",     "en": "Common" },
   "rarity.uncommon":           { "ja": "アンコモン", "en": "Uncommon" },

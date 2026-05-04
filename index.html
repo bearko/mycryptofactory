@@ -149,6 +149,36 @@
     }
     .factory-header__btn:hover { border-color: var(--accent); }
 
+    /* Notification banner (passive triggers etc.) */
+    .notif-banner {
+      width: 100%;
+      display: flex; flex-direction: column;
+      gap: 2px;
+      padding: 4px 8px;
+      background: rgba(20, 16, 30, 0.55);
+      border-bottom: 1px solid var(--border);
+      pointer-events: none;
+    }
+    .notif-banner.hidden { display: none !important; }
+    .notif {
+      animation: notif-pop 0.32s ease-out;
+      padding: 0.32rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      line-height: 1.25;
+      background: var(--panel);
+      border-left: 4px solid var(--accent);
+      color: var(--text);
+    }
+    .notif--garuda    { border-left-color: var(--garuda); }
+    .notif--ifrit     { border-left-color: var(--ifrit); }
+    .notif--leviathan { border-left-color: var(--leviathan); }
+    .notif--tiamat    { border-left-color: var(--tiamat); }
+    @keyframes notif-pop {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
     /* Workshop view */
     .workshop {
       width: 100%;
@@ -162,6 +192,10 @@
       object-fit: cover;
       display: block;
     }
+    .workshop__heroes {
+      position: absolute; inset: 0;
+      pointer-events: none;
+    }
     .workshop__menu-btn {
       position: absolute;
       bottom: 0.75rem; right: 0.75rem;
@@ -174,9 +208,10 @@
       font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em;
       cursor: pointer;
       box-shadow: 0 2px 0 rgba(0,0,0,0.35);
+      z-index: 10;
     }
     .workshop__menu-btn:hover { background: #fff; }
-    /* 配属ヒーロースプライト (将来クラフト中に表示) */
+    /* 配属ヒーロースプライト (legacy class — keep for back-compat) */
     .workshop__hero {
       position: absolute;
       width: 64px; height: 64px;
@@ -184,42 +219,158 @@
       image-rendering: pixelated;
       filter: drop-shadow(0 2px 2px rgba(0,0,0,0.6));
     }
+    /* Phase 1B-2: クラフト中の配属ヒーロー sprite (タップ可) */
+    .workshop-hero {
+      position: absolute;
+      width: 56px; height: 56px;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      cursor: pointer;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.7));
+      transition: transform 0.18s ease-out;
+    }
+    .workshop-hero:hover { transform: translate(-50%, -50%) scale(1.06); }
+    .workshop-hero--bounce { animation: hero-bounce 0.42s ease-out; }
+    @keyframes hero-bounce {
+      0%   { transform: translate(-50%, -50%) translateY(0); }
+      30%  { transform: translate(-50%, -50%) translateY(-10px); }
+      60%  { transform: translate(-50%, -50%) translateY(0); }
+      80%  { transform: translate(-50%, -50%) translateY(-3px); }
+      100% { transform: translate(-50%, -50%) translateY(0); }
+    }
+    .workshop-hero__img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .workshop-hero--sleeping .workshop-hero__img {
+      filter: grayscale(0.9) brightness(0.55);
+    }
+    .workshop-hero__sleep {
+      position: absolute;
+      top: -10px; left: -6px;
+      font-size: 1.2rem;
+      animation: sleep-bob 1.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes sleep-bob {
+      0%, 100% { transform: translateY(0); opacity: 0.85; }
+      50%      { transform: translateY(-3px); opacity: 1; }
+    }
+    .workshop-hero__stam {
+      position: absolute;
+      bottom: -6px; left: 4px; right: 4px;
+      height: 4px;
+      background: rgba(0,0,0,0.55);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .workshop-hero__stam-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--garuda) 0%, #2e8b32 100%);
+      transition: width 0.3s ease-out;
+    }
+    .workshop-hero__float {
+      position: absolute;
+      top: -22px; left: 50%;
+      transform: translateX(-50%);
+      font-weight: 800;
+      font-size: 0.95rem;
+      pointer-events: none;
+      animation: float-up 1.0s ease-out forwards;
+      text-shadow: 0 0 4px rgba(0,0,0,0.85);
+      white-space: nowrap;
+    }
+    .workshop-hero__float--garuda    { color: var(--garuda); }
+    .workshop-hero__float--ifrit     { color: var(--ifrit); }
+    .workshop-hero__float--leviathan { color: var(--leviathan); }
+    .workshop-hero__float--tiamat    { color: var(--tiamat); }
+    @keyframes float-up {
+      from { opacity: 1; transform: translate(-50%, 0); }
+      to   { opacity: 0; transform: translate(-50%, -28px); }
+    }
 
-    /* Order panel (bottom) */
+    /* Order panel (bottom) — Phase 1B-2 mockup 準拠 */
     .order-panel {
       width: 100%;
       background: #ece6d6;
       color: #1a1420;
-      padding: 0.6rem 0.75rem;
-      display: grid;
-      grid-template-columns: 64px 1fr auto;
-      gap: 0.6rem;
-      align-items: start;
+      padding: 0.6rem 0.75rem 0.7rem;
+      display: flex; flex-direction: column;
+      gap: 0.5rem;
       font-size: 0.85rem;
       border-top: 1px solid #4a3f33;
     }
+    .order-panel__top {
+      display: grid;
+      grid-template-columns: 84px 1fr auto;
+      gap: 0.6rem;
+      align-items: start;
+    }
     .order-panel__icon {
-      width: 64px; height: 64px;
+      width: 84px; height: 84px;
       background: #4a4438;
       border-radius: 4px;
       display: flex; align-items: center; justify-content: center;
       color: #ece6d6;
       font-size: 0.7rem;
-      grid-row: 1 / span 2;
       image-rendering: pixelated;
       overflow: hidden;
     }
     .order-panel__icon img { width: 100%; height: 100%; object-fit: cover; }
     .order-panel__info {
-      display: flex; flex-direction: column; gap: 0.15rem;
+      display: flex; flex-direction: column; gap: 0.25rem;
+      min-width: 0;
     }
-    .order-panel__desc { font-weight: 600; line-height: 1.3; }
+    .order-panel__desc {
+      font-weight: 700; line-height: 1.25;
+      font-size: 0.9rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
     .order-panel__meta {
       font-size: 0.72rem; color: #5a4f3f;
-      display: flex; gap: 0.6rem; flex-wrap: wrap;
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+      align-items: center;
     }
+    .order-panel__rarity {
+      padding: 0.08rem 0.4rem;
+      border-radius: 999px;
+      background: #5b6b8a;
+      color: #fff;
+      font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .order-panel__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .order-panel__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .order-panel__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .order-panel__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .order-panel__eta { color: #1a1420; font-weight: 600; }
+    .order-panel__elements {
+      display: grid; grid-template-columns: auto auto;
+      gap: 0.2rem 0.55rem;
+      font-size: 0.85rem;
+      align-self: stretch;
+      align-content: start;
+    }
+    .order-panel__el {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-variant-numeric: tabular-nums;
+      color: #1a1420;
+    }
+    .order-panel__el--reached { opacity: 0.55; text-decoration: line-through; }
+    .order-panel__el-icon {
+      width: 22px; height: 22px;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+    }
+    .order-panel__el-val { font-weight: 700; }
+    .order-panel__el-val strong { font-size: 0.95rem; }
+    .order-panel__el-tgt { color: #5a4f3f; font-weight: 600; }
+
     .order-panel__progress {
-      grid-column: 1 / -1;
       display: flex; align-items: center; gap: 0.5rem;
     }
     .order-panel__bar {
@@ -236,34 +387,12 @@
       transition: width 0.3s ease-out;
     }
     .order-panel__pct {
-      font-weight: 800; font-size: 1.2rem; color: #1a1420;
+      font-weight: 800; font-size: 1.4rem; color: #1a1420;
       min-width: 3.5rem; text-align: right;
+      line-height: 1;
     }
     .order-panel--empty .order-panel__icon { background: #4a4438; }
     .order-panel--empty .order-panel__bar-fill { width: 0; }
-    .order-panel__elements {
-      grid-column: 3;
-      grid-row: 1 / span 2;
-      display: flex; flex-direction: column; gap: 0.2rem;
-      font-size: 0.78rem;
-      align-items: end;
-    }
-    .order-panel__el {
-      display: flex; align-items: center; gap: 0.3rem;
-      font-variant-numeric: tabular-nums;
-    }
-    .order-panel__el-icon {
-      width: 18px; height: 18px;
-      border-radius: 50%;
-    }
-    .order-panel__el-icon--garuda    { background: var(--garuda); }
-    .order-panel__el-icon--ifrit     { background: var(--ifrit); }
-    .order-panel__el-icon--leviathan { background: var(--leviathan); }
-    .order-panel__el-icon--tiamat    { background: var(--tiamat); }
-    .order-panel__el-val {
-      color: #1a1420;
-      font-weight: 700;
-    }
 
     /* Menu modal */
     .menu-overlay {
@@ -351,6 +480,121 @@
       font-size: 0.9rem;
     }
     .mai-modal__close {
+      align-self: flex-end;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.45rem 1.2rem;
+      font-weight: 700; cursor: pointer;
+    }
+
+    /* Hero detail popup (workshop sprite tap) */
+    .hero-detail {
+      position: fixed; inset: 0; z-index: 285;
+      background: rgba(15, 12, 22, 0.82);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .hero-detail.hidden { display: none !important; }
+    .hero-detail__card {
+      max-width: 380px; width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      display: flex; flex-direction: column; gap: 0.65rem;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+      color: var(--text);
+    }
+    .hero-detail__head {
+      display: flex; gap: 0.7rem; align-items: center;
+    }
+    .hero-detail__portrait {
+      width: 64px; height: 64px;
+      border-radius: 6px;
+      background: #2a2438;
+      object-fit: cover;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+    .hero-detail__head-info {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      min-width: 0;
+    }
+    .hero-detail__name {
+      font-size: 1.05rem; font-weight: 800;
+      line-height: 1.2;
+    }
+    .hero-detail__head-tags {
+      display: flex; gap: 0.4rem; align-items: center;
+      flex-wrap: wrap;
+    }
+    .hero-detail__rarity {
+      padding: 0.08rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.05em;
+      background: #5b6b8a; color: #fff;
+    }
+    .hero-detail__rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .hero-detail__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .hero-detail__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hero-detail__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .hero-detail__state {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .hero-detail__state[data-state="resting"]  { color: #f0c14b; }
+    .hero-detail__state[data-state="crafting"] { color: var(--garuda); }
+    .hero-detail__state[data-state="questing"] { color: var(--leviathan); }
+    .hero-detail__row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.5rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+    }
+    .hero-detail__row-label { color: var(--muted); }
+    .hero-detail__row-val   { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+    .hero-detail__stam-bar {
+      height: 8px;
+      background: #1a1420;
+      border-radius: 4px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .hero-detail__stam-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--garuda) 0%, #2e8b32 100%);
+      transition: width 0.3s ease-out;
+    }
+    .hero-detail__elements {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3rem;
+    }
+    .hero-detail__el {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.32rem 0.5rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
+    .hero-detail__el img { width: 18px; height: 18px; image-rendering: pixelated; }
+    .hero-detail__el-label { flex: 1; color: var(--muted); }
+    .hero-detail__el-val { color: var(--text); font-variant-numeric: tabular-nums; }
+    .hero-detail__passive {
+      padding: 0.45rem 0.55rem;
+      background: var(--panel-2);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      font-size: 0.82rem;
+    }
+    .hero-detail__passive.hidden { display: none !important; }
+    .hero-detail__passive-label {
+      color: var(--muted); font-size: 0.7rem;
+      letter-spacing: 0.05em; margin-right: 0.35rem;
+    }
+    .hero-detail__close {
       align-self: flex-end;
       appearance: none;
       background: var(--accent); color: #1a1420;
@@ -994,21 +1238,27 @@
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
 
+    <!-- Notification banner (Phase 1B-2): passive triggers etc. Auto-fades. -->
+    <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
+
     <!-- Workshop view -->
     <div class="workshop" id="workshopView">
       <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
-      <!-- 動的な配属ヒーロー sprite はここに JS で append される -->
+      <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
+      <div class="workshop__heroes" id="workshopHeroes"></div>
       <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
     </div>
 
-    <!-- Order panel (bottom) -->
+    <!-- Order panel (bottom) — Phase 1B-2 mockup 準拠 -->
     <div class="order-panel order-panel--empty" id="orderPanel">
-      <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
-      <div class="order-panel__info">
-        <span class="order-panel__desc" id="orderDesc" data-i18n="order.none">受注なし</span>
-        <div class="order-panel__meta" id="orderMeta"></div>
+      <div class="order-panel__top">
+        <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
+        <div class="order-panel__info">
+          <span class="order-panel__desc" id="orderDesc" data-i18n="order.none">受注なし</span>
+          <div class="order-panel__meta" id="orderMeta"></div>
+        </div>
+        <div class="order-panel__elements" id="orderElements"></div>
       </div>
-      <div class="order-panel__elements" id="orderElements"></div>
       <div class="order-panel__progress">
         <div class="order-panel__bar"><div class="order-panel__bar-fill" id="orderBarFill"></div></div>
         <span class="order-panel__pct" id="orderPct"></span>
@@ -1043,6 +1293,34 @@
       </div>
       <p class="mai-modal__body" id="maiModalBody">—</p>
       <button type="button" class="mai-modal__close" id="maiModalClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Hero detail popup (Phase 1B-2) — workshop sprite tap で開く詳細表示 -->
+  <div class="hero-detail hidden" id="heroDetailPopup" role="dialog" aria-modal="true" aria-labelledby="heroDetailName">
+    <div class="hero-detail__card">
+      <div class="hero-detail__head">
+        <img class="hero-detail__portrait" id="heroDetailPortrait" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="hero-detail__head-info">
+          <span class="hero-detail__name" id="heroDetailName">—</span>
+          <div class="hero-detail__head-tags">
+            <span class="hero-detail__rarity" id="heroDetailRarity" data-rarity="common">—</span>
+            <span class="hero-detail__state" id="heroDetailState" data-state="idle">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-detail__row">
+        <span class="hero-detail__row-label" data-i18n="hero.stamina">体力 (HP)</span>
+        <div class="hero-detail__stam-bar"><div class="hero-detail__stam-fill" id="heroDetailStaminaFill"></div></div>
+        <span class="hero-detail__row-val" id="heroDetailStaminaText">—</span>
+      </div>
+      <div class="hero-detail__row">
+        <span class="hero-detail__row-label" data-i18n="hero.craftLevel">クラフトLV</span>
+        <strong class="hero-detail__row-val" id="heroDetailCl">—</strong>
+      </div>
+      <div class="hero-detail__elements" id="heroDetailElements"></div>
+      <div class="hero-detail__passive hidden" id="heroDetailPassive"></div>
+      <button type="button" class="hero-detail__close" id="heroDetailClose" data-i18n="btn.close">閉じる</button>
     </div>
   </div>
 
