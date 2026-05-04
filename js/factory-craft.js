@@ -162,16 +162,19 @@ export function craftLevelRequiredFor(ext) {
 }
 
 /** チームの craftLevel 合計を計算する。null スロットは 0 として扱う。
- *  ガルーダ (HP) は 1/3 の重みで集計 (paramSum と整合)。 */
+ *  - ガルーダ (HP) は 1/3 の重みで集計 (paramSum と整合)
+ *  - 「工」属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1) */
 export function teamCraftLevelTotal(team) {
   if (!Array.isArray(team)) return 0;
   let total = 0;
   for (const h of team) {
     if (!h || !h.element) continue;
-    total += (h.element.garuda || 0) * GARUDA_WEIGHT +
-             (h.element.ifrit || 0) +
-             (h.element.leviathan || 0) +
-             (h.element.tiamat || 0);
+    const base = (h.element.garuda || 0) * GARUDA_WEIGHT +
+                 (h.element.ifrit || 0) +
+                 (h.element.leviathan || 0) +
+                 (h.element.tiamat || 0);
+    const ko = Array.isArray(h.attributes) && h.attributes.includes("ko") ? 1.5 : 1.0;
+    total += base * ko;
   }
   return Math.round(total);
 }

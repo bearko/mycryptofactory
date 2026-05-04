@@ -105,7 +105,9 @@ export function teamQuestLevel(team) {
     const ratio = h.stamina && h.stamina.max > 0
       ? (h.stamina.current / h.stamina.max)
       : 1;
-    total += Math.round(elSum * ratio);
+    // 「農」属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)
+    const no = Array.isArray(h.attributes) && h.attributes.includes("no") ? 1.5 : 1.0;
+    total += Math.round(elSum * ratio * no);
   }
   return total;
 }
