@@ -254,13 +254,25 @@ function onTick() {
 }
 
 /** activeCraft が存在するときの 1 tick 処理。
- *  - 配属ヒーローごとに stamina decay / recovery 処理
- *  - 起きているヒーローはクラフト値獲得をロール
- *  - 起きているヒーローはパッシブ発動をロール
- *  - 進捗 (state.activeCraft.progress) を加算 */
+ *
+ *  ユーザー仕様 (Phase 1B 改修):
+ *   - 進捗率と「ノルマ達成率 (4 色 target)」は独立した別物
+ *   - 進捗 (timeProgress) は時間経過で 0 → 1 に進み、100% で完成扱い
+ *   - 着手している人数 + クラフトレベルに応じて少しずつ早くなる
+ *   - 1 人でも稼働中なら進捗が進行 (全員睡眠なら止まる)
+ *   - 4 色のノルマ達成は完成時の品質 tier 評価に使う (達成度別 mai コメント)
+ *
+ *  処理:
+ *   - 配属ヒーローごとに stamina decay / recovery 処理
+ *   - 起きているヒーローはクラフト値獲得をロール (4 色を貯める)
+ *   - 起きているヒーローはパッシブ発動をロール
+ *   - 稼働中ヒーローが居れば timeProgress を加算
+ *   - timeProgress >= 1 で triggerCraftCompletion */
 function tickActiveCraft() {
   const ac = state.activeCraft;
   if (!ac) return;
+  let activeWorkers = 0;
+  let totalCraftLv = 0;
   for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
     const heroId = ac.team[slotIdx];
     if (heroId == null) continue;
@@ -268,20 +280,19 @@ function tickActiveCraft() {
     if (!hero) continue;
     // 1. stamina 状態遷移
     if (hero.state === HERO_STATE.RESTING) {
-      // 回復 → max まで戻れば CRAFTING に戻る
       adjustStamina(hero, staminaRecoverPerTick(hero));
       if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
     } else {
-      // 消費 → 0 で RESTING に落ちる (このターンは獲得しない)
       adjustStamina(hero, -staminaDecayPerTick(hero));
       if (isExhausted(hero)) {
         hero.state = HERO_STATE.RESTING;
         continue;
       }
     }
-    // 睡眠中は 4 色獲得 / パッシブ なし
     if (hero.state === HERO_STATE.RESTING) continue;
-    // 2. 4 色獲得ロール
+    activeWorkers++;
+    totalCraftLv += craftLevel(hero);
+    // 2. 4 色獲得ロール (完成判定には影響せず、品質 tier の素材)
     const gain = rollCraftGain(hero);
     if (gain) {
       ac.progress[gain.element] = (ac.progress[gain.element] || 0) + gain.value;
@@ -294,37 +305,43 @@ function tickActiveCraft() {
       pushPassiveNotification(hero, passive);
     }
   }
-  // 4. クラフト完了判定 (target>0 の全色が target を満たす = 進捗 100%)
-  if (isCraftComplete(ac)) {
+  // 4. 時間進捗 timeProgress を加算 (1 人でも働いていれば進む)
+  if (activeWorkers > 0) {
+    const totalTicks = (ac.durationWeeks || 1) * SECONDS_PER_WEEK;
+    const baseDelta  = 1 / totalTicks;
+    // 人数ボーナス: 追加 1 人ごとに +10% (1 人 = +0% / 5 人 = +40%)
+    const heroBonus  = (activeWorkers - 1) * 0.10;
+    // クラフトLv ボーナス: 1000 で +50% 上限
+    const lvBonus    = Math.min(0.5, totalCraftLv / 2000);
+    const factor     = 1 + heroBonus + lvBonus;
+    ac.timeProgress  = Math.min(1, (ac.timeProgress || 0) + baseDelta * factor);
+  }
+  // 5. 完了判定 (時間進捗 100%)
+  if ((ac.timeProgress || 0) >= 1) {
     triggerCraftCompletion(ac);
   }
-}
-
-/** target > 0 の色がすべて progress >= target に到達したか。
- *  target = 0 の色は無視 (= 不要色)。 */
-function isCraftComplete(ac) {
-  for (const k of ELEMENTS) {
-    const tgt = ac.targets[k] || 0;
-    if (tgt <= 0) continue;
-    if ((ac.progress[k] || 0) < tgt) return false;
-  }
-  return true;
 }
 
 /** 完成判定発火 ─ activeCraft を pendingCompletion に移し、
  *  Mai の通知 → 完成画面を順に表示する。 */
 function triggerCraftCompletion(ac) {
-  // 実所要週数 (進捗 0 → 完了までの実時間)
+  // 実所要週数 (timeProgress 0 → 1 までの実時間)
   const elapsedTicks = state.tickCount - (ac.startedAtTick || 0);
   const actualWeeks  = Math.max(1, Math.ceil(elapsedTicks / SECONDS_PER_WEEK));
-  // 品質 ratio = 全色合計 (cap なし) / 全色 target 合計
+  // 品質 tier はノルマ (4 色 target) の達成度で評価:
+  //   - 全色 target を達成: ratio で good/excellent 振り分け
+  //   - target>0 の色で 1 つでも未達: under (= 「基準値未達」mai コメント)
   let progSum = 0, tgtSum = 0;
+  let allMet = true;
   for (const k of ELEMENTS) {
-    progSum += ac.progress[k] || 0;
-    tgtSum  += ac.targets[k]  || 0;
+    const cur = ac.progress[k] || 0;
+    const tgt = ac.targets[k]  || 0;
+    progSum += cur;
+    tgtSum  += tgt;
+    if (tgt > 0 && cur < tgt) allMet = false;
   }
   const qualityRatio = tgtSum > 0 ? progSum / tgtSum : 1;
-  const qualityTier  = pickQualityTier(qualityRatio);
+  const qualityTier  = pickQualityTier(qualityRatio, allMet);
 
   state.pendingCompletion = {
     extId: ac.extId,
@@ -352,12 +369,16 @@ function triggerCraftCompletion(ac) {
   maiSays("comp.maiNotice", { onClose: openCompletionScreen });
 }
 
-/** quality ratio から「素晴らしい / 普通 / 下回り」のいずれかを返す。
- *  下回り は通常の完了 (全色 target 達成) では発生しないが、将来
- *  「時間切れで強制完了」を入れたときに使えるよう経路を残しておく。 */
-function pickQualityTier(ratio) {
-  // 全色到達 = ratio >= 1.0 のはず。1.5+ は overshoot (素晴らしい)。
-  if (ratio < 1.0) return "under";
+/** 品質 tier の判定。
+ *  Phase 1B 改修: 完了は「時間進捗 100%」で起こるので、ノルマ (4 色 target)
+ *  を満たしているかどうかは独立して評価する。
+ *
+ *  - allMet === false: 1 色でも未達 → "under" (基準値未達)
+ *  - allMet === true + ratio >= 1.5: "excellent" (大幅オーバー)
+ *  - それ以外: "good" (達成)
+ */
+function pickQualityTier(ratio, allMet) {
+  if (!allMet) return "under";
   if (ratio >= 1.5) return "excellent";
   return "good";
 }
@@ -1182,6 +1203,7 @@ function startActiveCraft() {
     startedAt: { year: state.year, month: state.month, week: state.week },
     startedAtTick: state.tickCount,   // 実所要時間 (週) を完成時に算出するため
     durationWeeks: dur,
+    timeProgress: 0,                  // Phase 1B 改修: 時間進捗 (0..1)、完成判定の主役
   };
   // Mark assigned heroes as crafting (state machine — stamina tick comes Phase 1C)
   for (const id of team) {
@@ -1232,22 +1254,23 @@ function renderOrderPanel() {
   `;
 
   // 4 色ゲージ (アイコン + 現在/目標、縦積み)
+  // 達成 = target===0 (= 不要な色で最初から達成扱い) or progress >= target
   elements.innerHTML = ELEMENTS.map(k => {
     const cur = ac.progress[k] || 0;
     const tgt = ac.targets[k] || 0;
-    const reached = tgt > 0 && cur >= tgt;
+    const reached = tgt === 0 || cur >= tgt;
     return `<span class="order-panel__el ${reached ? "order-panel__el--reached" : ""}" title="${escapeHtml(elementLabel(k))} ${cur}/${tgt}">
       <img class="order-panel__el-icon" src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
       <span class="order-panel__el-val"><strong>${cur}</strong>/<span class="order-panel__el-tgt">${tgt}</span></span>
     </span>`;
   }).join("");
 
-  // 進捗バー (4 色合計の達成率)
-  const totalCur = ELEMENTS.reduce((s, k) => s + Math.min(ac.progress[k] || 0, ac.targets[k] || 0), 0);
-  const totalTgt = Math.max(1, ELEMENTS.reduce((s, k) => s + (ac.targets[k] || 0), 0));
-  const pctVal = Math.min(100, Math.floor((totalCur / totalTgt) * 100));
-  fill.style.width = pctVal + "%";
-  pct.textContent = pctVal + "%";
+  // 進捗バーは「時間進捗 (timeProgress)」を表示 ─ ノルマ達成率とは独立。
+  // Phase 1B 改修: タイマーが 100% に到達したら完成、4 色のノルマは
+  //                品質 tier 評価に使う独立メトリック。
+  const pctRaw = (ac.timeProgress || 0) * 100;
+  fill.style.width = pctRaw.toFixed(2) + "%";
+  pct.textContent = Math.floor(pctRaw) + "%";
 }
 
 /** activeCraft.startedAt + durationWeeks から完成予定日を計算 */
@@ -1593,16 +1616,18 @@ function renderCompletionScreen() {
     .replace("{actual}", String(pc.durationActualWeeks))
     .replace("{est}",    String(pc.durationEstimateWeeks));
 
-  // 4 色の達成状況: progress / target、達成は緑字、未達 (target>0 で progress<target) は赤字
+  // 4 色の達成状況: progress / target
+  //   reached  = 達成 (緑) — target===0 (不要色) も「達成扱い」で緑字
+  //   excellent = 大幅オーバー (target × 1.5+ / 金色)
+  //   under    = 未達 (target>0 で progress<target / 赤)
   $("craftDoneElements").innerHTML = ELEMENTS.map(k => {
     const cur = pc.progress[k] || 0;
     const tgt = pc.targets[k]  || 0;
-    let stat = "neutral";
-    if (tgt > 0) {
-      if (cur >= tgt * 1.5) stat = "excellent";
-      else if (cur >= tgt)  stat = "reached";
-      else                  stat = "under";
-    }
+    let stat;
+    if (tgt === 0)              stat = "reached";          // 不要色も達成扱い
+    else if (cur >= tgt * 1.5)  stat = "excellent";
+    else if (cur >= tgt)        stat = "reached";
+    else                        stat = "under";
     return `<div class="craft-done__el craft-done__el--${stat}">
       <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
       <span class="craft-done__el-label">${escapeHtml(elementLabel(k))}</span>
