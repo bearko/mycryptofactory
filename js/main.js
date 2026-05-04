@@ -29,6 +29,7 @@ import {
 import { loadHeroes, HERO_ROSTER } from "./heroes.js";
 import {
   buildOwnedHeroes,
+  makeFactoryHero,
   craftLevel,
   elementValueForCraft,
   ELEMENTS,
@@ -63,6 +64,43 @@ import {
   materialIcon,
   buildInitialInventory,
 } from "./factory-material.js";
+import {
+  pickAppraisalJudges,
+  rollJudgeScore,
+  buildJudgeComment,
+  appraisalTotalTier,
+} from "./factory-appraisal.js";
+import {
+  ATTRIBUTE_LABEL,
+  ATTRIBUTES,
+} from "./factory-attributes.js";
+import { MAI_HELP } from "./mai-help.js";
+import {
+  HIRE_PLANS,
+  PLAN_BY_ID,
+  canBeRecruiter,
+  heroCapAtFactoryLevel,
+  HIRE_WAIT_WEEKS,
+  rollHireCandidates,
+  SALE_SPEED_OPTIONS,
+  SALE_SPEED_BY_ID,
+  MARKET_FEE_RATE,
+  estimateSalePrice,
+  netSaleRevenue,
+  canSellExt,
+} from "./factory-market.js";
+import {
+  QUEST_DIFFICULTY,
+  QUEST_DURATION_WEEKS,
+  QUEST_BASE_LEVEL,
+  QUEST_DIFFICULTY_LABEL,
+  NORMAL_NODES,
+  NODE_BY_ID,
+  teamQuestLevel,
+  questSuccessRate,
+  successRateCommentKey,
+  rollQuestRewards,
+} from "./factory-quest.js";
 
 const APP_VERSION = "alpha";
 const TEAM_SIZE = 5;
@@ -122,9 +160,39 @@ const state = {
   /** 完成済みエクステンションの倉庫 (Phase 1B-3 で push、Phase 1B-5 のマーケット
    *  ＞倉庫タブで一覧表示する想定)。各要素:
    *  { extId, achievedAt:{year,month,week}, achievedTicks, durationActualWeeks,
-   *    progress:{...}, targets:{...}, qualityRatio: number, qualityTier: string } */
+   *    progress:{...}, targets:{...}, qualityRatio: number, qualityTier: string,
+   *    appraisal: { judges:[{heroId,score,comment}], totalScore, tier } } */
   warehouse: /** @type {Array<object>} */ ([]),
+  /** Phase 1B-4 品評会の表示中データ (5 名審査員 + 各点数 + 合計) */
+  pendingAppraisal: /** @type {object | null} */ (null),
+  /** Phase 1D-3 ファクトリーレベル (Phase 1D-3 では 1 固定。
+   *  level-up フローは別 PR で実装予定) */
+  factoryLevel: 1,
+  /** Phase 1D-3 進行中の雇用プラン
+   *  { planId, recruiterId, startedAtTick, candidates? }
+   *  candidates が null → まだ待機中 (1 ヶ月待ち)
+   *  candidates が array → 候補出揃い、選ぶ前
+   */
+  activeHire: /** @type {object | null} */ (null),
+  /** Phase 1D-3 マーケットビュー UI: 現在開いているタブ */
+  marketTab: "warehouse",  // "warehouse" | "hire" | "sell"
+  /** Phase 1D-4 進行中の出品 (warehouse から販売中の ext)
+   *  各要素: { id, warehouseIdx, sellerId, speedId, listedAtTick,
+   *          weeks, expectedPrice, status: "listed"|"sold" } */
+  activeSales: /** @type {Array<object>} */ ([]),
+  /** Phase 1D-4 出品 modal の現在ピック中 ext (warehouse index) */
+  sellPickedIdx: -1,
+  /** Phase 1C-1 クエスト関連 */
+  questTeam: /** @type {Array<number|null>} */ ([null, null, null]),  // 3 枠
+  activeQuest: /** @type {object | null} */ (null),
+  /**  { nodeId, difficulty, team:[heroId|null × 3], successRate,
+   *     startedAtTick, durationWeeks, progress: 0..1 } */
+  questPickedNodeId: null,
+  questPickedDifficulty: "easy",
+  pendingQuestResult: /** @type {object | null} */ (null),
 };
+
+const QUEST_TEAM_SIZE = 3;
 
 /** 通知バナー / 浮上値ともに 4 秒 = 4 tick で消える */
 const NOTIFICATION_TTL_TICKS = 4;
@@ -162,22 +230,49 @@ function onTick() {
   if (state.activeCraft) {
     tickActiveCraft();
   }
+  // Phase 1C-1: アクティブクエストの 1 tick 進行
+  if (state.activeQuest) {
+    tickActiveQuest();
+  }
+  // Phase 1D-3: 雇用プラン進行 (1 ヶ月で候補生成)
+  if (state.activeHire) {
+    tickActiveHire();
+  }
+  // Phase 1D-4: 出品 tick (完了で GUM 加算)
+  if (state.activeSales.length > 0) {
+    tickActiveSales();
+  }
+  // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
+  tickPassiveRestRecovery();
   // Notifications/floats の TTL GC + 描画更新
   pruneEphemerals();
   renderHeader();
   renderWorkshop();
   renderNotifications();
   renderOrderPanel();
+  renderQuestOverlay();
 }
 
 /** activeCraft が存在するときの 1 tick 処理。
- *  - 配属ヒーローごとに stamina decay / recovery 処理
- *  - 起きているヒーローはクラフト値獲得をロール
- *  - 起きているヒーローはパッシブ発動をロール
- *  - 進捗 (state.activeCraft.progress) を加算 */
+ *
+ *  ユーザー仕様 (Phase 1B 改修):
+ *   - 進捗率と「ノルマ達成率 (4 色 target)」は独立した別物
+ *   - 進捗 (timeProgress) は時間経過で 0 → 1 に進み、100% で完成扱い
+ *   - 着手している人数 + クラフトレベルに応じて少しずつ早くなる
+ *   - 1 人でも稼働中なら進捗が進行 (全員睡眠なら止まる)
+ *   - 4 色のノルマ達成は完成時の品質 tier 評価に使う (達成度別 mai コメント)
+ *
+ *  処理:
+ *   - 配属ヒーローごとに stamina decay / recovery 処理
+ *   - 起きているヒーローはクラフト値獲得をロール (4 色を貯める)
+ *   - 起きているヒーローはパッシブ発動をロール
+ *   - 稼働中ヒーローが居れば timeProgress を加算
+ *   - timeProgress >= 1 で triggerCraftCompletion */
 function tickActiveCraft() {
   const ac = state.activeCraft;
   if (!ac) return;
+  let activeWorkers = 0;
+  let totalCraftLv = 0;
   for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
     const heroId = ac.team[slotIdx];
     if (heroId == null) continue;
@@ -185,20 +280,19 @@ function tickActiveCraft() {
     if (!hero) continue;
     // 1. stamina 状態遷移
     if (hero.state === HERO_STATE.RESTING) {
-      // 回復 → max まで戻れば CRAFTING に戻る
       adjustStamina(hero, staminaRecoverPerTick(hero));
       if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
     } else {
-      // 消費 → 0 で RESTING に落ちる (このターンは獲得しない)
       adjustStamina(hero, -staminaDecayPerTick(hero));
       if (isExhausted(hero)) {
         hero.state = HERO_STATE.RESTING;
         continue;
       }
     }
-    // 睡眠中は 4 色獲得 / パッシブ なし
     if (hero.state === HERO_STATE.RESTING) continue;
-    // 2. 4 色獲得ロール
+    activeWorkers++;
+    totalCraftLv += craftLevel(hero);
+    // 2. 4 色獲得ロール (完成判定には影響せず、品質 tier の素材)
     const gain = rollCraftGain(hero);
     if (gain) {
       ac.progress[gain.element] = (ac.progress[gain.element] || 0) + gain.value;
@@ -211,37 +305,43 @@ function tickActiveCraft() {
       pushPassiveNotification(hero, passive);
     }
   }
-  // 4. クラフト完了判定 (target>0 の全色が target を満たす = 進捗 100%)
-  if (isCraftComplete(ac)) {
+  // 4. 時間進捗 timeProgress を加算 (1 人でも働いていれば進む)
+  if (activeWorkers > 0) {
+    const totalTicks = (ac.durationWeeks || 1) * SECONDS_PER_WEEK;
+    const baseDelta  = 1 / totalTicks;
+    // 人数ボーナス: 追加 1 人ごとに +10% (1 人 = +0% / 5 人 = +40%)
+    const heroBonus  = (activeWorkers - 1) * 0.10;
+    // クラフトLv ボーナス: 1000 で +50% 上限
+    const lvBonus    = Math.min(0.5, totalCraftLv / 2000);
+    const factor     = 1 + heroBonus + lvBonus;
+    ac.timeProgress  = Math.min(1, (ac.timeProgress || 0) + baseDelta * factor);
+  }
+  // 5. 完了判定 (時間進捗 100%)
+  if ((ac.timeProgress || 0) >= 1) {
     triggerCraftCompletion(ac);
   }
-}
-
-/** target > 0 の色がすべて progress >= target に到達したか。
- *  target = 0 の色は無視 (= 不要色)。 */
-function isCraftComplete(ac) {
-  for (const k of ELEMENTS) {
-    const tgt = ac.targets[k] || 0;
-    if (tgt <= 0) continue;
-    if ((ac.progress[k] || 0) < tgt) return false;
-  }
-  return true;
 }
 
 /** 完成判定発火 ─ activeCraft を pendingCompletion に移し、
  *  Mai の通知 → 完成画面を順に表示する。 */
 function triggerCraftCompletion(ac) {
-  // 実所要週数 (進捗 0 → 完了までの実時間)
+  // 実所要週数 (timeProgress 0 → 1 までの実時間)
   const elapsedTicks = state.tickCount - (ac.startedAtTick || 0);
   const actualWeeks  = Math.max(1, Math.ceil(elapsedTicks / SECONDS_PER_WEEK));
-  // 品質 ratio = 全色合計 (cap なし) / 全色 target 合計
+  // 品質 tier はノルマ (4 色 target) の達成度で評価:
+  //   - 全色 target を達成: ratio で good/excellent 振り分け
+  //   - target>0 の色で 1 つでも未達: under (= 「基準値未達」mai コメント)
   let progSum = 0, tgtSum = 0;
+  let allMet = true;
   for (const k of ELEMENTS) {
-    progSum += ac.progress[k] || 0;
-    tgtSum  += ac.targets[k]  || 0;
+    const cur = ac.progress[k] || 0;
+    const tgt = ac.targets[k]  || 0;
+    progSum += cur;
+    tgtSum  += tgt;
+    if (tgt > 0 && cur < tgt) allMet = false;
   }
   const qualityRatio = tgtSum > 0 ? progSum / tgtSum : 1;
-  const qualityTier  = pickQualityTier(qualityRatio);
+  const qualityTier  = pickQualityTier(qualityRatio, allMet);
 
   state.pendingCompletion = {
     extId: ac.extId,
@@ -269,14 +369,312 @@ function triggerCraftCompletion(ac) {
   maiSays("comp.maiNotice", { onClose: openCompletionScreen });
 }
 
-/** quality ratio から「素晴らしい / 普通 / 下回り」のいずれかを返す。
- *  下回り は通常の完了 (全色 target 達成) では発生しないが、将来
- *  「時間切れで強制完了」を入れたときに使えるよう経路を残しておく。 */
-function pickQualityTier(ratio) {
-  // 全色到達 = ratio >= 1.0 のはず。1.5+ は overshoot (素晴らしい)。
-  if (ratio < 1.0) return "under";
+/** 品質 tier の判定。
+ *  Phase 1B 改修: 完了は「時間進捗 100%」で起こるので、ノルマ (4 色 target)
+ *  を満たしているかどうかは独立して評価する。
+ *
+ *  - allMet === false: 1 色でも未達 → "under" (基準値未達)
+ *  - allMet === true + ratio >= 1.5: "excellent" (大幅オーバー)
+ *  - それ以外: "good" (達成)
+ */
+function pickQualityTier(ratio, allMet) {
+  if (!allMet) return "under";
   if (ratio >= 1.5) return "excellent";
   return "good";
+}
+
+/** activeCraft / activeQuest の team 外で RESTING になっているヒーローを
+ *  自動回復させる。手動「休憩」ボタンで RESTING 入りしたヒーローや、
+ *  過去のクラフト/クエストで疲れたヒーローが対象。 */
+function tickPassiveRestRecovery() {
+  const skip = new Set();
+  for (const id of state.activeCraft?.team || []) if (id != null) skip.add(id);
+  for (const id of state.activeQuest?.team || []) if (id != null) skip.add(id);
+  for (const hero of state.ownedHeroes) {
+    if (!hero) continue;
+    if (hero.state !== HERO_STATE.RESTING) continue;
+    if (skip.has(hero.heroId)) continue;
+    adjustStamina(hero, staminaRecoverPerTick(hero));
+    if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
+  }
+}
+
+/** ─── Quest tick (Phase 1C-1) ───────────────────────────────────── */
+
+function tickActiveQuest() {
+  const aq = state.activeQuest;
+  if (!aq) return;
+  // 進捗 = elapsed ticks / total ticks
+  const elapsed = state.tickCount - aq.startedAtTick;
+  const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
+  aq.progress = Math.min(1, elapsed / totalTicks);
+  if (aq.progress >= 1) {
+    triggerQuestComplete(aq);
+  }
+}
+
+function triggerQuestComplete(aq) {
+  const success = Math.random() <= aq.successRate;
+  const node = NODE_BY_ID[aq.nodeId];
+  let rewards = {};
+  if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
+
+  // 報酬を所持素材に追加
+  if (success) {
+    for (const [matId, qty] of Object.entries(rewards)) {
+      state.materials[matId] = (state.materials[matId] || 0) + qty;
+    }
+  }
+
+  // 配属ヒーローの HP を 0 にして RESTING 入り (ユーザー仕様):
+  // 「成功しても編成中のヒーローの体力がゼロになる」
+  for (const id of aq.team) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (!h) continue;
+    h.stamina.current = 0;
+    h.state = HERO_STATE.RESTING;
+  }
+
+  state.pendingQuestResult = {
+    nodeId: aq.nodeId,
+    difficulty: aq.difficulty,
+    team: aq.team.slice(),
+    success,
+    rewards,
+    finishedAt: { year: state.year, month: state.month, week: state.week },
+  };
+  state.activeQuest = null;
+  // Mai ポップアップ → 閉じるとレポート画面
+  maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
+    onClose: openQuestResultScreen,
+  });
+}
+
+/** ─── Quest selection / start view (Phase 1C-1) ─────────────────── */
+
+function openQuestView() {
+  pauseTime();
+  $("questView")?.classList.remove("hidden");
+  // 初回オープンで pickedNodeId 未設定なら最初のノード+初級を仮選択
+  if (!state.questPickedNodeId) state.questPickedNodeId = NORMAL_NODES[0].id;
+  if (!state.questPickedDifficulty) state.questPickedDifficulty = "easy";
+  renderQuestView();
+}
+function closeQuestView() {
+  $("questView")?.classList.add("hidden");
+  resumeTime();
+}
+
+function renderQuestView() {
+  // ノード一覧 (4 通常ノード)
+  $("questNodeList").innerHTML = NORMAL_NODES.map(n => {
+    const sel = n.id === state.questPickedNodeId ? " quest-node--sel" : "";
+    return `<button type="button" class="quest-node${sel}" data-node="${n.id}">
+      <span class="quest-node__name">${escapeHtml(n.nameJa)}</span>
+      <span class="quest-node__note">${escapeHtml(extractNote(n.note, getLang()))}</span>
+    </button>`;
+  }).join("");
+
+  // 難易度ボタン
+  $("questDiffList").innerHTML = ["easy", "normal", "hard"].map(d => {
+    const sel = d === state.questPickedDifficulty ? " quest-diff--sel" : "";
+    const label = QUEST_DIFFICULTY_LABEL[d][getLang() === "en" ? "en" : "ja"];
+    return `<button type="button" class="quest-diff${sel}" data-diff="${d}">
+      <span class="quest-diff__label">${escapeHtml(label)}</span>
+      <span class="quest-diff__weeks">${QUEST_DURATION_WEEKS[d]}${ti18n("craft.weeks").replace("{n}", "").trim() || "wk"}</span>
+    </button>`;
+  }).join("");
+
+  // パーティ (3 枠) — クラフト編成と同じノリで heroes 一覧から pick
+  const team = state.questTeam.map(id => id == null ? null : findHero(id));
+  $("questTeamSlots").innerHTML = state.questTeam.map((id, idx) => {
+    if (id == null) return `<div class="quest-team__slot" data-slot="${idx}">+</div>`;
+    const h = findHero(id);
+    if (!h) return `<div class="quest-team__slot" data-slot="${idx}">?</div>`;
+    return `<div class="quest-team__slot quest-team__slot--filled" data-slot="${idx}" title="${escapeHtml(tHero(h.heroId, h.nameJa))}">
+      <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="quest-team__slot-name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+    </div>`;
+  }).join("");
+
+  // ヒーロー候補リスト (questing/crafting/resting ではないもの優先表示)
+  const eligible = state.ownedHeroes.slice().sort((a, b) => {
+    // 優先: idle → resting (HP min) → questing/crafting (assigned に出てこないが念の為)
+    const rank = (h) => {
+      if (state.questTeam.includes(h.heroId)) return 0;
+      if (h.state === HERO_STATE.IDLE) return 1;
+      if (h.state === HERO_STATE.RESTING) return 2;
+      return 3;
+    };
+    return rank(a) - rank(b);
+  });
+  $("questHeroPick").innerHTML = eligible.slice(0, 30).map(h => {
+    const inTeam = state.questTeam.includes(h.heroId);
+    const stamPct = h.stamina.max > 0 ? (h.stamina.current / h.stamina.max * 100) : 0;
+    const ql = Math.round(((h.element.garuda || 0) + (h.element.ifrit || 0) +
+                           (h.element.leviathan || 0) + (h.element.tiamat || 0)) * (stamPct / 100));
+    return `<button type="button" class="quest-hero-pick${inTeam ? " quest-hero-pick--in" : ""}" data-hero="${h.heroId}" ${h.state === HERO_STATE.CRAFTING ? "disabled" : ""}>
+      <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="quest-hero-pick__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+      <span class="quest-hero-pick__ql">QL ${ql}</span>
+      <span class="quest-hero-pick__hp">HP ${h.stamina.current}/${h.stamina.max}</span>
+    </button>`;
+  }).join("");
+
+  // 成功率 + マイのコメント
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  const baseLv = QUEST_BASE_LEVEL[state.questPickedDifficulty];
+  const teamLv = teamQuestLevel(team);
+  const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
+  const commentKey = successRateCommentKey(rate);
+  const startBtn = $("questStartBtn");
+  if (rate < 0 || state.questTeam.filter(x => x != null).length === 0) {
+    startBtn.disabled = true;
+  } else {
+    startBtn.disabled = false;
+  }
+  $("questSummary").innerHTML = `
+    <div class="quest-summary__row">
+      <span class="quest-summary__label">${escapeHtml(ti18n("quest.teamLevel"))}:</span>
+      <strong>${teamLv}</strong>
+      <span class="quest-summary__sep">/</span>
+      <span class="quest-summary__base">${baseLv}</span>
+    </div>
+    <div class="quest-summary__row">
+      <span class="quest-summary__label">${escapeHtml(ti18n("quest.successRate"))}:</span>
+      <strong class="quest-summary__rate" data-rate="${rate < 0 ? "blocked" : Math.round(rate * 100)}">
+        ${rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%")}
+      </strong>
+    </div>
+    <p class="quest-summary__mai">${escapeHtml(ti18n(commentKey))}</p>
+  `;
+}
+
+function extractNote(note, lang) {
+  // "ja:..|en:.." 形式
+  const segs = (note || "").split("|");
+  for (const s of segs) {
+    const [l, ...rest] = s.split(":");
+    if (l === lang) return rest.join(":");
+  }
+  return segs[0]?.split(":").slice(1).join(":") || "";
+}
+
+function startActiveQuest() {
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  if (!node) return;
+  const diff = state.questPickedDifficulty;
+  const team = state.questTeam.slice();
+  const teamHeroes = team.map(id => id == null ? null : findHero(id));
+  const baseLv = QUEST_BASE_LEVEL[diff];
+  const teamLv = teamQuestLevel(teamHeroes);
+  const rate   = questSuccessRate(teamLv, baseLv);
+  if (rate < 0) return;
+
+  // ヒーローを QUESTING 状態に
+  for (const id of team) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (h) h.state = HERO_STATE.QUESTING;
+  }
+
+  state.activeQuest = {
+    nodeId: node.id,
+    difficulty: diff,
+    team,
+    successRate: rate,
+    startedAtTick: state.tickCount,
+    durationWeeks: QUEST_DURATION_WEEKS[diff],
+    progress: 0,
+  };
+  closeQuestView();
+  renderQuestOverlay();
+}
+
+/** ─── Quest progress overlay (top of workshop) ───────────────────── */
+function renderQuestOverlay() {
+  const host = $("questOverlay");
+  if (!host) return;
+  const aq = state.activeQuest;
+  if (!aq) {
+    host.classList.add("hidden");
+    host.innerHTML = "";
+    return;
+  }
+  host.classList.remove("hidden");
+  const node = NODE_BY_ID[aq.nodeId];
+  const pctVal = Math.floor((aq.progress || 0) * 100);
+  const teamHtml = aq.team.filter(id => id != null).slice(0, 3).map(id => {
+    const h = findHero(id);
+    if (!h) return "";
+    return `<img class="quest-overlay__hero" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />`;
+  }).join("");
+  host.innerHTML = `
+    <div class="quest-overlay__left">${teamHtml}</div>
+    <div class="quest-overlay__right">
+      <span class="quest-overlay__node">${escapeHtml(ti18n("quest.nodeLabel"))}: ${escapeHtml(node?.nameJa || aq.nodeId)}</span>
+      <span class="quest-overlay__status">${escapeHtml(ti18n("quest.inProgress"))} ${pctVal}%</span>
+    </div>
+    <div class="quest-overlay__bar"><div class="quest-overlay__bar-fill" style="width:${pctVal}%"></div></div>
+  `;
+}
+
+/** ─── Quest result screen (Phase 1C-1) ────────────────────────────── */
+
+function openQuestResultScreen() {
+  if (!state.pendingQuestResult) return;
+  pauseTime();
+  $("questResultModal")?.classList.remove("hidden");
+  renderQuestResultScreen();
+}
+
+function renderQuestResultScreen() {
+  const pq = state.pendingQuestResult;
+  if (!pq) return;
+  const node = NODE_BY_ID[pq.nodeId];
+  const titleKey = pq.success ? "quest.result.success" : "quest.result.failure";
+  $("questResultTitle").textContent = ti18n(titleKey);
+  $("questResultTitle").setAttribute("data-success", pq.success ? "1" : "0");
+  const subText = ti18n("quest.result.summary")
+    .replace("{node}", node?.nameJa || pq.nodeId)
+    .replace("{diff}", QUEST_DIFFICULTY_LABEL[pq.difficulty][getLang() === "en" ? "en" : "ja"]);
+  $("questResultSummary").textContent = subText;
+
+  // 報酬一覧
+  const rewards = pq.rewards || {};
+  const rewardItems = Object.entries(rewards);
+  if (rewardItems.length === 0) {
+    $("questResultRewards").innerHTML = `<p class="quest-result__no-reward">${escapeHtml(ti18n("quest.result.noReward"))}</p>`;
+  } else {
+    $("questResultRewards").innerHTML = rewardItems.map(([id, qty]) => {
+      return `<div class="quest-result__reward">
+        <img src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, getLang()))}" onerror="this.style.opacity='0.2'" />
+        <span class="quest-result__reward-name">${escapeHtml(materialName(id, getLang()))}</span>
+        <strong class="quest-result__reward-qty">×${qty}</strong>
+      </div>`;
+    }).join("");
+  }
+
+  // 配属ヒーロー (HP 0 で帰還)
+  $("questResultTeam").innerHTML = pq.team.filter(id => id != null).map(id => {
+    const h = findHero(id);
+    if (!h) return "";
+    return `<div class="quest-result__hero">
+      <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span>${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+      <span class="quest-result__hero-hp">HP 0/${h.stamina.max}</span>
+    </div>`;
+  }).join("");
+}
+
+function closeQuestResultScreen() {
+  $("questResultModal")?.classList.add("hidden");
+  state.pendingQuestResult = null;
+  // クエストチームを reset (体力 0 のため再選択は別途)
+  state.questTeam = [null, null, null];
+  resumeTime();
+  renderQuestOverlay();
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える) */
@@ -390,6 +788,19 @@ function elementLabel(key) {
   return ti18n(ELEMENT_LABEL_KEY[key] || ("elem." + key));
 }
 
+/** 士農工商バッジ HTML を生成。
+ *  hero.attributes (string[]) の各属性を 1 文字 Kanji の小バッジで表示。 */
+function renderHeroAttrBadges(hero) {
+  if (!hero || !Array.isArray(hero.attributes) || hero.attributes.length === 0) {
+    return "";
+  }
+  return `<span class="attr-badges">${hero.attributes.map(a => {
+    const lbl = ATTRIBUTE_LABEL[a];
+    if (!lbl) return "";
+    return `<span class="attr-badge attr-badge--${a}" title="${escapeHtml(lbl[getLang() === "en" ? "en" : "ja"])}">${escapeHtml(lbl.ja)}</span>`;
+  }).join("")}</span>`;
+}
+
 function renderHeroTeam() {
   const host = $("heroTeamSlots");
   if (!host) return;
@@ -419,7 +830,7 @@ function renderHeroTeamSummary() {
   const elsEl   = $("heroTeamElements");
   if (!totalEl || !elsEl) return;
 
-  // 合計 craftLevel (各ヒーローの craftLevel = ガルーダ 1/3 込み)
+  // 合計 craftLevel (各ヒーローの craftLevel = ガルーダ GARUDA_WEIGHT 込み)
   let totalLv = 0;
   const elTotals = { garuda: 0, ifrit: 0, leviathan: 0, tiamat: 0 };
   for (const heroId of state.craftTeam) {
@@ -458,20 +869,33 @@ function renderHeroList() {
     const stateLbl = assigned ? ti18n("hero.state.assigned") : heroStateLabel(hero.state);
     const cardCls = "hero-card" + (assigned ? " hero-card--assigned" : "");
     const elementsHtml = ELEMENTS.map(key => {
-      // ガルーダは 1/3 で表示 (factory 文脈での craft 寄与値)
+      // ガルーダは GARUDA_WEIGHT で表示 (factory 文脈での craft 寄与値)
       const val = elementValueForCraft(hero, key);
       return `<span class="hero-card__elem" title="${escapeHtml(elementLabel(key))}: ${val}">
         <img src="${elementIconUrl(key)}" alt="${escapeHtml(elementLabel(key))}" />
         <span class="hero-card__elem-val">${val}</span>
       </span>`;
     }).join("");
+    // 「休憩」ボタン: HP 減 (cur < max) かつ assigned/CRAFTING/QUESTING 中でない
+    //   → 手動で RESTING 入りさせて回復を強制する。
+    const canRest = !assigned
+      && hero.state !== HERO_STATE.CRAFTING
+      && hero.state !== HERO_STATE.QUESTING
+      && hero.stamina.current < hero.stamina.max;
+    const restBtn = canRest
+      ? `<button type="button" class="hero-card__rest-btn" data-rest-hero="${hero.heroId}" data-i18n="hero.actions.rest">休憩</button>`
+      : "";
     return `<div class="${cardCls}" data-hero-id="${hero.heroId}" data-rarity="${hero.rarity}" data-assigned="${assigned ? "1" : "0"}">
       <div class="hero-card__head">
         <img class="hero-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
-        <div>
-          <div class="hero-card__name">${escapeHtml(name)}</div>
+        <div class="hero-card__head-info">
+          <div class="hero-card__name-row">
+            <span class="hero-card__name">${escapeHtml(name)}</span>
+            ${renderHeroAttrBadges(hero)}
+          </div>
           <div class="hero-card__state" data-state="${hero.state}">${escapeHtml(stateLbl)}</div>
         </div>
+        ${restBtn}
       </div>
       <div class="hero-card__elements">${elementsHtml}</div>
       <div class="hero-card__stamina" title="${escapeHtml(ti18n("hero.stamina"))}: ${hero.stamina.current}/${hero.stamina.max}">
@@ -779,6 +1203,7 @@ function startActiveCraft() {
     startedAt: { year: state.year, month: state.month, week: state.week },
     startedAtTick: state.tickCount,   // 実所要時間 (週) を完成時に算出するため
     durationWeeks: dur,
+    timeProgress: 0,                  // Phase 1B 改修: 時間進捗 (0..1)、完成判定の主役
   };
   // Mark assigned heroes as crafting (state machine — stamina tick comes Phase 1C)
   for (const id of team) {
@@ -829,22 +1254,23 @@ function renderOrderPanel() {
   `;
 
   // 4 色ゲージ (アイコン + 現在/目標、縦積み)
+  // 達成 = target===0 (= 不要な色で最初から達成扱い) or progress >= target
   elements.innerHTML = ELEMENTS.map(k => {
     const cur = ac.progress[k] || 0;
     const tgt = ac.targets[k] || 0;
-    const reached = tgt > 0 && cur >= tgt;
+    const reached = tgt === 0 || cur >= tgt;
     return `<span class="order-panel__el ${reached ? "order-panel__el--reached" : ""}" title="${escapeHtml(elementLabel(k))} ${cur}/${tgt}">
       <img class="order-panel__el-icon" src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
       <span class="order-panel__el-val"><strong>${cur}</strong>/<span class="order-panel__el-tgt">${tgt}</span></span>
     </span>`;
   }).join("");
 
-  // 進捗バー (4 色合計の達成率)
-  const totalCur = ELEMENTS.reduce((s, k) => s + Math.min(ac.progress[k] || 0, ac.targets[k] || 0), 0);
-  const totalTgt = Math.max(1, ELEMENTS.reduce((s, k) => s + (ac.targets[k] || 0), 0));
-  const pctVal = Math.min(100, Math.floor((totalCur / totalTgt) * 100));
-  fill.style.width = pctVal + "%";
-  pct.textContent = pctVal + "%";
+  // 進捗バーは「時間進捗 (timeProgress)」を表示 ─ ノルマ達成率とは独立。
+  // Phase 1B 改修: タイマーが 100% に到達したら完成、4 色のノルマは
+  //                品質 tier 評価に使う独立メトリック。
+  const pctRaw = (ac.timeProgress || 0) * 100;
+  fill.style.width = pctRaw.toFixed(2) + "%";
+  pct.textContent = Math.floor(pctRaw) + "%";
 }
 
 /** activeCraft.startedAt + durationWeeks から完成予定日を計算 */
@@ -1026,6 +1452,7 @@ function renderHeroDetailPopup() {
   $("heroDetailState").setAttribute("data-state", hero.state);
   $("heroDetailRarity").textContent = ti18n("rarity." + hero.rarity, hero.rarity);
   $("heroDetailRarity").setAttribute("data-rarity", hero.rarity);
+  $("heroDetailAttrs").innerHTML = renderHeroAttrBadges(hero);
   $("heroDetailStaminaText").textContent = `${hero.stamina.current} / ${hero.stamina.max}`;
   $("heroDetailStaminaFill").style.width = stamPct.toFixed(1) + "%";
   $("heroDetailCl").textContent = craftLevel(hero).toLocaleString();
@@ -1101,6 +1528,38 @@ function closeStub() {
   resumeTime();
 }
 
+/** ─── Mai navigator (Phase 1D-2) ─────────────────────────────────── */
+
+/** 現在開いている画面に応じた help エントリのキーを返す。
+ *  優先度: 開いている modal/view を上から評価し、最初にマッチした key を返す。 */
+function currentMaiContext() {
+  if (!$("questView")?.classList.contains("hidden"))   return "quest";
+  if (!$("marketView")?.classList.contains("hidden"))  return "market";
+  if (!$("heroView")?.classList.contains("hidden"))    return "hero";
+  if (!$("craftView")?.classList.contains("hidden")) {
+    return state.craftScreen === "confirm" ? "craftConfirm" : "craftSelect";
+  }
+  return "home";
+}
+
+function openMaiHelp() {
+  const ctx = currentMaiContext();
+  const help = MAI_HELP[ctx] || MAI_HELP.default;
+  const modal = $("maiHelpModal");
+  const titleEl = $("maiHelpTitle");
+  const bodyEl  = $("maiHelpBody");
+  if (!modal || !bodyEl || !titleEl) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  titleEl.textContent = lang === "en" ? help.titleEn : help.titleJa;
+  bodyEl.textContent  = lang === "en" ? help.bodyEn  : help.bodyJa;
+  modal.classList.remove("hidden");
+  pauseTime();
+}
+function closeMaiHelp() {
+  $("maiHelpModal")?.classList.add("hidden");
+  resumeTime();
+}
+
 /** Mai のセリフを表示する汎用モーダル。
  *  - messageKey: i18n キー (e.g. "mai.craftBusy")
  *  - options.onClose: モーダルを閉じたあとに呼ばれる callback。
@@ -1157,16 +1616,18 @@ function renderCompletionScreen() {
     .replace("{actual}", String(pc.durationActualWeeks))
     .replace("{est}",    String(pc.durationEstimateWeeks));
 
-  // 4 色の達成状況: progress / target、達成は緑字、未達 (target>0 で progress<target) は赤字
+  // 4 色の達成状況: progress / target
+  //   reached  = 達成 (緑) — target===0 (不要色) も「達成扱い」で緑字
+  //   excellent = 大幅オーバー (target × 1.5+ / 金色)
+  //   under    = 未達 (target>0 で progress<target / 赤)
   $("craftDoneElements").innerHTML = ELEMENTS.map(k => {
     const cur = pc.progress[k] || 0;
     const tgt = pc.targets[k]  || 0;
-    let stat = "neutral";
-    if (tgt > 0) {
-      if (cur >= tgt * 1.5) stat = "excellent";
-      else if (cur >= tgt)  stat = "reached";
-      else                  stat = "under";
-    }
+    let stat;
+    if (tgt === 0)              stat = "reached";          // 不要色も達成扱い
+    else if (cur >= tgt * 1.5)  stat = "excellent";
+    else if (cur >= tgt)        stat = "reached";
+    else                        stat = "under";
     return `<div class="craft-done__el craft-done__el--${stat}">
       <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
       <span class="craft-done__el-label">${escapeHtml(elementLabel(k))}</span>
@@ -1183,10 +1644,583 @@ function renderCompletionScreen() {
 }
 
 function closeCompletionScreen() {
-  const pc = state.pendingCompletion;
+  // Phase 1B-3 では完成画面 close で完全 cleanup していたが、
+  // Phase 1B-4 から「完成 → 品評会 → 倉庫格納」のフローになるため、
+  // ここでは閉じて品評会 (appraisal) 画面を開く。
   $("craftDoneModal")?.classList.add("hidden");
+  openAppraisalScreen();
+}
+
+/** ─── Market view: tabs (倉庫 / 雇用 / 出品) ────────────────────── */
+
+function openMarketView() {
+  pauseTime();
+  $("marketView")?.classList.remove("hidden");
+  renderMarketView();
+}
+function closeMarketView() {
+  $("marketView")?.classList.add("hidden");
+  resumeTime();
+}
+
+function setMarketTab(tab) {
+  state.marketTab = tab;
+  // タブボタン active 切替
+  document.querySelectorAll("[data-market-tab]").forEach(btn => {
+    btn.classList.toggle("market-view__tab--active",
+      btn.getAttribute("data-market-tab") === tab);
+  });
+  // ボディ切替
+  document.querySelectorAll("[data-market-tab-body]").forEach(el => {
+    el.classList.toggle("hidden",
+      el.getAttribute("data-market-tab-body") !== tab);
+  });
+  renderMarketView();
+}
+
+function renderMarketView() {
+  if (state.marketTab === "warehouse") renderMarketWarehouse();
+  else if (state.marketTab === "hire") renderMarketHire();
+  else if (state.marketTab === "sell") renderMarketSell();
+}
+
+/** ─── 出品タブ (Phase 1D-4) ─────────────────────────────────────── */
+
+function renderMarketSell() {
+  // 進行中の販売
+  const activeHtml = state.activeSales.length === 0
+    ? `<p class="market-sell__empty-active">${escapeHtml(ti18n("sell.noActive"))}</p>`
+    : state.activeSales.map(s => {
+        const w = state.warehouse[s.warehouseIdx];
+        const ext = EXTENSION_BY_ID[String(w?.extId)];
+        const seller = findHero(s.sellerId);
+        const elapsed = state.tickCount - s.listedAtTick;
+        const total = s.weeks * SECONDS_PER_WEEK;
+        const pct = Math.min(100, Math.floor(elapsed / total * 100));
+        return `<div class="active-sale">
+          <img src="${ext ? extIconUrl(w.extId) : ""}" alt="" class="active-sale__icon" onerror="this.style.opacity='0.2'" />
+          <div class="active-sale__main">
+            <div class="active-sale__name-row">
+              <span class="active-sale__name">${escapeHtml(ext?.nameJa || "—")}</span>
+              <span class="active-sale__speed">${escapeHtml(getLang() === "en" ? SALE_SPEED_BY_ID[s.speedId].nameEn : SALE_SPEED_BY_ID[s.speedId].nameJa)}</span>
+            </div>
+            <div class="active-sale__meta">
+              <span>${escapeHtml(ti18n("sell.seller"))}: ${seller ? escapeHtml(tHero(seller.heroId, seller.nameJa)) : "—"}</span>
+              <span class="active-sale__price">${s.expectedPrice.toLocaleString()} GUM</span>
+            </div>
+            <div class="active-sale__bar"><div class="active-sale__bar-fill" style="width:${pct}%"></div></div>
+            <span class="active-sale__pct">${pct}%</span>
+          </div>
+        </div>`;
+      }).join("");
+  $("activeSalesList").innerHTML = activeHtml;
+
+  // 出品候補 (warehouse 内 + まだ販売していない)
+  const sellingIdxSet = new Set(state.activeSales.map(s => s.warehouseIdx));
+  const candidates = state.warehouse
+    .map((w, idx) => ({ w, idx }))
+    .filter(({ idx }) => !sellingIdxSet.has(idx));
+
+  $("sellableList").innerHTML = candidates.length === 0
+    ? `<p class="market-sell__empty-cand">${escapeHtml(ti18n("sell.noCandidates"))}</p>`
+    : candidates.map(({ w, idx }) => {
+        const ext = EXTENSION_BY_ID[String(w.extId)];
+        const tierLbl = w.appraisal ? ti18n("appraisal.tier." + w.appraisal.tier) : "—";
+        return `<button type="button" class="sellable" data-warehouse-idx="${idx}">
+          <img src="${extIconUrl(w.extId)}" alt="" class="sellable__icon" onerror="this.style.opacity='0.2'" />
+          <span class="sellable__name">${escapeHtml(ext?.nameJa || "—")}</span>
+          <span class="sellable__rarity" data-rarity="${ext?.rarity || "common"}">${escapeHtml(ti18n("rarity." + (ext?.rarity || "common")))}</span>
+          ${w.appraisal ? `<span class="sellable__tier" data-tier="${w.appraisal.tier}">${escapeHtml(tierLbl)}</span>` : ""}
+        </button>`;
+      }).join("");
+}
+
+/** 出品 modal を開く */
+function openSellModal(warehouseIdx) {
+  state.sellPickedIdx = warehouseIdx;
+  $("sellModal")?.classList.remove("hidden");
+  pauseTime();
+  // デフォルト 速度 = standard、seller = 未選択
+  if (!_sellPickedSpeedId) _sellPickedSpeedId = "standard";
+  _sellPickedSellerId = null;
+  renderSellModal();
+}
+
+let _sellPickedSpeedId = null;
+let _sellPickedSellerId = null;
+
+function renderSellModal() {
+  const idx = state.sellPickedIdx;
+  if (idx < 0) return;
+  const w = state.warehouse[idx];
+  if (!w) return;
+  const ext = EXTENSION_BY_ID[String(w.extId)];
+
+  // ext 情報
+  $("sellExtIcon").src = extIconUrl(w.extId);
+  $("sellExtName").textContent = ext?.nameJa || "—";
+  $("sellExtRarity").textContent = ti18n("rarity." + (ext?.rarity || "common"));
+  $("sellExtRarity").setAttribute("data-rarity", ext?.rarity || "common");
+  if (w.appraisal) {
+    $("sellExtTier").textContent = ti18n("appraisal.tier." + w.appraisal.tier);
+    $("sellExtTier").setAttribute("data-tier", w.appraisal.tier);
+    $("sellExtTier").classList.remove("hidden");
+  } else {
+    $("sellExtTier").classList.add("hidden");
+  }
+
+  // 速度選択
+  $("sellSpeedList").innerHTML = SALE_SPEED_OPTIONS.map(s => {
+    const sel = s.id === _sellPickedSpeedId ? " sell-speed--sel" : "";
+    const lang = getLang() === "en" ? "en" : "ja";
+    return `<button type="button" class="sell-speed${sel}" data-speed="${s.id}">
+      <span class="sell-speed__name">${escapeHtml(lang === "en" ? s.nameEn : s.nameJa)}</span>
+      <span class="sell-speed__weeks">${s.weeks} ${escapeHtml(ti18n("sell.weeks"))}</span>
+      <span class="sell-speed__desc">${escapeHtml(lang === "en" ? s.descEn : s.descJa)}</span>
+    </button>`;
+  }).join("");
+
+  // 担当者候補 (rarity match or 商 attribute)
+  const eligible = state.ownedHeroes.filter(h => {
+    if (!canSellExt(h, ext)) return false;
+    if (h.state === HERO_STATE.CRAFTING) return false;
+    if (h.state === HERO_STATE.QUESTING) return false;
+    return true;
+  });
+  $("sellSellerList").innerHTML = eligible.length === 0
+    ? `<p class="sell-seller__empty">${escapeHtml(ti18n("sell.noSeller"))}</p>`
+    : eligible.map(h => {
+        const sel = h.heroId === _sellPickedSellerId ? " sell-seller--sel" : "";
+        const sho = Array.isArray(h.attributes) && h.attributes.includes("sho");
+        return `<button type="button" class="sell-seller${sel}" data-seller="${h.heroId}">
+          <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+          <span class="sell-seller__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+          <span class="sell-seller__rarity" data-rarity="${h.rarity}">${escapeHtml(ti18n("rarity." + h.rarity))}</span>
+          ${sho ? `<span class="attr-badge attr-badge--sho" title="商">商</span>` : ""}
+        </button>`;
+      }).join("");
+
+  // 推定価格 + 純収益
+  const seller = findHero(_sellPickedSellerId);
+  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const net = netSaleRevenue(expected);
+  $("sellEstPrice").innerHTML = `
+    <div class="sell-est__row">
+      <span>${escapeHtml(ti18n("sell.gross"))}:</span>
+      <strong>${expected.toLocaleString()} GUM</strong>
+    </div>
+    <div class="sell-est__row sell-est__row--small">
+      <span>${escapeHtml(ti18n("sell.fee"))} (${Math.round(MARKET_FEE_RATE * 100)}%):</span>
+      <span>-${(expected - net).toLocaleString()} GUM</span>
+    </div>
+    <div class="sell-est__row sell-est__row--total">
+      <span>${escapeHtml(ti18n("sell.net"))}:</span>
+      <strong>${net.toLocaleString()} GUM</strong>
+    </div>
+  `;
+
+  // 出品ボタン enable/disable
+  $("sellListBtn").disabled = !seller || _sellPickedSpeedId == null;
+}
+
+function startSale() {
+  const idx = state.sellPickedIdx;
+  if (idx < 0) return;
+  const w = state.warehouse[idx];
+  if (!w) return;
+  const ext = EXTENSION_BY_ID[String(w.extId)];
+  const seller = findHero(_sellPickedSellerId);
+  if (!seller) return;
+  const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
+  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  state.activeSales.push({
+    id: ++_saleId,
+    warehouseIdx: idx,
+    sellerId: seller.heroId,
+    speedId: _sellPickedSpeedId,
+    listedAtTick: state.tickCount,
+    weeks: speed.weeks,
+    expectedPrice: expected,
+    status: "listed",
+  });
+  closeSellModal();
+  renderMarketSell();
+}
+let _saleId = 0;
+
+function closeSellModal() {
+  $("sellModal")?.classList.add("hidden");
+  state.sellPickedIdx = -1;
+  _sellPickedSellerId = null;
+  resumeTime();
+}
+
+/** 出品 tick: 完了時に GUM 加算 + warehouse から削除 + 通知 */
+function tickActiveSales() {
+  if (state.activeSales.length === 0) return;
+  const completed = [];
+  for (const s of state.activeSales) {
+    const elapsed = state.tickCount - s.listedAtTick;
+    const total = s.weeks * SECONDS_PER_WEEK;
+    if (elapsed >= total && s.status === "listed") {
+      // 価格にランダム ±10% 変動
+      const variance = (Math.random() - 0.5) * 0.2;
+      const finalGross = Math.round(s.expectedPrice * (1 + variance));
+      const net = netSaleRevenue(finalGross);
+      state.gum += net;
+      s.status = "sold";
+      s.finalGross = finalGross;
+      s.finalNet = net;
+      completed.push(s);
+    }
+  }
+  if (completed.length > 0) {
+    // warehouse から削除 (高い idx から消すと shift しない)
+    const idxToRemove = completed.map(s => s.warehouseIdx).sort((a, b) => b - a);
+    for (const i of idxToRemove) state.warehouse.splice(i, 1);
+    // 売却済みは activeSales からも除去 + 残り active sales の warehouseIdx を補正
+    state.activeSales = state.activeSales.filter(s => s.status !== "sold");
+    // 補正: 削除した warehouseIdx より大きい idx を持つ残 sale は idx を減算
+    for (const removed of idxToRemove) {
+      for (const s of state.activeSales) {
+        if (s.warehouseIdx > removed) s.warehouseIdx -= 1;
+      }
+    }
+    // Mai 通知
+    const totalNet = completed.reduce((a, b) => a + b.finalNet, 0);
+    maiSays("sell.mai.sold", { onClose: () => {} });
+    // 通知本文に金額が出るように i18n を上書きするのは複雑なので、
+    // とりあえず固定メッセージ + console
+    console.log(`[market] ${completed.length} ext sold for total ${totalNet} GUM`);
+    renderHeader();
+  }
+}
+
+/** Phase 1D-3 雇用タブの描画 */
+function renderMarketHire() {
+  const ownedCount = state.ownedHeroes.length;
+  const cap = heroCapAtFactoryLevel(state.factoryLevel);
+  $("hireCapInfo").innerHTML = `
+    <span class="hire-cap__label">${escapeHtml(ti18n("hire.cap"))}:</span>
+    <strong class="hire-cap__num ${ownedCount >= cap ? "hire-cap__num--full" : ""}">${ownedCount}</strong>
+    <span class="hire-cap__sep">/</span>
+    <span class="hire-cap__max">${cap}</span>
+    <span class="hire-cap__lv">${escapeHtml(ti18n("hire.factoryLv").replace("{n}", state.factoryLevel))}</span>
+  `;
+
+  // 雇用進行中?
+  if (state.activeHire) {
+    renderActiveHire();
+    return;
+  }
+
+  // プラン一覧
+  $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
+    const lang = getLang() === "en" ? "en" : "ja";
+    const candidatesAvailable = state.gum >= p.cost && ownedCount < cap;
+    return `<div class="hire-plan ${!candidatesAvailable ? "hire-plan--disabled" : ""}" data-plan="${p.id}">
+      <div class="hire-plan__head">
+        <span class="hire-plan__name">${escapeHtml(lang === "en" ? p.nameEn : p.nameJa)}</span>
+        <span class="hire-plan__cost">${p.cost.toLocaleString()} GUM</span>
+      </div>
+      <p class="hire-plan__desc">${escapeHtml(lang === "en" ? p.descEn : p.descJa)}</p>
+      <div class="hire-plan__meta">
+        <span>${escapeHtml(ti18n("hire.candidateCount").replace("{n}", p.candidateCount))}</span>
+        <span>${escapeHtml(ti18n("hire.recruiterMin").replace("{rarity}", ti18n("rarity." + p.recruiterMinRarity)))}</span>
+      </div>
+      <button type="button" class="hire-plan__btn" data-pick-plan="${p.id}" ${!candidatesAvailable ? "disabled" : ""}>
+        ${escapeHtml(ti18n("hire.choose"))}
+      </button>
+    </div>`;
+  }).join("");
+
+  $("hireRecruitArea").classList.add("hidden");
+  $("hireProgressArea").classList.add("hidden");
+}
+
+/** プランを選んで採用担当者を選ぶ画面 */
+function renderRecruiterPicker(planId) {
+  const plan = PLAN_BY_ID[planId];
+  if (!plan) return;
+  $("hirePlanList").classList.add("hidden");
+  $("hireRecruitArea").classList.remove("hidden");
+  $("hireRecruitArea").setAttribute("data-active-plan", planId);
+  $("hireProgressArea").classList.add("hidden");
+
+  $("hireRecruitTitle").textContent = ti18n("hire.recruiterPickTitle")
+    .replace("{plan}", getLang() === "en" ? plan.nameEn : plan.nameJa);
+
+  // 採用担当者として配属可能なヒーロー (rarity 要件 + idle/resting/(crafting? questing? 配属外限定))
+  const eligible = state.ownedHeroes.filter(h => {
+    if (!canBeRecruiter(h, plan)) return false;
+    if (h.state === HERO_STATE.CRAFTING) return false;
+    if (h.state === HERO_STATE.QUESTING) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) {
+    $("hireRecruitList").innerHTML = `<p class="hire-recruit__empty">${escapeHtml(ti18n("hire.noEligible"))}</p>`;
+  } else {
+    $("hireRecruitList").innerHTML = eligible.map(h => `
+      <button type="button" class="hire-recruit__cand" data-recruiter="${h.heroId}">
+        <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="hire-recruit__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+        <span class="hire-recruit__rarity" data-rarity="${h.rarity}">${escapeHtml(ti18n("rarity." + h.rarity))}</span>
+      </button>
+    `).join("");
+  }
+}
+
+function startHirePlan(planId, recruiterId) {
+  const plan = PLAN_BY_ID[planId];
+  const recruiter = findHero(recruiterId);
+  if (!plan || !recruiter) return;
+  if (state.gum < plan.cost) return;
+  state.gum -= plan.cost;
+  state.activeHire = {
+    planId,
+    recruiterId,
+    startedAtTick: state.tickCount,
+    candidates: null,
+  };
+  renderHeader();
+  renderMarketHire();
+}
+
+/** 雇用進行中の表示 */
+function renderActiveHire() {
+  $("hirePlanList").classList.add("hidden");
+  $("hireRecruitArea").classList.add("hidden");
+  $("hireProgressArea").classList.remove("hidden");
+
+  const ah = state.activeHire;
+  const plan = PLAN_BY_ID[ah.planId];
+  const recruiter = findHero(ah.recruiterId);
+  const lang = getLang() === "en" ? "en" : "ja";
+
+  $("hireProgressInfo").innerHTML = `
+    <p><strong>${escapeHtml(lang === "en" ? plan.nameEn : plan.nameJa)}</strong></p>
+    <p>${escapeHtml(ti18n("hire.recruiter"))}: ${escapeHtml(recruiter ? tHero(recruiter.heroId, recruiter.nameJa) : "—")}</p>
+  `;
+
+  if (!ah.candidates) {
+    // 待機中
+    const elapsed = state.tickCount - ah.startedAtTick;
+    const totalTicks = HIRE_WAIT_WEEKS * SECONDS_PER_WEEK;
+    const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
+    $("hireProgressBody").innerHTML = `
+      <p class="hire-progress__msg">${escapeHtml(ti18n("hire.waiting").replace("{n}", HIRE_WAIT_WEEKS))}</p>
+      <div class="hire-progress__bar"><div class="hire-progress__bar-fill" style="width:${pct}%"></div></div>
+      <span class="hire-progress__pct">${pct}%</span>
+    `;
+  } else {
+    // 候補リスト
+    $("hireProgressBody").innerHTML = `
+      <p class="hire-progress__msg">${escapeHtml(ti18n("hire.pickCandidate"))}</p>
+      <div class="hire-cand-list">
+        ${ah.candidates.map(c => `
+          <button type="button" class="hire-cand" data-hire-cand="${c.heroId}">
+            <span class="hire-cand__name">${escapeHtml(c.nameJa)}</span>
+            <span class="hire-cand__rarity" data-rarity="${c.rarity}">${escapeHtml(ti18n("rarity." + c.rarity))}</span>
+          </button>
+        `).join("")}
+      </div>
+      <button type="button" class="hire-cand-skip" id="hireSkipBtn">${escapeHtml(ti18n("hire.skipAll"))}</button>
+    `;
+  }
+}
+
+function tickActiveHire() {
+  const ah = state.activeHire;
+  if (!ah || ah.candidates) return; // 既に候補生成済み
+  const elapsed = state.tickCount - ah.startedAtTick;
+  if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
+    const plan = PLAN_BY_ID[ah.planId];
+    const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
+    ah.candidates = rollHireCandidates(plan, ownedIds);
+    maiSays("hire.mai.candidatesReady");
+  }
+}
+
+function pickHireCandidate(heroId) {
+  const ah = state.activeHire;
+  if (!ah || !ah.candidates) return;
+  const cand = ah.candidates.find(c => c.heroId === heroId);
+  if (!cand) return;
+  // 所有上限チェック
+  const cap = heroCapAtFactoryLevel(state.factoryLevel);
+  if (state.ownedHeroes.length >= cap) {
+    maiSays("hire.mai.capReached");
+    return;
+  }
+  // HERO_ROSTER から該当ヒーローを取得して factory hero を作成
+  const def = HERO_ROSTER.find(h => h.heroId === heroId);
+  if (!def) return;
+  const newHero = makeFactoryHero(def);
+  state.ownedHeroes.push(newHero);
+  state.activeHire = null;
+  renderHeroTeam();
+  renderHeroList();
+  renderMarketHire();
+}
+
+function skipAllHireCandidates() {
+  state.activeHire = null;
+  renderMarketHire();
+}
+
+function renderMarketWarehouse() {
+  const host = $("warehouseList");
+  if (!host) return;
+  if (state.warehouse.length === 0) {
+    host.innerHTML = `<p class="warehouse-empty">${escapeHtml(ti18n("warehouse.empty"))}</p>`;
+    return;
+  }
+  // 新しい順に表示
+  const items = state.warehouse.slice().reverse();
+  host.innerHTML = items.map((w, i) => {
+    const ext = EXTENSION_BY_ID[String(w.extId)];
+    const name = ext ? ext.nameJa : `ext ${w.extId}`;
+    const rarityLbl = ext ? ti18n("rarity." + ext.rarity, ext.rarity) : "";
+    const dateLbl = formatGameDate(w.achievedAt || { year: 2018, month: 12, week: 1 });
+    const apr  = w.appraisal;
+    const tierLbl = apr ? ti18n("appraisal.tier." + apr.tier) : "—";
+    const score   = apr ? apr.totalScore : 0;
+    return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${ext ? ext.rarity : "common"}">
+      <img class="warehouse-item__icon" src="${extIconUrl(w.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="warehouse-item__main">
+        <div class="warehouse-item__name-row">
+          <span class="warehouse-item__name">${escapeHtml(name)}</span>
+          <span class="warehouse-item__rarity" data-rarity="${ext ? ext.rarity : "common"}">${escapeHtml(rarityLbl)}</span>
+        </div>
+        <div class="warehouse-item__meta">
+          <span class="warehouse-item__date">${escapeHtml(dateLbl)}</span>
+          <span class="warehouse-item__duration">${ti18n("craft.weeks").replace("{n}", w.durationActualWeeks || 0)}</span>
+        </div>
+        ${apr ? `
+        <div class="warehouse-item__score">
+          <span class="warehouse-item__tier" data-tier="${apr.tier}">${escapeHtml(tierLbl)}</span>
+          <span class="warehouse-item__score-num"><strong>${score}</strong> / 50</span>
+        </div>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/** ─── Craft appraisal (Phase 1B-4) ───────────────────────────────── */
+
+/** 品評会画面を開く ─ pendingCompletion をベースに 5 名審査員を抽選し、
+ *  各点数を確定。アニメーションは CSS の reveal で順次表示する。 */
+function openAppraisalScreen() {
+  const pc = state.pendingCompletion;
+  if (!pc) {
+    // 万一 pendingCompletion 無しで呼ばれたら直接 cleanup
+    finalizeCraftCleanup();
+    return;
+  }
+  const judges = pickAppraisalJudges(state.ownedHeroes, 5);
+  const evaluated = judges.map(j => {
+    const score   = rollJudgeScore(pc.qualityTier);
+    const comment = buildJudgeComment(j, score);
+    return { heroId: j.heroId, name: j.nameJa, score, comment };
+  });
+  const totalScore = evaluated.reduce((s, j) => s + j.score, 0);
+  const tier       = appraisalTotalTier(totalScore);
+
+  state.pendingAppraisal = {
+    extId: pc.extId,
+    qualityTier: pc.qualityTier,
+    judges: evaluated,
+    totalScore,
+    tier,
+    revealCount: 0,           // アニメーションで何名分まで「表示済み」か
+  };
+  pauseTime();
+  $("appraisalModal")?.classList.remove("hidden");
+  renderAppraisalScreen();
+  // 順次 reveal: 0.7 秒ごとに 1 名ずつ点数を出す
+  scheduleAppraisalReveal();
+}
+
+let _appraisalRevealHandle = null;
+function scheduleAppraisalReveal() {
+  if (_appraisalRevealHandle) clearInterval(_appraisalRevealHandle);
+  _appraisalRevealHandle = setInterval(() => {
+    const pa = state.pendingAppraisal;
+    if (!pa) { clearInterval(_appraisalRevealHandle); _appraisalRevealHandle = null; return; }
+    if (pa.revealCount >= pa.judges.length) {
+      clearInterval(_appraisalRevealHandle);
+      _appraisalRevealHandle = null;
+      // 全員 reveal 後に合計表示 + OK ボタン有効化
+      renderAppraisalScreen();
+      return;
+    }
+    pa.revealCount += 1;
+    renderAppraisalScreen();
+  }, 700);
+}
+
+function renderAppraisalScreen() {
+  const pa = state.pendingAppraisal;
+  if (!pa) return;
+  const ext = EXTENSION_BY_ID[String(pa.extId)];
+  $("appraisalExtName").textContent = ext ? ext.nameJa : `ext ${pa.extId}`;
+  $("appraisalExtIcon").src = extIconUrl(pa.extId);
+
+  // 審査員 5 名
+  $("appraisalJudges").innerHTML = pa.judges.map((j, idx) => {
+    const revealed = idx < pa.revealCount;
+    const hero = findHero(j.heroId);
+    const portrait = hero ? hero.img() : "";
+    return `<div class="appraisal-judge ${revealed ? "appraisal-judge--revealed" : ""}" data-idx="${idx}">
+      <img class="appraisal-judge__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="appraisal-judge__name">${escapeHtml(tHero(j.heroId, j.name))}</span>
+      <div class="appraisal-judge__score">
+        ${revealed
+          ? `<strong>${j.score}</strong><span class="appraisal-judge__score-max">/10</span>`
+          : `<span class="appraisal-judge__thinking">…</span>`}
+      </div>
+      ${revealed ? `<p class="appraisal-judge__comment">${escapeHtml(j.comment)}</p>` : ""}
+    </div>`;
+  }).join("");
+
+  // 合計 + tier ラベル (全員 reveal 後のみ)
+  const allRevealed = pa.revealCount >= pa.judges.length;
+  const totalEl = $("appraisalTotal");
+  const tierEl  = $("appraisalTier");
+  const okBtn   = $("appraisalClose");
+  if (allRevealed) {
+    totalEl.classList.remove("hidden");
+    totalEl.innerHTML = `<span class="appraisal-total__label">${escapeHtml(ti18n("appraisal.total"))}</span>
+      <strong class="appraisal-total__num">${pa.totalScore}</strong>
+      <span class="appraisal-total__max">/50</span>`;
+    tierEl.classList.remove("hidden");
+    tierEl.textContent = ti18n("appraisal.tier." + pa.tier);
+    tierEl.setAttribute("data-tier", pa.tier);
+    okBtn.disabled = false;
+  } else {
+    totalEl.classList.add("hidden");
+    tierEl.classList.add("hidden");
+    okBtn.disabled = true;
+  }
+}
+
+function closeAppraisalScreen() {
+  if (_appraisalRevealHandle) {
+    clearInterval(_appraisalRevealHandle);
+    _appraisalRevealHandle = null;
+  }
+  $("appraisalModal")?.classList.add("hidden");
+  finalizeCraftCleanup();
+}
+
+/** 完成 → 品評会 → 倉庫の最終処理。
+ *  pendingCompletion + pendingAppraisal を warehouse に push し、
+ *  配属ヒーローを IDLE に戻して各種状態をクリア + ホーム再描画。 */
+function finalizeCraftCleanup() {
+  const pc = state.pendingCompletion;
+  const pa = state.pendingAppraisal;
   if (pc) {
-    // 1. 完成 ext を倉庫に格納 (Phase 1B-5 のマーケット>倉庫タブから参照)
     state.warehouse.push({
       extId: pc.extId,
       achievedAt: pc.achievedAt,
@@ -1196,18 +2230,23 @@ function closeCompletionScreen() {
       targets: pc.targets,
       qualityRatio: pc.qualityRatio,
       qualityTier: pc.qualityTier,
+      appraisal: pa
+        ? {
+            judges: pa.judges.map(j => ({ heroId: j.heroId, score: j.score, comment: j.comment })),
+            totalScore: pa.totalScore,
+            tier: pa.tier,
+          }
+        : null,
     });
-    // 2. 配属ヒーローを IDLE に戻す (RESTING のままならそのまま継続だが、
-    //    新規クラフトの編成からも外れているので、UI 上 IDLE 復帰でよい)
     for (const id of pc.team) {
       if (id == null) continue;
       const h = findHero(id);
-      if (h && (h.state === HERO_STATE.CRAFTING)) h.state = HERO_STATE.IDLE;
+      if (h && h.state === HERO_STATE.CRAFTING) h.state = HERO_STATE.IDLE;
     }
   }
   state.pendingCompletion = null;
+  state.pendingAppraisal  = null;
   resumeTime();
-  // 工房スプライトと order panel をリフレッシュ
   renderWorkshop();
   renderOrderPanel();
 }
@@ -1236,7 +2275,11 @@ async function init() {
   // Hero data — used by Phase 1A hero list / craft team
   try {
     await loadHeroes();
-    state.ownedHeroes = buildOwnedHeroes();
+    // Phase 1D-3: スタート時の所持ヒーローは Factory Lv.1 cap (= 7) 分の
+    // Common ヒーローのみ。それ以降は market > 雇用 で増やす。
+    const all = buildOwnedHeroes();
+    const startCommon = all.filter(h => h.rarity === "common");
+    state.ownedHeroes = startCommon.slice(0, heroCapAtFactoryLevel(state.factoryLevel));
   } catch (e) {
     console.warn("[init] heroes.json load failed", e);
   }
@@ -1254,6 +2297,7 @@ async function init() {
   renderHeroList();
   renderWorkshop();
   renderNotifications();
+  renderQuestOverlay();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");
@@ -1297,13 +2341,16 @@ async function init() {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-menu");
       closeMenu();
-      // Phase 1A: 'hero' menu opens the real hero view
       if (key === "hero") { openHeroView(); return; }
-      // Phase 1B: 'craft' menu opens the real craft view —
-      //   ただし他のクラフトが進行中ならマイが説明して開かない (並列クラフト禁止)
       if (key === "craft") {
         if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
         openCraftView();
+        return;
+      }
+      if (key === "market") { openMarketView(); return; }
+      if (key === "quest")  {
+        if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+        openQuestView();
         return;
       }
       openStub(key);
@@ -1317,6 +2364,15 @@ async function init() {
   $("maiModalClose")?.addEventListener("click", closeMaiModal);
   $("maiModal")?.addEventListener("click", (e) => {
     if (e.target.id === "maiModal") closeMaiModal();
+  });
+
+  // ── Mai navigator: 各画面右上のマイアイコン → ヘルプモーダル ──
+  document.querySelectorAll("[data-mai-help-btn]").forEach(btn => {
+    btn.addEventListener("click", openMaiHelp);
+  });
+  $("maiHelpClose")?.addEventListener("click", closeMaiHelp);
+  $("maiHelpModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "maiHelpModal") closeMaiHelp();
   });
 
   // ── Workshop sprite tap → ヒーロー詳細ポップアップ ──
@@ -1334,6 +2390,118 @@ async function init() {
   // ── 完成画面 (Phase 1B-3) ──
   $("craftDoneClose")?.addEventListener("click", closeCompletionScreen);
   // 完成画面は背景タップでは閉じない (重要画面なので明示クリック必須)
+  $("appraisalClose")?.addEventListener("click", closeAppraisalScreen);
+
+  // ── Market view: tabs (Phase 1B-5 + 1D-3) ──
+  $("marketViewBack")?.addEventListener("click", closeMarketView);
+  document.querySelectorAll("[data-market-tab]").forEach(btn => {
+    btn.addEventListener("click", () => setMarketTab(btn.getAttribute("data-market-tab")));
+  });
+  // 雇用タブ: プラン選択 → 採用担当者 → 開始
+  $("hirePlanList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-pick-plan]");
+    if (!btn || btn.disabled) return;
+    renderRecruiterPicker(btn.getAttribute("data-pick-plan"));
+  });
+  $("hireRecruitList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-recruiter]");
+    if (!btn) return;
+    const plan = $("hirePlanList")?.dataset.lastPlan;
+    // よりシンプルに: state.marketTab + 直近で開いた recruit picker から
+    // hire を起動する。data-recruiter 押下時は state から planId を引く必要がある
+    // が、最後に renderRecruiterPicker(planId) を呼んだ時の planId を保持していない。
+    // → recruit area 自体に data-plan を載せてからピックする方式に
+    const planId = $("hireRecruitArea").getAttribute("data-active-plan");
+    const recruiterId = parseInt(btn.getAttribute("data-recruiter"), 10);
+    if (!planId || !Number.isFinite(recruiterId)) return;
+    startHirePlan(planId, recruiterId);
+  });
+  // 雇用候補リストから 1 名選択 / 全員見送り
+  $("hireProgressArea")?.addEventListener("click", (ev) => {
+    const cand = ev.target.closest("[data-hire-cand]");
+    if (cand) {
+      const id = parseInt(cand.getAttribute("data-hire-cand"), 10);
+      if (Number.isFinite(id)) pickHireCandidate(id);
+      return;
+    }
+    if (ev.target.id === "hireSkipBtn") {
+      skipAllHireCandidates();
+    }
+  });
+  // 雇用画面で「← プラン選択に戻る」
+  $("hireBackToPlans")?.addEventListener("click", () => {
+    $("hirePlanList").classList.remove("hidden");
+    $("hireRecruitArea").classList.add("hidden");
+  });
+
+  // ── Sell tab: 出品候補から ext タップ → 出品 modal ──
+  $("sellableList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-warehouse-idx]");
+    if (!btn) return;
+    const idx = parseInt(btn.getAttribute("data-warehouse-idx"), 10);
+    if (Number.isFinite(idx)) openSellModal(idx);
+  });
+  $("sellSpeedList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-speed]");
+    if (!btn) return;
+    _sellPickedSpeedId = btn.getAttribute("data-speed");
+    renderSellModal();
+  });
+  $("sellSellerList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-seller]");
+    if (!btn) return;
+    const id = parseInt(btn.getAttribute("data-seller"), 10);
+    if (Number.isFinite(id)) {
+      _sellPickedSellerId = id;
+      renderSellModal();
+    }
+  });
+  $("sellListBtn")?.addEventListener("click", startSale);
+  $("sellCancelBtn")?.addEventListener("click", closeSellModal);
+  $("sellModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "sellModal") closeSellModal();
+  });
+
+  // ── Quest view (Phase 1C-1) ──
+  $("questViewBack")?.addEventListener("click", closeQuestView);
+  $("questNodeList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-node]");
+    if (!btn) return;
+    state.questPickedNodeId = btn.getAttribute("data-node");
+    renderQuestView();
+  });
+  $("questDiffList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-diff]");
+    if (!btn) return;
+    state.questPickedDifficulty = btn.getAttribute("data-diff");
+    renderQuestView();
+  });
+  $("questHeroPick")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-hero]");
+    if (!btn) return;
+    const hid = parseInt(btn.getAttribute("data-hero"), 10);
+    if (!Number.isFinite(hid)) return;
+    // toggle: 既に居れば外す、いなければ空きスロットへ
+    const idx = state.questTeam.indexOf(hid);
+    if (idx >= 0) {
+      state.questTeam[idx] = null;
+    } else {
+      const empty = state.questTeam.indexOf(null);
+      if (empty >= 0) state.questTeam[empty] = hid;
+    }
+    renderQuestView();
+  });
+  $("questTeamSlots")?.addEventListener("click", (ev) => {
+    const slot = ev.target.closest(".quest-team__slot--filled");
+    if (!slot) return;
+    const idx = parseInt(slot.getAttribute("data-slot"), 10);
+    if (Number.isFinite(idx)) {
+      state.questTeam[idx] = null;
+      renderQuestView();
+    }
+  });
+  $("questStartBtn")?.addEventListener("click", startActiveQuest);
+  $("questResultClose")?.addEventListener("click", closeQuestResultScreen);
 
   // ── Craft view bindings (Phase 1B) ──
   $("craftViewBack")?.addEventListener("click", () => {
@@ -1383,6 +2551,21 @@ async function init() {
     renderHeroList();
   });
   $("heroList")?.addEventListener("click", (ev) => {
+    // 「休憩」ボタン: クリック伝播を止めてカード本体への反応を抑止
+    const restBtn = ev.target.closest("[data-rest-hero]");
+    if (restBtn) {
+      ev.stopPropagation();
+      const hid = parseInt(restBtn.getAttribute("data-rest-hero"), 10);
+      if (Number.isFinite(hid)) {
+        const h = findHero(hid);
+        if (h) {
+          h.state = HERO_STATE.RESTING;
+          renderHeroList();
+          renderHeroTeam();
+        }
+      }
+      return;
+    }
     const card = ev.target.closest(".hero-card");
     if (!card) return;
     const id = parseInt(card.getAttribute("data-hero-id"), 10);
@@ -1408,6 +2591,15 @@ async function init() {
     if (state.pendingCompletion != null && !$("craftDoneModal")?.classList.contains("hidden")) {
       renderCompletionScreen();
     }
+    if (state.pendingAppraisal != null && !$("appraisalModal")?.classList.contains("hidden")) {
+      renderAppraisalScreen();
+    }
+    if (!$("marketView")?.classList.contains("hidden")) renderMarketView();
+    if (!$("questView")?.classList.contains("hidden")) renderQuestView();
+    if (state.pendingQuestResult != null && !$("questResultModal")?.classList.contains("hidden")) {
+      renderQuestResultScreen();
+    }
+    renderQuestOverlay();
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -1421,10 +2613,16 @@ async function init() {
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
+    if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
+    if (!$("sellModal")?.classList.contains("hidden")) { closeSellModal(); return; }
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
+    if (!$("maiHelpModal")?.classList.contains("hidden")) { closeMaiHelp(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
     if (!$("stubView")?.classList.contains("hidden")) { closeStub(); return; }
+    if (!$("marketView")?.classList.contains("hidden")) { closeMarketView(); return; }
+    if (!$("questView")?.classList.contains("hidden")) { closeQuestView(); return; }
+    if (!$("questResultModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("menuOverlay")?.classList.contains("hidden")) { closeMenu(); return; }
   });
 }

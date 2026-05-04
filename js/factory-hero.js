@@ -16,6 +16,7 @@
  */
 
 import { HERO_ROSTER, HERO_DEFS } from "./heroes.js";
+import { inferAttributes, attributeBoostFactor } from "./factory-attributes.js";
 
 /** ヒーロー状態の enum 値 */
 export const HERO_STATE = {
@@ -49,7 +50,7 @@ export function makeFactoryHero(mchHero) {
   const ifrit     = mchHero.basePhy  ?? 0;
   const leviathan = mchHero.baseInt  ?? 0;
   const tiamat    = mchHero.baseAgi  ?? 0;
-  return {
+  const factoryHero = {
     heroId:      mchHero.heroId,
     nameJa:      mchHero.nameJa || "",
     rarity:      mchHero.rarity || "common",
@@ -60,29 +61,34 @@ export function makeFactoryHero(mchHero) {
     state:   HERO_STATE.IDLE,
     assignment: { kind: null, slot: null },
     img: typeof mchHero.img === "function" ? mchHero.img : (() => ""),
+    /** 士農工商属性 (Phase 1D-1)。inferAttributes で割り当てる。 */
+    attributes: /** @type {string[]} */ ([]),
   };
+  factoryHero.attributes = inferAttributes(factoryHero);
+  return factoryHero;
 }
 
-/** ガルーダ (HP) は他パラメータと比べて約 3 倍大きいので、
- *  craftLevel / 進捗計算では 1/3 の重みで集計する。 */
-export const GARUDA_WEIGHT = 1 / 3;
+/** ガルーダ (HP) は他パラメータと比べて 6 倍程度大きいので、
+ *  craftLevel / 進捗計算では 1/6 の重みで集計する。
+ *  (Phase 1D-1 では 1/3 だったが、まだ他クラフト値の倍ほど大きいので 1/6 に再調整) */
+export const GARUDA_WEIGHT = 1 / 6;
 
-/** クラフトレベル = ガルーダ × 1/3 + 他 3 元素 の合計 (整数に丸め)。
- *  チームレベルは各ヒーローの craftLevel を合算する。 */
+/** クラフトレベル = ガルーダ × 1/6 + 他 3 元素 の合計 (整数に丸め)。
+ *  + 工 属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)。 */
 export function craftLevel(hero) {
   if (!hero || !hero.element) return 0;
   const e = hero.element;
-  return Math.round(
-    (e.garuda || 0) * GARUDA_WEIGHT +
-    (e.ifrit || 0) +
-    (e.leviathan || 0) +
-    (e.tiamat || 0)
-  );
+  const base = (e.garuda || 0) * GARUDA_WEIGHT +
+               (e.ifrit || 0) +
+               (e.leviathan || 0) +
+               (e.tiamat || 0);
+  const boost = attributeBoostFactor(hero, "ko"); // 工 = クラフト
+  return Math.round(base * boost);
 }
 
-/** ヒーロー個別の元素値を「クラフト用 (= ガルーダ × 1/3)」に変換した表示値。
+/** ヒーロー個別の元素値を「クラフト用 (= ガルーダ × GARUDA_WEIGHT)」に変換した表示値。
  *  - 内部データ (hero.element) は MCH 由来の生値のまま保持し、
- *    UI 表示と集計のときだけ garuda を 1/3 に圧縮する。
+ *    UI 表示と集計のときだけ garuda を GARUDA_WEIGHT に圧縮する。
  *  - これにより 1 か所変更すれば全画面 (hero list / team summary / confirm) が揃う。
  *
  *  @param {object} hero
@@ -168,10 +174,10 @@ export function staminaRecoverPerTick(hero) {
  */
 export function rollCraftGain(hero, rng = Math.random) {
   if (!hero || hero.state === HERO_STATE.RESTING) return null;
-  // 4 元素値 (ガルーダ 1/3 補正後)
+  // 4 元素値 (ガルーダは GARUDA_WEIGHT で補正後、現状 1/6)
   const vals = ELEMENTS.map(k => {
     const raw = hero.element?.[k] || 0;
-    return k === "garuda" ? Math.round(raw * (1 / 3)) : raw;
+    return k === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
   });
   const cl = vals[0] + vals[1] + vals[2] + vals[3];
   const chance = Math.min(0.9, Math.max(0.4, 0.4 + cl / 300));
@@ -205,7 +211,7 @@ export function rollPassiveTrigger(hero, rng = Math.random) {
   if (rng() > 0.04) return null;
   const elKey = ELEMENTS[Math.floor(rng() * ELEMENTS.length)];
   const raw = hero.element?.[elKey] || 0;
-  const adj = elKey === "garuda" ? Math.round(raw * (1 / 3)) : raw;
+  const adj = elKey === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
   const value = Math.max(3, Math.round(adj * 0.15));
   return { passiveName: hero.passiveName, element: elKey, value };
 }
