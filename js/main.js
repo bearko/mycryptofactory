@@ -29,6 +29,7 @@ import {
 import { loadHeroes, HERO_ROSTER } from "./heroes.js";
 import {
   buildOwnedHeroes,
+  makeFactoryHero,
   craftLevel,
   elementValueForCraft,
   ELEMENTS,
@@ -74,6 +75,14 @@ import {
   ATTRIBUTES,
 } from "./factory-attributes.js";
 import { MAI_HELP } from "./mai-help.js";
+import {
+  HIRE_PLANS,
+  PLAN_BY_ID,
+  canBeRecruiter,
+  heroCapAtFactoryLevel,
+  HIRE_WAIT_WEEKS,
+  rollHireCandidates,
+} from "./factory-market.js";
 import {
   QUEST_DIFFICULTY,
   QUEST_DURATION_WEEKS,
@@ -150,6 +159,17 @@ const state = {
   warehouse: /** @type {Array<object>} */ ([]),
   /** Phase 1B-4 品評会の表示中データ (5 名審査員 + 各点数 + 合計) */
   pendingAppraisal: /** @type {object | null} */ (null),
+  /** Phase 1D-3 ファクトリーレベル (Phase 1D-3 では 1 固定。
+   *  level-up フローは別 PR で実装予定) */
+  factoryLevel: 1,
+  /** Phase 1D-3 進行中の雇用プラン
+   *  { planId, recruiterId, startedAtTick, candidates? }
+   *  candidates が null → まだ待機中 (1 ヶ月待ち)
+   *  candidates が array → 候補出揃い、選ぶ前
+   */
+  activeHire: /** @type {object | null} */ (null),
+  /** Phase 1D-3 マーケットビュー UI: 現在開いているタブ */
+  marketTab: "warehouse",  // "warehouse" | "hire" | "sell" (sell は PR-10)
   /** Phase 1C-1 クエスト関連 */
   questTeam: /** @type {Array<number|null>} */ ([null, null, null]),  // 3 枠
   activeQuest: /** @type {object | null} */ (null),
@@ -201,6 +221,10 @@ function onTick() {
   // Phase 1C-1: アクティブクエストの 1 tick 進行
   if (state.activeQuest) {
     tickActiveQuest();
+  }
+  // Phase 1D-3: 雇用プラン進行 (1 ヶ月で候補生成)
+  if (state.activeHire) {
+    tickActiveHire();
   }
   // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
   tickPassiveRestRecovery();
@@ -1586,16 +1610,209 @@ function closeCompletionScreen() {
   openAppraisalScreen();
 }
 
-/** ─── Market view: 倉庫タブ (Phase 1B-5) ─────────────────────────── */
+/** ─── Market view: tabs (倉庫 / 雇用 / 出品) ────────────────────── */
 
 function openMarketView() {
   pauseTime();
   $("marketView")?.classList.remove("hidden");
-  renderMarketWarehouse();
+  renderMarketView();
 }
 function closeMarketView() {
   $("marketView")?.classList.add("hidden");
   resumeTime();
+}
+
+function setMarketTab(tab) {
+  state.marketTab = tab;
+  // タブボタン active 切替
+  document.querySelectorAll("[data-market-tab]").forEach(btn => {
+    btn.classList.toggle("market-view__tab--active",
+      btn.getAttribute("data-market-tab") === tab);
+  });
+  // ボディ切替
+  document.querySelectorAll("[data-market-tab-body]").forEach(el => {
+    el.classList.toggle("hidden",
+      el.getAttribute("data-market-tab-body") !== tab);
+  });
+  renderMarketView();
+}
+
+function renderMarketView() {
+  if (state.marketTab === "warehouse") renderMarketWarehouse();
+  else if (state.marketTab === "hire") renderMarketHire();
+}
+
+/** Phase 1D-3 雇用タブの描画 */
+function renderMarketHire() {
+  const ownedCount = state.ownedHeroes.length;
+  const cap = heroCapAtFactoryLevel(state.factoryLevel);
+  $("hireCapInfo").innerHTML = `
+    <span class="hire-cap__label">${escapeHtml(ti18n("hire.cap"))}:</span>
+    <strong class="hire-cap__num ${ownedCount >= cap ? "hire-cap__num--full" : ""}">${ownedCount}</strong>
+    <span class="hire-cap__sep">/</span>
+    <span class="hire-cap__max">${cap}</span>
+    <span class="hire-cap__lv">${escapeHtml(ti18n("hire.factoryLv").replace("{n}", state.factoryLevel))}</span>
+  `;
+
+  // 雇用進行中?
+  if (state.activeHire) {
+    renderActiveHire();
+    return;
+  }
+
+  // プラン一覧
+  $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
+    const lang = getLang() === "en" ? "en" : "ja";
+    const candidatesAvailable = state.gum >= p.cost && ownedCount < cap;
+    return `<div class="hire-plan ${!candidatesAvailable ? "hire-plan--disabled" : ""}" data-plan="${p.id}">
+      <div class="hire-plan__head">
+        <span class="hire-plan__name">${escapeHtml(lang === "en" ? p.nameEn : p.nameJa)}</span>
+        <span class="hire-plan__cost">${p.cost.toLocaleString()} GUM</span>
+      </div>
+      <p class="hire-plan__desc">${escapeHtml(lang === "en" ? p.descEn : p.descJa)}</p>
+      <div class="hire-plan__meta">
+        <span>${escapeHtml(ti18n("hire.candidateCount").replace("{n}", p.candidateCount))}</span>
+        <span>${escapeHtml(ti18n("hire.recruiterMin").replace("{rarity}", ti18n("rarity." + p.recruiterMinRarity)))}</span>
+      </div>
+      <button type="button" class="hire-plan__btn" data-pick-plan="${p.id}" ${!candidatesAvailable ? "disabled" : ""}>
+        ${escapeHtml(ti18n("hire.choose"))}
+      </button>
+    </div>`;
+  }).join("");
+
+  $("hireRecruitArea").classList.add("hidden");
+  $("hireProgressArea").classList.add("hidden");
+}
+
+/** プランを選んで採用担当者を選ぶ画面 */
+function renderRecruiterPicker(planId) {
+  const plan = PLAN_BY_ID[planId];
+  if (!plan) return;
+  $("hirePlanList").classList.add("hidden");
+  $("hireRecruitArea").classList.remove("hidden");
+  $("hireRecruitArea").setAttribute("data-active-plan", planId);
+  $("hireProgressArea").classList.add("hidden");
+
+  $("hireRecruitTitle").textContent = ti18n("hire.recruiterPickTitle")
+    .replace("{plan}", getLang() === "en" ? plan.nameEn : plan.nameJa);
+
+  // 採用担当者として配属可能なヒーロー (rarity 要件 + idle/resting/(crafting? questing? 配属外限定))
+  const eligible = state.ownedHeroes.filter(h => {
+    if (!canBeRecruiter(h, plan)) return false;
+    if (h.state === HERO_STATE.CRAFTING) return false;
+    if (h.state === HERO_STATE.QUESTING) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) {
+    $("hireRecruitList").innerHTML = `<p class="hire-recruit__empty">${escapeHtml(ti18n("hire.noEligible"))}</p>`;
+  } else {
+    $("hireRecruitList").innerHTML = eligible.map(h => `
+      <button type="button" class="hire-recruit__cand" data-recruiter="${h.heroId}">
+        <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="hire-recruit__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+        <span class="hire-recruit__rarity" data-rarity="${h.rarity}">${escapeHtml(ti18n("rarity." + h.rarity))}</span>
+      </button>
+    `).join("");
+  }
+}
+
+function startHirePlan(planId, recruiterId) {
+  const plan = PLAN_BY_ID[planId];
+  const recruiter = findHero(recruiterId);
+  if (!plan || !recruiter) return;
+  if (state.gum < plan.cost) return;
+  state.gum -= plan.cost;
+  state.activeHire = {
+    planId,
+    recruiterId,
+    startedAtTick: state.tickCount,
+    candidates: null,
+  };
+  renderHeader();
+  renderMarketHire();
+}
+
+/** 雇用進行中の表示 */
+function renderActiveHire() {
+  $("hirePlanList").classList.add("hidden");
+  $("hireRecruitArea").classList.add("hidden");
+  $("hireProgressArea").classList.remove("hidden");
+
+  const ah = state.activeHire;
+  const plan = PLAN_BY_ID[ah.planId];
+  const recruiter = findHero(ah.recruiterId);
+  const lang = getLang() === "en" ? "en" : "ja";
+
+  $("hireProgressInfo").innerHTML = `
+    <p><strong>${escapeHtml(lang === "en" ? plan.nameEn : plan.nameJa)}</strong></p>
+    <p>${escapeHtml(ti18n("hire.recruiter"))}: ${escapeHtml(recruiter ? tHero(recruiter.heroId, recruiter.nameJa) : "—")}</p>
+  `;
+
+  if (!ah.candidates) {
+    // 待機中
+    const elapsed = state.tickCount - ah.startedAtTick;
+    const totalTicks = HIRE_WAIT_WEEKS * SECONDS_PER_WEEK;
+    const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
+    $("hireProgressBody").innerHTML = `
+      <p class="hire-progress__msg">${escapeHtml(ti18n("hire.waiting").replace("{n}", HIRE_WAIT_WEEKS))}</p>
+      <div class="hire-progress__bar"><div class="hire-progress__bar-fill" style="width:${pct}%"></div></div>
+      <span class="hire-progress__pct">${pct}%</span>
+    `;
+  } else {
+    // 候補リスト
+    $("hireProgressBody").innerHTML = `
+      <p class="hire-progress__msg">${escapeHtml(ti18n("hire.pickCandidate"))}</p>
+      <div class="hire-cand-list">
+        ${ah.candidates.map(c => `
+          <button type="button" class="hire-cand" data-hire-cand="${c.heroId}">
+            <span class="hire-cand__name">${escapeHtml(c.nameJa)}</span>
+            <span class="hire-cand__rarity" data-rarity="${c.rarity}">${escapeHtml(ti18n("rarity." + c.rarity))}</span>
+          </button>
+        `).join("")}
+      </div>
+      <button type="button" class="hire-cand-skip" id="hireSkipBtn">${escapeHtml(ti18n("hire.skipAll"))}</button>
+    `;
+  }
+}
+
+function tickActiveHire() {
+  const ah = state.activeHire;
+  if (!ah || ah.candidates) return; // 既に候補生成済み
+  const elapsed = state.tickCount - ah.startedAtTick;
+  if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
+    const plan = PLAN_BY_ID[ah.planId];
+    const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
+    ah.candidates = rollHireCandidates(plan, ownedIds);
+    maiSays("hire.mai.candidatesReady");
+  }
+}
+
+function pickHireCandidate(heroId) {
+  const ah = state.activeHire;
+  if (!ah || !ah.candidates) return;
+  const cand = ah.candidates.find(c => c.heroId === heroId);
+  if (!cand) return;
+  // 所有上限チェック
+  const cap = heroCapAtFactoryLevel(state.factoryLevel);
+  if (state.ownedHeroes.length >= cap) {
+    maiSays("hire.mai.capReached");
+    return;
+  }
+  // HERO_ROSTER から該当ヒーローを取得して factory hero を作成
+  const def = HERO_ROSTER.find(h => h.heroId === heroId);
+  if (!def) return;
+  const newHero = makeFactoryHero(def);
+  state.ownedHeroes.push(newHero);
+  state.activeHire = null;
+  renderHeroTeam();
+  renderHeroList();
+  renderMarketHire();
+}
+
+function skipAllHireCandidates() {
+  state.activeHire = null;
+  renderMarketHire();
 }
 
 function renderMarketWarehouse() {
@@ -1804,7 +2021,11 @@ async function init() {
   // Hero data — used by Phase 1A hero list / craft team
   try {
     await loadHeroes();
-    state.ownedHeroes = buildOwnedHeroes();
+    // Phase 1D-3: スタート時の所持ヒーローは Factory Lv.1 cap (= 7) 分の
+    // Common ヒーローのみ。それ以降は market > 雇用 で増やす。
+    const all = buildOwnedHeroes();
+    const startCommon = all.filter(h => h.rarity === "common");
+    state.ownedHeroes = startCommon.slice(0, heroCapAtFactoryLevel(state.factoryLevel));
   } catch (e) {
     console.warn("[init] heroes.json load failed", e);
   }
@@ -1917,8 +2138,47 @@ async function init() {
   // 完成画面は背景タップでは閉じない (重要画面なので明示クリック必須)
   $("appraisalClose")?.addEventListener("click", closeAppraisalScreen);
 
-  // ── Market view: 倉庫タブ (Phase 1B-5) ──
+  // ── Market view: tabs (Phase 1B-5 + 1D-3) ──
   $("marketViewBack")?.addEventListener("click", closeMarketView);
+  document.querySelectorAll("[data-market-tab]").forEach(btn => {
+    btn.addEventListener("click", () => setMarketTab(btn.getAttribute("data-market-tab")));
+  });
+  // 雇用タブ: プラン選択 → 採用担当者 → 開始
+  $("hirePlanList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-pick-plan]");
+    if (!btn || btn.disabled) return;
+    renderRecruiterPicker(btn.getAttribute("data-pick-plan"));
+  });
+  $("hireRecruitList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-recruiter]");
+    if (!btn) return;
+    const plan = $("hirePlanList")?.dataset.lastPlan;
+    // よりシンプルに: state.marketTab + 直近で開いた recruit picker から
+    // hire を起動する。data-recruiter 押下時は state から planId を引く必要がある
+    // が、最後に renderRecruiterPicker(planId) を呼んだ時の planId を保持していない。
+    // → recruit area 自体に data-plan を載せてからピックする方式に
+    const planId = $("hireRecruitArea").getAttribute("data-active-plan");
+    const recruiterId = parseInt(btn.getAttribute("data-recruiter"), 10);
+    if (!planId || !Number.isFinite(recruiterId)) return;
+    startHirePlan(planId, recruiterId);
+  });
+  // 雇用候補リストから 1 名選択 / 全員見送り
+  $("hireProgressArea")?.addEventListener("click", (ev) => {
+    const cand = ev.target.closest("[data-hire-cand]");
+    if (cand) {
+      const id = parseInt(cand.getAttribute("data-hire-cand"), 10);
+      if (Number.isFinite(id)) pickHireCandidate(id);
+      return;
+    }
+    if (ev.target.id === "hireSkipBtn") {
+      skipAllHireCandidates();
+    }
+  });
+  // 雇用画面で「← プラン選択に戻る」
+  $("hireBackToPlans")?.addEventListener("click", () => {
+    $("hirePlanList").classList.remove("hidden");
+    $("hireRecruitArea").classList.add("hidden");
+  });
 
   // ── Quest view (Phase 1C-1) ──
   $("questViewBack")?.addEventListener("click", closeQuestView);
@@ -2052,7 +2312,7 @@ async function init() {
     if (state.pendingAppraisal != null && !$("appraisalModal")?.classList.contains("hidden")) {
       renderAppraisalScreen();
     }
-    if (!$("marketView")?.classList.contains("hidden")) renderMarketWarehouse();
+    if (!$("marketView")?.classList.contains("hidden")) renderMarketView();
     if (!$("questView")?.classList.contains("hidden")) renderQuestView();
     if (state.pendingQuestResult != null && !$("questResultModal")?.classList.contains("hidden")) {
       renderQuestResultScreen();

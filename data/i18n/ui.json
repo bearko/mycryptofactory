@@ -103,6 +103,24 @@
   "market.tab.warehouse":      { "ja": "倉庫", "en": "Warehouse" },
   "warehouse.empty":           { "ja": "完成品はまだありません。クラフトを完成させると倉庫に収納されます。", "en": "No completed items yet. Finished crafts will appear here." },
 
+  "market.tab.hire":           { "ja": "雇用", "en": "Hire" },
+  "market.tab.sell":           { "ja": "出品", "en": "Sell" },
+
+  "hire.cap":                  { "ja": "所有ヒーロー", "en": "Owned heroes" },
+  "hire.factoryLv":            { "ja": "(工房 Lv.{n})", "en": "(Factory Lv.{n})" },
+  "hire.candidateCount":       { "ja": "候補 {n} 名", "en": "{n} candidates" },
+  "hire.recruiterMin":         { "ja": "採用担当 {rarity} 以上", "en": "Recruiter ≥ {rarity}" },
+  "hire.choose":               { "ja": "このプランを選ぶ", "en": "Pick this plan" },
+  "hire.recruiterPickTitle":   { "ja": "{plan} の採用担当者を選択", "en": "Pick recruiter for {plan}" },
+  "hire.noEligible":           { "ja": "条件を満たす採用担当がいません。", "en": "No eligible recruiter." },
+  "hire.recruiter":            { "ja": "採用担当", "en": "Recruiter" },
+  "hire.waiting":              { "ja": "{n} 週待つと候補が出揃います…", "en": "Candidates appear in {n} weeks…" },
+  "hire.pickCandidate":        { "ja": "候補から 1 名を雇用、または全員見送りできます。", "en": "Pick one candidate, or skip them all." },
+  "hire.skipAll":              { "ja": "全員見送る", "en": "Skip all" },
+  "hire.backToPlans":          { "ja": "← プラン選択に戻る", "en": "← Back to plans" },
+  "hire.mai.candidatesReady":  { "ja": "採用候補が揃いましたよ！マーケットの「雇用」タブから確認してください。", "en": "Candidates are ready! Check the Hire tab in the market." },
+  "hire.mai.capReached":       { "ja": "所有ヒーローの上限に達しています。工房をレベルアップするか、ヒーローを雇わないでください。", "en": "Hero capacity reached. Level up the factory or skip the hire." },
+
   "hero.actions.rest":         { "ja": "休憩", "en": "Rest" },
 
   "mai.questBusy":             { "ja": "他のクエストが進行中です。終わるまでお待ちください。", "en": "Another quest is in progress. Please wait until it finishes." },
