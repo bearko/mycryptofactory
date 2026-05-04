@@ -93,6 +93,7 @@ import {
   canBeRecruiter,
   heroCapAtFactoryLevel,
   HIRE_WAIT_WEEKS,
+  hireCostFor,
   rollHireCandidates,
   SALE_SPEED_OPTIONS,
   SALE_SPEED_BY_ID,
@@ -186,6 +187,8 @@ const state = {
    *  candidates が array → 候補出揃い、選ぶ前
    */
   activeHire: /** @type {object | null} */ (null),
+  /** Phase 1D-7: 定員溢れで一時保留中の候補 idx (fire modal で fire 後に再雇用される) */
+  pendingHireCandIdx: /** @type {number | null} */ (null),
   /** Phase 1D-3 マーケットビュー UI: 現在開いているタブ */
   marketTab: "warehouse",  // "warehouse" | "hire" | "sell"
   /** Phase 1D-4 進行中の出品 (warehouse から販売中の ext)
@@ -1584,10 +1587,31 @@ function syncLangToggleActive() {
 function openMenu() {
   pauseTime();
   $("menuOverlay")?.classList.remove("hidden");
+  // Phase 1D-7: workshop の MENU ボタン → 「戻る」表記に切替 (押下で close)
+  setMenuButtonLabel("close");
+  // submenu は閉じた状態でスタート
+  $("marketSubmenu")?.classList.add("hidden");
+  document.querySelectorAll(".menu-item[data-menu]").forEach(b => b.classList.remove("menu-item--active"));
 }
 function closeMenu() {
   $("menuOverlay")?.classList.add("hidden");
+  $("marketSubmenu")?.classList.add("hidden");
+  setMenuButtonLabel("open");
   resumeTime();
+}
+
+/** Phase 1D-7: workshop の MENU ボタンの label を切替。
+ *  mode = "open" (= 「MENU」) / "close" (= 「戻る」) */
+function setMenuButtonLabel(mode) {
+  const btn = $("btnMenuOpen");
+  if (!btn) return;
+  if (mode === "close") {
+    btn.textContent = ti18n("menu.back");
+    btn.dataset.mode = "close";
+  } else {
+    btn.textContent = ti18n("menu.open");
+    btn.dataset.mode = "open";
+  }
 }
 
 function openStub(menuKey) {
@@ -2144,7 +2168,9 @@ function startHirePlan(planId, recruiterId) {
     candidates: null,
   };
   renderHeader();
-  renderMarketHire();
+  // Phase 1D-7: 雇用開始 → そのままホームに戻して時間を進める
+  closeMarketView();
+  renderHireOverlay();
 }
 
 /** 雇用進行中の表示 */
@@ -2174,16 +2200,46 @@ function renderActiveHire() {
       <span class="hire-progress__pct">${pct}%</span>
     `;
   } else {
-    // 候補リスト
+    // 候補リスト (portrait + rarity + 4 元素 + 雇用コスト + 雇用ボタン)
     $("hireProgressBody").innerHTML = `
       <p class="hire-progress__msg">${escapeHtml(ti18n("hire.pickCandidate"))}</p>
       <div class="hire-cand-list">
-        ${ah.candidates.map(c => `
-          <button type="button" class="hire-cand" data-hire-cand="${c.heroId}">
-            <span class="hire-cand__name">${escapeHtml(c.nameJa)}</span>
-            <span class="hire-cand__rarity" data-rarity="${c.rarity}">${escapeHtml(ti18n("rarity." + c.rarity))}</span>
-          </button>
-        `).join("")}
+        ${ah.candidates.map(c => {
+          // 候補は heroes.json の元データから派生 (まだ owned ではない)
+          const def = HERO_ROSTER.find(h => h.heroId === c.heroId);
+          const cost = hireCostFor(c);
+          const canAfford = state.gum >= cost;
+          // 表示用に factory hero を組み立てる (attribute / element 値を引きたいので)
+          const tmp = def ? makeFactoryHero(def) : null;
+          const elementsHtml = tmp ? ELEMENTS.map(k => {
+            const v = elementValueForCraft(tmp, k);
+            return `<span class="hire-cand__el" title="${escapeHtml(elementLabel(k))}: ${v}">
+              <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
+              <strong>${v}</strong>
+            </span>`;
+          }).join("") : "";
+          const attrsHtml = tmp ? renderHeroAttrBadges(tmp) : "";
+          const portrait = tmp?.img?.() || "";
+          return `<div class="hire-cand-card" data-rarity="${c.rarity}">
+            <div class="hire-cand-card__head">
+              <img class="hire-cand-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
+              <div class="hire-cand-card__name-block">
+                <div class="hire-cand-card__name-row">
+                  <span class="hire-cand-card__name">${escapeHtml(c.nameJa)}</span>
+                  ${attrsHtml}
+                </div>
+                <span class="hire-cand-card__rarity" data-rarity="${c.rarity}">${escapeHtml(ti18n("rarity." + c.rarity))}</span>
+              </div>
+            </div>
+            <div class="hire-cand-card__elements">${elementsHtml}</div>
+            <div class="hire-cand-card__foot">
+              <span class="hire-cand-card__cost">${cost.toLocaleString()} GUM</span>
+              <button type="button" class="hire-cand-card__hire-btn" data-hire-cand="${c.heroId}" ${canAfford ? "" : "disabled"}>
+                ${escapeHtml(ti18n("hire.hireBtn"))}
+              </button>
+            </div>
+          </div>`;
+        }).join("")}
       </div>
       <button type="button" class="hire-cand-skip" id="hireSkipBtn">${escapeHtml(ti18n("hire.skipAll"))}</button>
     `;
@@ -2192,41 +2248,226 @@ function renderActiveHire() {
 
 function tickActiveHire() {
   const ah = state.activeHire;
-  if (!ah || ah.candidates) return; // 既に候補生成済み
+  if (!ah || ah.candidates) {
+    // 既に候補生成済みなら overlay の進捗 % のみ更新
+    renderHireOverlay();
+    return;
+  }
   const elapsed = state.tickCount - ah.startedAtTick;
   if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
     const plan = PLAN_BY_ID[ah.planId];
     const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
     ah.candidates = rollHireCandidates(plan, ownedIds);
-    maiSays("hire.mai.candidatesReady");
+    // Phase 1D-7: Mai 通知 → 「次へ」 押下で雇用画面に直接遷移
+    maiSays("hire.mai.candidatesReady", {
+      onClose: () => {
+        state.marketTab = "hire";
+        openMarketView();
+        setMarketTab("hire");
+      },
+    });
   }
+  renderHireOverlay();
 }
 
 function pickHireCandidate(heroId) {
   const ah = state.activeHire;
   if (!ah || !ah.candidates) return;
-  const cand = ah.candidates.find(c => c.heroId === heroId);
-  if (!cand) return;
-  // 所有上限チェック
-  const cap = heroCapAtFactoryLevel(state.factoryLevel);
-  if (state.ownedHeroes.length >= cap) {
-    maiSays("hire.mai.capReached");
+  const candIdx = ah.candidates.findIndex(c => c.heroId === heroId);
+  if (candIdx < 0) return;
+  const cand = ah.candidates[candIdx];
+
+  // Phase 1D-7: per-rarity 契約金チェック
+  const cost = hireCostFor(cand);
+  if (state.gum < cost) {
+    maiSays("hire.mai.notEnoughGum");
     return;
   }
-  // HERO_ROSTER から該当ヒーローを取得して factory hero を作成
-  const def = HERO_ROSTER.find(h => h.heroId === heroId);
+
+  // 所有上限チェック → 溢れたら fire modal を経由してリトライ
+  const cap = heroCapAtFactoryLevel(state.factoryLevel);
+  if (state.ownedHeroes.length >= cap) {
+    state.pendingHireCandIdx = candIdx;
+    maiSays("hire.mai.capReached", {
+      onClose: () => openFireModal(),
+    });
+    return;
+  }
+
+  finalizeHire(candIdx);
+}
+
+/** 候補 idx のヒーローを実際に雇用する処理。
+ *  GUM 控除 + ownedHeroes に追加 + 候補リストから除去 + Mai 通知。 */
+function finalizeHire(candIdx) {
+  const ah = state.activeHire;
+  if (!ah || !ah.candidates) return;
+  const cand = ah.candidates[candIdx];
+  if (!cand) return;
+  const cost = hireCostFor(cand);
+  if (state.gum < cost) {
+    maiSays("hire.mai.notEnoughGum");
+    return;
+  }
+  state.gum -= cost;
+  const def = HERO_ROSTER.find(h => h.heroId === cand.heroId);
   if (!def) return;
   const newHero = makeFactoryHero(def);
   state.ownedHeroes.push(newHero);
-  state.activeHire = null;
+  // 候補リストから除去
+  ah.candidates.splice(candIdx, 1);
+  // 候補が尽きたら活動終了
+  if (ah.candidates.length === 0) {
+    state.activeHire = null;
+  }
+  renderHeader();
   renderHeroTeam();
   renderHeroList();
+  renderHireOverlay();
   renderMarketHire();
+  // Phase 1D-7: 雇用成功通知 (portrait 付き)
+  showHireSuccessModal(newHero);
 }
 
 function skipAllHireCandidates() {
   state.activeHire = null;
+  renderHireOverlay();
   renderMarketHire();
+}
+
+/** Phase 1D-7: 雇用成功 portrait 付きポップアップ */
+function showHireSuccessModal(hero) {
+  const modal = $("hireSuccessModal");
+  if (!modal) return;
+  $("hireSuccessPortrait").src = hero.img();
+  $("hireSuccessName").textContent = tHero(hero.heroId, hero.nameJa);
+  $("hireSuccessRarity").setAttribute("data-rarity", hero.rarity);
+  $("hireSuccessRarity").textContent = ti18n("rarity." + hero.rarity);
+  $("hireSuccessMsg").textContent = ti18n("hire.mai.hired").replace("{name}", tHero(hero.heroId, hero.nameJa));
+  modal.classList.remove("hidden");
+  pauseTime();
+}
+function closeHireSuccessModal() {
+  $("hireSuccessModal")?.classList.add("hidden");
+  resumeTime();
+}
+
+/** Phase 1D-7: 解雇 modal を開く (定員溢れ時 or 任意) */
+let _fireOnConfirm = null;
+function openFireModal() {
+  const modal = $("fireModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  pauseTime();
+  renderFireModal();
+}
+function closeFireModal() {
+  $("fireModal")?.classList.add("hidden");
+  // pending hire はここでは破棄しない (キャンセル時のみ pendingHireCandIdx をクリア)
+  resumeTime();
+}
+
+/** 解雇候補 (= 解雇可能なヒーロー) */
+function fireableHeroes() {
+  // 割当中ヒーローの id を集計
+  const blocked = new Set();
+  // 採用担当
+  if (state.activeHire?.recruiterId != null) blocked.add(state.activeHire.recruiterId);
+  // クラフトチーム
+  for (const id of state.craftTeam) if (id != null) blocked.add(id);
+  // クエストチーム
+  for (const id of (state.questTeam || [])) if (id != null) blocked.add(id);
+  // 出品担当
+  for (const sale of (state.activeSales || [])) {
+    if (sale.sellerId != null) blocked.add(sale.sellerId);
+  }
+  return state.ownedHeroes.map(h => ({
+    hero: h,
+    fireable: !blocked.has(h.heroId),
+    reason: blocked.has(h.heroId) ? "assigned" : null,
+  }));
+}
+
+function renderFireModal() {
+  const list = fireableHeroes();
+  $("fireList").innerHTML = list.map(({ hero, fireable }) => {
+    const cl = craftLevel(hero);
+    const cls = fireable ? "fire-cand" : "fire-cand fire-cand--disabled";
+    return `<button type="button" class="${cls}" data-fire="${hero.heroId}" ${fireable ? "" : "disabled"}>
+      <img src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="fire-cand__name">${escapeHtml(tHero(hero.heroId, hero.nameJa))}</span>
+      <span class="fire-cand__rarity" data-rarity="${hero.rarity}">${escapeHtml(ti18n("rarity." + hero.rarity))}</span>
+      <span class="fire-cand__cl">${escapeHtml(ti18n("hero.craftLevel"))}: ${cl}</span>
+      ${!fireable ? `<span class="fire-cand__lock">${escapeHtml(ti18n("fire.locked"))}</span>` : ""}
+    </button>`;
+  }).join("");
+}
+
+/** 解雇実行: 選択ヒーローを ownedHeroes から除去 + pending hire があれば実行 */
+function fireHero(heroId) {
+  const idx = state.ownedHeroes.findIndex(h => h.heroId === heroId);
+  if (idx < 0) return;
+  const fired = state.ownedHeroes[idx];
+  state.ownedHeroes.splice(idx, 1);
+  // 解雇後の表示更新
+  closeFireModal();
+  renderHeader();
+  renderHeroTeam();
+  renderHeroList();
+  // pending hire があれば再試行
+  if (state.pendingHireCandIdx != null) {
+    const candIdx = state.pendingHireCandIdx;
+    state.pendingHireCandIdx = null;
+    // ah.candidates が更新されてる可能性に備えて 1 度確認
+    const ah = state.activeHire;
+    if (ah?.candidates?.[candIdx]) {
+      finalizeHire(candIdx);
+    }
+  }
+  // 解雇通知
+  maiSays("fire.mai.fired", { onClose: () => {} });
+  console.log(`[fire] ${tHero(fired.heroId, fired.nameJa)} fired`);
+}
+
+function cancelFire() {
+  state.pendingHireCandIdx = null;
+  closeFireModal();
+}
+
+/** Phase 1D-7: ホーム画面 上部 overlay に「雇用中」インジケータを描画 */
+function renderHireOverlay() {
+  const host = $("hireOverlay");
+  if (!host) return;
+  const ah = state.activeHire;
+  if (!ah) {
+    host.classList.add("hidden");
+    host.innerHTML = "";
+    return;
+  }
+  const plan = PLAN_BY_ID[ah.planId];
+  const recruiter = findHero(ah.recruiterId);
+  const lang = getLang() === "en" ? "en" : "ja";
+  const planName = lang === "en" ? plan.nameEn : plan.nameJa;
+  if (!ah.candidates) {
+    // 待機中
+    const elapsed = state.tickCount - ah.startedAtTick;
+    const totalTicks = HIRE_WAIT_WEEKS * SECONDS_PER_WEEK;
+    const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
+    host.innerHTML = `
+      <span class="hire-overlay__label">${escapeHtml(ti18n("hire.overlay.waiting"))}:</span>
+      <span class="hire-overlay__plan">${escapeHtml(planName)}</span>
+      <span class="hire-overlay__bar"><span class="hire-overlay__bar-fill" style="width:${pct}%"></span></span>
+      <span class="hire-overlay__pct">${pct}%</span>
+    `;
+  } else {
+    // 候補出揃った
+    host.innerHTML = `
+      <span class="hire-overlay__label">${escapeHtml(ti18n("hire.overlay.ready"))}:</span>
+      <span class="hire-overlay__plan">${escapeHtml(planName)}</span>
+      <span class="hire-overlay__remain">${escapeHtml(ti18n("hire.overlay.candRemain").replace("{n}", ah.candidates.length))}</span>
+    `;
+  }
+  host.classList.remove("hidden");
 }
 
 function renderMarketWarehouse() {
@@ -2459,6 +2700,7 @@ async function init() {
   renderWorkshop();
   renderNotifications();
   renderQuestOverlay();
+  renderHireOverlay();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");
@@ -2494,13 +2736,29 @@ async function init() {
   });
 
   // ── Menu open/close ──
-  $("btnMenuOpen")?.addEventListener("click", openMenu);
+  $("btnMenuOpen")?.addEventListener("click", () => {
+    // Phase 1D-7: ラベルが「戻る」のときは close、それ以外は open
+    const btn = $("btnMenuOpen");
+    if (btn?.dataset.mode === "close") closeMenu();
+    else openMenu();
+  });
   $("menuOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "menuOverlay") closeMenu();
   });
-  document.querySelectorAll(".menu-item").forEach((btn) => {
+  // メインメニュー (data-menu) のクリック
+  document.querySelectorAll(".menu-item[data-menu]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-menu");
+      // 一旦すべての active 状態をクリア
+      document.querySelectorAll(".menu-item[data-menu]").forEach(b => b.classList.remove("menu-item--active"));
+      // マーケットだけ submenu を開いて menuOverlay は閉じない
+      if (key === "market") {
+        btn.classList.add("menu-item--active");
+        $("marketSubmenu")?.classList.remove("hidden");
+        return;
+      }
+      // それ以外は menu を閉じてから view 遷移
+      $("marketSubmenu")?.classList.add("hidden");
       closeMenu();
       if (key === "hero") { openHeroView(); return; }
       if (key === "craft") {
@@ -2508,13 +2766,23 @@ async function init() {
         openCraftView();
         return;
       }
-      if (key === "market") { openMarketView(); return; }
       if (key === "quest")  {
         if (state.activeQuest) { maiSays("mai.questBusy"); return; }
         openQuestView();
         return;
       }
       openStub(key);
+    });
+  });
+  // マーケットサブメニュー (倉庫 / 雇用 / 出品) → 直接タブを開く
+  document.querySelectorAll(".menu-item[data-market-tab-direct]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.getAttribute("data-market-tab-direct");
+      closeMenu();
+      state.marketTab = tab;
+      openMarketView();
+      // openMarketView 後に setMarketTab を確実に呼ぶ (active class + body 切替)
+      setMarketTab(tab);
     });
   });
 
@@ -2595,6 +2863,22 @@ async function init() {
   $("hireBackToPlans")?.addEventListener("click", () => {
     $("hirePlanList").classList.remove("hidden");
     $("hireRecruitArea").classList.add("hidden");
+  });
+  // Phase 1D-7: 雇用成功 popup close
+  $("hireSuccessClose")?.addEventListener("click", closeHireSuccessModal);
+  $("hireSuccessModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "hireSuccessModal") closeHireSuccessModal();
+  });
+  // Phase 1D-7: 解雇 modal
+  $("fireList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-fire]");
+    if (!btn || btn.disabled) return;
+    const id = parseInt(btn.getAttribute("data-fire"), 10);
+    if (Number.isFinite(id)) fireHero(id);
+  });
+  $("fireCancelBtn")?.addEventListener("click", cancelFire);
+  $("fireModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "fireModal") cancelFire();
   });
 
   // ── Sell tab: 出品候補から ext タップ → 出品 modal ──
@@ -2763,6 +3047,8 @@ async function init() {
       renderQuestResultScreen();
     }
     renderQuestOverlay();
+    renderHireOverlay();
+    if (!$("fireModal")?.classList.contains("hidden")) renderFireModal();
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -2778,6 +3064,8 @@ async function init() {
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("sellModal")?.classList.contains("hidden")) { closeSellModal(); return; }
+    if (!$("hireSuccessModal")?.classList.contains("hidden")) { closeHireSuccessModal(); return; }
+    if (!$("fireModal")?.classList.contains("hidden")) { cancelFire(); return; }
     if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
     if (!$("maiHelpModal")?.classList.contains("hidden")) { closeMaiHelp(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { forceCloseMaiModal(); return; }
