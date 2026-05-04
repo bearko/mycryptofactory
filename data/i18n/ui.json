@@ -13,6 +13,7 @@
   "menu.craft":                { "ja": "クラフト",     "en": "Craft" },
   "menu.craft.newDev":         { "ja": "新規開発",     "en": "New craft" },
   "menu.hero.craftTeam":       { "ja": "クラフトチーム", "en": "Craft team" },
+  "menu.hero.hire":            { "ja": "雇用", "en": "Hire" },
   "menu.quest.normal":         { "ja": "通常node",     "en": "Normal node" },
   "menu.quest.land":           { "ja": "ランドnode",   "en": "Land node" },
   "settings.speed2x":          { "ja": "時間2倍速", "en": "2x speed" },

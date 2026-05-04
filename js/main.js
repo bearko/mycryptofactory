@@ -26,7 +26,7 @@ import {
   t as ti18n,
   tHero,
 } from "./i18n.js";
-import { loadHeroes, HERO_ROSTER } from "./heroes.js";
+import { loadHeroes, HERO_ROSTER, HERO_DEFS } from "./heroes.js";
 import {
   buildOwnedHeroes,
   makeFactoryHero,
@@ -2605,8 +2605,11 @@ function renderAppraisalScreen() {
   // 審査員 5 名
   $("appraisalJudges").innerHTML = pa.judges.map((j, idx) => {
     const revealed = idx < pa.revealCount;
-    const hero = findHero(j.heroId);
-    const portrait = hero ? hero.img() : "";
+    // Phase 1D-9 修正: 査定員は所有していないヒーローも含む (HERO_ROSTER)。
+    //   findHero は state.ownedHeroes 限定なので、未所有時は HERO_DEFS から
+    //   img を引く。
+    const hero = findHero(j.heroId) || HERO_DEFS[String(j.heroId)] || null;
+    const portrait = hero && typeof hero.img === "function" ? hero.img() : "";
     return `<div class="appraisal-judge ${revealed ? "appraisal-judge--revealed" : ""}" data-idx="${idx}">
       <img class="appraisal-judge__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
       <span class="appraisal-judge__name">${escapeHtml(tHero(j.heroId, j.name))}</span>
@@ -2819,13 +2822,19 @@ async function init() {
     });
   });
 
-  // ヒーロー submenu: クラフトチーム
+  // ヒーロー submenu: クラフトチーム / 雇用 (Phase 1D-9: 雇用 を market から移設)
   document.querySelectorAll(".menu-item[data-hero-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = btn.getAttribute("data-hero-action");
       hideAllSubmenus();
       closeMenu();
       if (action === "craft-team") openHeroView();
+      else if (action === "hire") {
+        // 雇用は引き続き market view 内のタブで動かす (data モデル維持)
+        state.marketTab = "hire";
+        openMarketView();
+        setMarketTab("hire");
+      }
     });
   });
 
