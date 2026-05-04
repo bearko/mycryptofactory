@@ -133,6 +133,8 @@ const state = {
   activeCraft: null,
   // Pause flags (any !==0 means time is paused)
   pauseFlags: 0,
+  // Phase 1D-9: 設定 > 時間2倍速 トグル (1 tick = 500ms)
+  timeSpeed2x: false,
   // Phase 1A: hero roster + craft team
   ownedHeroes: /** @type {ReturnType<typeof buildOwnedHeroes>} */ ([]),
   craftTeam: /** @type {Array<number|null>} */ (new Array(TEAM_SIZE).fill(null)),
@@ -227,12 +229,31 @@ let _tickHandle = null;
 const $ = (id) => document.getElementById(id);
 
 /** ─── Time progression ──────────────────────────────────────────── */
+function currentTickInterval() {
+  // Phase 1D-9: 設定 > 時間2倍速 が ON なら interval を半分にする
+  return state.timeSpeed2x ? Math.round(TICK_INTERVAL_MS / 2) : TICK_INTERVAL_MS;
+}
 function startTimeLoop() {
   if (_tickHandle) return;
-  _tickHandle = setInterval(onTick, TICK_INTERVAL_MS);
+  _tickHandle = setInterval(onTick, currentTickInterval());
 }
 function stopTimeLoop() {
   if (_tickHandle) { clearInterval(_tickHandle); _tickHandle = null; }
+}
+/** Phase 1D-9: 速度設定変更時に tick loop を新 interval で再起動 */
+function restartTimeLoopWithSpeed() {
+  if (_tickHandle) {
+    stopTimeLoop();
+    startTimeLoop();
+  }
+}
+/** Phase 1D-9: 設定 submenu の トグルラベル更新 */
+function refreshSettingsSubmenu() {
+  const btn = $("settingSpeed2x");
+  if (!btn) return;
+  const lbl = ti18n("settings.speed2x");
+  const state_ = state.timeSpeed2x ? ti18n("settings.on") : ti18n("settings.off");
+  btn.textContent = `${lbl}: ${state_}`;
 }
 
 function pauseTime() { state.pauseFlags++; }
@@ -1589,13 +1610,17 @@ function openMenu() {
   $("menuOverlay")?.classList.remove("hidden");
   // Phase 1D-7: workshop の MENU ボタン → 「戻る」表記に切替 (押下で close)
   setMenuButtonLabel("close");
-  // submenu は閉じた状態でスタート
-  $("marketSubmenu")?.classList.add("hidden");
+  // Phase 1D-9: 全 submenu を閉じた状態でスタート
+  document.querySelectorAll("#menuOverlay .menu-card").forEach(card => {
+    if (card.id) card.classList.add("hidden");  // submenu (id 付き) のみ
+  });
   document.querySelectorAll(".menu-item[data-menu]").forEach(b => b.classList.remove("menu-item--active"));
 }
 function closeMenu() {
   $("menuOverlay")?.classList.add("hidden");
-  $("marketSubmenu")?.classList.add("hidden");
+  document.querySelectorAll("#menuOverlay .menu-card").forEach(card => {
+    if (card.id) card.classList.add("hidden");
+  });
   setMenuButtonLabel("open");
   resumeTime();
 }
@@ -1696,23 +1721,25 @@ function closeMaiModal() {
     $("maiModal")?.classList.add("hidden");
     const closeBtn = $("maiModalClose");
     if (closeBtn) closeBtn.textContent = ti18n("btn.close");
+    // Phase 1D-9 バグ修正: 必ず resumeTime して maiSaysSequence の pauseTime と
+    //   ペアにする。次に呼ばれる callback (next) は独立した pause/resume
+    //   ペアを管理する前提 (= 旧設計の「next 側で pauseTime を呼ぶから resume
+    //   しない」 は openCompletionScreen が pauseTime を呼ぶケースで pauseFlags
+    //   が累積するバグの原因だったので撤廃)
+    resumeTime();
     if (seqCb) { seqCb(); return; }
-    // sequence が onClose を持たないなら通常 close と同じ後始末
     const next = _maiNextAction;
     _maiNextAction = null;
     if (next) next();
-    else      resumeTime();
     return;
   }
   // ── 通常 (単行 maiSays) の閉じ処理 ──
   $("maiModal")?.classList.add("hidden");
+  // Phase 1D-9 バグ修正: 同上 — 常に resume してから next() を呼ぶ
+  resumeTime();
   const next = _maiNextAction;
   _maiNextAction = null;
-  if (next) {
-    next();
-  } else {
-    resumeTime();
-  }
+  if (next) next();
 }
 
 /** Esc / 背景タップ用: シーケンス途中でも強制的に閉じる (skip dialog) */
@@ -1830,6 +1857,9 @@ function closeCompletionScreen() {
   // Phase 1B-4 から「完成 → 品評会 → 倉庫格納」のフローになるため、
   // ここでは閉じて品評会 (appraisal) 画面を開く。
   $("craftDoneModal")?.classList.add("hidden");
+  // Phase 1D-9 バグ修正: openCompletionScreen の pauseTime とペアになる
+  // resumeTime をここで実行 (openAppraisalScreen が新たに pauseTime する)。
+  resumeTime();
   openAppraisalScreen();
 }
 
@@ -2519,7 +2549,11 @@ function openAppraisalScreen() {
     finalizeCraftCleanup();
     return;
   }
-  const judges = pickAppraisalJudges(state.ownedHeroes, 5);
+  // Phase 1D-9: 査定員は所有ヒーローではなく全ヒーロー (HERO_ROSTER) から選定
+  // → 工房に在籍していなくても著名な美術ヒーロー (北斎・モーツァルトなど)
+  //   が登場できる。 buildOwnedHeroes で factory hero 形にしてから渡す。
+  const allHeroes = buildOwnedHeroes();
+  const judges = pickAppraisalJudges(allHeroes, 5);
   const evaluated = judges.map(j => {
     const score   = rollJudgeScore(pc.qualityTier);
     const comment = buildJudgeComment(j, score);
@@ -2745,45 +2779,91 @@ async function init() {
   $("menuOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "menuOverlay") closeMenu();
   });
-  // メインメニュー (data-menu) のクリック
+  // Phase 1D-9: メインメニュー (data-menu) のクリック → 全項目が submenu を開く
+  // (項目が 1 つでも統一的にサブメニュー表示)
+  const SUBMENU_ID_FOR = {
+    craft:    "craftSubmenu",
+    hero:     "heroSubmenu",
+    quest:    "questSubmenu",
+    market:   "marketSubmenu",
+    settings: "settingsSubmenu",
+  };
+  function hideAllSubmenus() {
+    Object.values(SUBMENU_ID_FOR).forEach(id => $(id)?.classList.add("hidden"));
+  }
   document.querySelectorAll(".menu-item[data-menu]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-menu");
-      // 一旦すべての active 状態をクリア
+      // active クリア + 自身を active に
       document.querySelectorAll(".menu-item[data-menu]").forEach(b => b.classList.remove("menu-item--active"));
-      // マーケットだけ submenu を開いて menuOverlay は閉じない
-      if (key === "market") {
-        btn.classList.add("menu-item--active");
-        $("marketSubmenu")?.classList.remove("hidden");
-        return;
-      }
-      // それ以外は menu を閉じてから view 遷移
-      $("marketSubmenu")?.classList.add("hidden");
-      closeMenu();
-      if (key === "hero") { openHeroView(); return; }
-      if (key === "craft") {
-        if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
-        openCraftView();
-        return;
-      }
-      if (key === "quest")  {
-        if (state.activeQuest) { maiSays("mai.questBusy"); return; }
-        openQuestView();
-        return;
-      }
-      openStub(key);
+      btn.classList.add("menu-item--active");
+      // 全 submenu を一度閉じて、対応するものだけ開く
+      hideAllSubmenus();
+      const subId = SUBMENU_ID_FOR[key];
+      if (subId) $(subId)?.classList.remove("hidden");
+      // 設定 submenu を開いたら現在の toggle 状態を反映
+      if (key === "settings") refreshSettingsSubmenu();
     });
   });
+
+  // クラフト submenu: 新規開発
+  document.querySelectorAll(".menu-item[data-craft-action]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.getAttribute("data-craft-action");
+      hideAllSubmenus();
+      closeMenu();
+      if (action === "new-dev") {
+        if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+        openCraftView();
+      }
+    });
+  });
+
+  // ヒーロー submenu: クラフトチーム
+  document.querySelectorAll(".menu-item[data-hero-action]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.getAttribute("data-hero-action");
+      hideAllSubmenus();
+      closeMenu();
+      if (action === "craft-team") openHeroView();
+    });
+  });
+
+  // クエスト submenu: 通常 / ランド
+  document.querySelectorAll(".menu-item[data-quest-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const filter = btn.getAttribute("data-quest-filter");
+      hideAllSubmenus();
+      closeMenu();
+      if (filter === "land") {
+        // ランドノードは未実装 → Mai 通知
+        maiSays("menu.land.todo");
+        return;
+      }
+      // 通常 (= デフォルト)
+      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      openQuestView();
+    });
+  });
+
   // マーケットサブメニュー (倉庫 / 雇用 / 出品) → 直接タブを開く
   document.querySelectorAll(".menu-item[data-market-tab-direct]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.getAttribute("data-market-tab-direct");
+      hideAllSubmenus();
       closeMenu();
       state.marketTab = tab;
       openMarketView();
-      // openMarketView 後に setMarketTab を確実に呼ぶ (active class + body 切替)
       setMarketTab(tab);
     });
+  });
+
+  // 設定 submenu: 時間 2x speed トグル
+  $("settingSpeed2x")?.addEventListener("click", () => {
+    state.timeSpeed2x = !state.timeSpeed2x;
+    refreshSettingsSubmenu();
+    // tick interval を再起動
+    restartTimeLoopWithSpeed();
   });
 
   // ── Stub close ──

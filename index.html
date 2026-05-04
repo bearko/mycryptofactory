@@ -2914,7 +2914,7 @@
     </div>
   </div>
 
-  <!-- Menu overlay (Phase 1D-7: 左寄せ + マーケットサブメニュー) -->
+  <!-- Menu overlay (Phase 1D-9: 全メニューをサブメニュー化) -->
   <div class="menu-overlay hidden" id="menuOverlay" role="dialog" aria-modal="true" aria-label="Menu">
     <div class="menu-card">
       <button type="button" class="menu-item" data-menu="craft" data-i18n="menu.craft">クラフト</button>
@@ -2923,11 +2923,25 @@
       <button type="button" class="menu-item" data-menu="market" data-i18n="menu.market">マーケット</button>
       <button type="button" class="menu-item" data-menu="settings" data-i18n="menu.settings">設定</button>
     </div>
-    <!-- Market submenu — マーケットを選んだときだけ表示 -->
+
+    <!-- 各メニューのサブメニュー (画面右側に展開) -->
+    <div class="menu-card hidden" id="craftSubmenu" aria-label="Craft submenu">
+      <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規開発</button>
+    </div>
+    <div class="menu-card hidden" id="heroSubmenu" aria-label="Hero submenu">
+      <button type="button" class="menu-item" data-hero-action="craft-team" data-i18n="menu.hero.craftTeam">クラフトチーム</button>
+    </div>
+    <div class="menu-card hidden" id="questSubmenu" aria-label="Quest submenu">
+      <button type="button" class="menu-item" data-quest-filter="normal" data-i18n="menu.quest.normal">通常node</button>
+      <button type="button" class="menu-item" data-quest-filter="land" data-i18n="menu.quest.land">ランドnode</button>
+    </div>
     <div class="menu-card hidden" id="marketSubmenu" aria-label="Market submenu">
       <button type="button" class="menu-item" data-market-tab-direct="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
       <button type="button" class="menu-item" data-market-tab-direct="hire" data-i18n="market.tab.hire">雇用</button>
       <button type="button" class="menu-item" data-market-tab-direct="sell" data-i18n="market.tab.sell">出品</button>
+    </div>
+    <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
+      <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
     </div>
   </div>
 
