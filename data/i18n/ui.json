@@ -25,6 +25,7 @@
 
   "hero.team.title":           { "ja": "クラフトチーム (最大 5 体)", "en": "Craft team (up to 5)" },
   "hero.team.empty":           { "ja": "空きスロット — ヒーローをタップして配属", "en": "Empty slot — tap a hero to assign" },
+  "hero.team.totalLevel":      { "ja": "合計クラフトLv: {n}", "en": "Total Craft Lv: {n}" },
   "hero.list.empty":           { "ja": "所持ヒーローがいません", "en": "No heroes owned" },
   "hero.craftLevel":           { "ja": "クラフトLV", "en": "Craft Lv" },
   "hero.stamina":              { "ja": "体力 (HP)",  "en": "Stamina (HP)" },
@@ -43,6 +44,41 @@
   "hero.sort.rarity":          { "ja": "レアリティ",               "en": "Rarity" },
 
   "order.none":                { "ja": "受注なし", "en": "No order" },
+  "order.duration":            { "ja": "目安 {n} 週", "en": "~{n} weeks" },
+
+  "rarity.common":             { "ja": "コモン",     "en": "Common" },
+  "rarity.uncommon":           { "ja": "アンコモン", "en": "Uncommon" },
+  "rarity.rare":               { "ja": "レア",       "en": "Rare" },
+  "rarity.epic":               { "ja": "エピック",   "en": "Epic" },
+  "rarity.legendary":          { "ja": "レジェンド", "en": "Legendary" },
+
+  "craft.select.title":        { "ja": "クラフト：エクステンションを選択", "en": "Craft: Pick an Extension" },
+  "craft.confirm.title":       { "ja": "クラフト：確認", "en": "Craft: Confirm" },
+  "craft.select.count":        { "ja": "全 {n} 件 (Common)", "en": "{n} total (Common)" },
+  "craft.sort":                { "ja": "並び順:", "en": "Sort:" },
+  "craft.sort.craftability":   { "ja": "クラフト可能順", "en": "Craftable first" },
+  "craft.sort.idAsc":          { "ja": "シリーズ順", "en": "By series" },
+  "craft.sort.sumAsc":         { "ja": "基準値合計 (易しい順)", "en": "Total (easiest first)" },
+
+  "craft.avail.ok":            { "ja": "クラフト可能", "en": "Craftable" },
+  "craft.avail.level":         { "ja": "クラフトLv 不足", "en": "Craft Lv low" },
+  "craft.avail.material":      { "ja": "素材不足",     "en": "Materials short" },
+
+  "craft.team.totalLevel":     { "ja": "合計クラフトLv: {n} / 必要 {req}", "en": "Total Craft Lv: {n} / req {req}" },
+  "craft.material.qtyHave":    { "ja": "× {qty} (在庫: {have})", "en": "× {qty} (stock: {have})" },
+  "craft.warn.noMaterial":     { "ja": "素材が不足しています。", "en": "Not enough materials." },
+  "craft.warn.lowLevel":       { "ja": "クラフトLv 不足 ({cur} / {req}) — 編成を変更してください。", "en": "Craft Lv too low ({cur} / {req}) — change the team." },
+
+  "mai.name":                  { "ja": "マイ", "en": "Mai" },
+  "mai.craftBusy":             { "ja": "他のエクステンションのクラフトが進行中です。まずは今のクラフトを終わらせましょう。", "en": "Another extension is being crafted. Let's finish the current craft first." },
+  "craft.weeks":               { "ja": "{n} 週", "en": "{n} wk" },
+  "craft.targets":             { "ja": "必要基準値", "en": "Required base values" },
+  "craft.materials":           { "ja": "必要素材", "en": "Required materials" },
+  "craft.team":                { "ja": "配属チーム", "en": "Assigned team" },
+  "craft.changeTeam":          { "ja": "変更", "en": "Change" },
+  "craft.start":               { "ja": "クラフト開始", "en": "Start Craft" },
+  "craft.duration.estimate":   { "ja": "所要時間: 約 {n} 週", "en": "Duration: ~{n} weeks" },
+  "craft.warn.noTeam":         { "ja": "ヒーローを少なくとも 1 体 配属してください (ヒーロー画面で編成可)。", "en": "Assign at least 1 hero (use the Heroes screen to set up your craft team)." },
 
   "stub.desc":                 { "ja": "この機能は次のフェーズで実装予定です。", "en": "This feature is coming in a future phase." },
 

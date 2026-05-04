@@ -63,11 +63,36 @@ export function makeFactoryHero(mchHero) {
   };
 }
 
-/** クラフトレベル = 4 元素値の合計。チームレベルは合計値を加算する。 */
+/** ガルーダ (HP) は他パラメータと比べて約 3 倍大きいので、
+ *  craftLevel / 進捗計算では 1/3 の重みで集計する。 */
+export const GARUDA_WEIGHT = 1 / 3;
+
+/** クラフトレベル = ガルーダ × 1/3 + 他 3 元素 の合計 (整数に丸め)。
+ *  チームレベルは各ヒーローの craftLevel を合算する。 */
 export function craftLevel(hero) {
   if (!hero || !hero.element) return 0;
   const e = hero.element;
-  return (e.garuda || 0) + (e.ifrit || 0) + (e.leviathan || 0) + (e.tiamat || 0);
+  return Math.round(
+    (e.garuda || 0) * GARUDA_WEIGHT +
+    (e.ifrit || 0) +
+    (e.leviathan || 0) +
+    (e.tiamat || 0)
+  );
+}
+
+/** ヒーロー個別の元素値を「クラフト用 (= ガルーダ × 1/3)」に変換した表示値。
+ *  - 内部データ (hero.element) は MCH 由来の生値のまま保持し、
+ *    UI 表示と集計のときだけ garuda を 1/3 に圧縮する。
+ *  - これにより 1 か所変更すれば全画面 (hero list / team summary / confirm) が揃う。
+ *
+ *  @param {object} hero
+ *  @param {"garuda"|"ifrit"|"leviathan"|"tiamat"} key
+ *  @returns {number} 整数化された表示値
+ */
+export function elementValueForCraft(hero, key) {
+  if (!hero || !hero.element) return 0;
+  const raw = hero.element[key] || 0;
+  return key === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
 }
 
 /** Stamina が max まで戻ったか。Resting → Idle 遷移判定に使う。 */
