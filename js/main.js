@@ -34,6 +34,13 @@ import {
   ELEMENTS,
   elementIconUrl,
   HERO_STATE,
+  staminaDecayPerTick,
+  staminaRecoverPerTick,
+  rollCraftGain,
+  rollPassiveTrigger,
+  isFullyRested,
+  isExhausted,
+  adjustStamina,
 } from "./factory-hero.js";
 import {
   loadExtensions,
@@ -94,7 +101,24 @@ const state = {
   craftSort: "craftability",
   craftScreen: "select",   // "select" | "confirm"
   craftPickedExtId: null,  // ext currently being confirmed
+  /** Phase 1B-2 通知キュー: パッシブ発動などのテキストを格納し、
+   *  ヘッダー下のバナーに最新数件を流し込む。auto-fade で消える。
+   *  各要素: { id: number, text: string, element: string, value: number,
+   *          createdTick: number } */
+  notifications: /** @type {Array<object>} */ ([]),
+  /** Phase 1B-2 工房スプライト浮上値 (+N) のキュー。
+   *  各 tick で発生したクラフト値獲得を一覧表示し、CSS animation で消える。
+   *  各要素: { id: number, slotIdx: number, element: string, value: number,
+   *          createdTick: number } */
+  spriteFloats: /** @type {Array<object>} */ ([]),
+  /** モノトニック tick カウンタ (notifications/spriteFloats の time-based GC 用) */
+  tickCount: 0,
+  /** 直近にタップされた工房ヒーロー (詳細ポップアップ表示用) */
+  popupHeroId: null,
 };
+
+/** 通知バナー / 浮上値ともに 4 秒 = 4 tick で消える */
+const NOTIFICATION_TTL_TICKS = 4;
 
 const TICK_INTERVAL_MS = 1000;        // 1 in-game tick per real second
 const SECONDS_PER_WEEK = 7;           // 1 week = 7 ticks
@@ -120,11 +144,95 @@ function resumeTime() {
 
 function onTick() {
   if (state.pauseFlags > 0) return;
+  state.tickCount += 1;
   state.weekProgress += 1;
   if (state.weekProgress >= SECONDS_PER_WEEK) {
     advanceWeek();
   }
+  // Phase 1B-2: クラフト中の per-tick simulation (4色獲得 / HP消費 / 睡眠 / パッシブ)
+  if (state.activeCraft) {
+    tickActiveCraft();
+  }
+  // Notifications/floats の TTL GC + 描画更新
+  pruneEphemerals();
   renderHeader();
+  renderWorkshop();
+  renderNotifications();
+  renderOrderPanel();
+}
+
+/** activeCraft が存在するときの 1 tick 処理。
+ *  - 配属ヒーローごとに stamina decay / recovery 処理
+ *  - 起きているヒーローはクラフト値獲得をロール
+ *  - 起きているヒーローはパッシブ発動をロール
+ *  - 進捗 (state.activeCraft.progress) を加算 */
+function tickActiveCraft() {
+  const ac = state.activeCraft;
+  if (!ac) return;
+  for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
+    const heroId = ac.team[slotIdx];
+    if (heroId == null) continue;
+    const hero = findHero(heroId);
+    if (!hero) continue;
+    // 1. stamina 状態遷移
+    if (hero.state === HERO_STATE.RESTING) {
+      // 回復 → max まで戻れば CRAFTING に戻る
+      adjustStamina(hero, staminaRecoverPerTick(hero));
+      if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
+    } else {
+      // 消費 → 0 で RESTING に落ちる (このターンは獲得しない)
+      adjustStamina(hero, -staminaDecayPerTick(hero));
+      if (isExhausted(hero)) {
+        hero.state = HERO_STATE.RESTING;
+        continue;
+      }
+    }
+    // 睡眠中は 4 色獲得 / パッシブ なし
+    if (hero.state === HERO_STATE.RESTING) continue;
+    // 2. 4 色獲得ロール
+    const gain = rollCraftGain(hero);
+    if (gain) {
+      ac.progress[gain.element] = (ac.progress[gain.element] || 0) + gain.value;
+      pushSpriteFloat(slotIdx, gain.element, gain.value);
+    }
+    // 3. パッシブ発動ロール
+    const passive = rollPassiveTrigger(hero);
+    if (passive) {
+      ac.progress[passive.element] = (ac.progress[passive.element] || 0) + passive.value;
+      pushPassiveNotification(hero, passive);
+    }
+  }
+}
+
+/** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える) */
+function pushSpriteFloat(slotIdx, element, value) {
+  const id = ++_floatId;
+  state.spriteFloats.push({ id, slotIdx, element, value, createdTick: state.tickCount });
+}
+let _floatId = 0;
+
+/** パッシブ発動の通知バナー追加 */
+function pushPassiveNotification(hero, passive) {
+  const id = ++_notifId;
+  const heroName = tHero(hero.heroId, hero.nameJa);
+  // 「甲斐姫の「浪切」発動！ティアマト+４」形式
+  const text = ti18n("notif.passive")
+    .replace("{hero}", heroName)
+    .replace("{passive}", passive.passiveName)
+    .replace("{element}", elementLabel(passive.element))
+    .replace("{value}", String(passive.value));
+  state.notifications.push({
+    id, text, element: passive.element, value: passive.value,
+    createdTick: state.tickCount,
+  });
+}
+let _notifId = 0;
+
+/** 古い通知 / 浮上値を捨てる */
+function pruneEphemerals() {
+  const cutoff = state.tickCount - NOTIFICATION_TTL_TICKS;
+  state.notifications = state.notifications.filter(n => n.createdTick > cutoff);
+  state.spriteFloats  = state.spriteFloats.filter(f => f.createdTick > cutoff);
 }
 
 function advanceWeek() {
@@ -604,9 +712,10 @@ function startActiveCraft() {
   }
   closeCraftView();
   renderOrderPanel();
+  renderWorkshop();
 }
 
-/** ─── Order panel rendering ─────────────────────────────────────── */
+/** ─── Order panel rendering (Phase 1B-2 ・ mockup 準拠版) ──────── */
 function renderOrderPanel() {
   const panel = $("orderPanel");
   const desc = $("orderDesc");
@@ -617,7 +726,7 @@ function renderOrderPanel() {
   const icon = $("orderIcon");
   if (!panel) return;
 
-  // No order + no active craft → empty state
+  // 進行中クラフトなし → empty state
   if (!state.activeCraft) {
     panel.classList.add("order-panel--empty");
     desc.textContent = ti18n("order.none");
@@ -628,27 +737,241 @@ function renderOrderPanel() {
     icon.innerHTML = "";
     return;
   }
-  // Active craft (Phase 1B; per-tick progress comes in Phase 1C)
+  // 進行中
   const ac = state.activeCraft;
   const ext = EXTENSION_BY_ID[String(ac.extId)];
   panel.classList.remove("order-panel--empty");
   icon.innerHTML = `<img src="${extIconUrl(ac.extId)}" alt="" onerror="this.style.opacity='0.2'" />`;
   desc.textContent = ext ? ext.nameJa : `ext ${ac.extId}`;
-  meta.innerHTML = `<span>${escapeHtml(ti18n("order.duration").replace("{n}", ac.durationWeeks))}</span>`;
-  // 4 element gauges (small, on the right)
+
+  // メタ行: レアリティ + 完成予定 (= 開始日 + durationWeeks)
+  const eta = computeEtaDate(ac);
+  const rarityLbl = ext ? ti18n("rarity." + ext.rarity, ext.rarity) : "";
+  meta.innerHTML = `
+    <span class="order-panel__rarity" data-rarity="${ext?.rarity || ""}">${escapeHtml(rarityLbl)}</span>
+    <span class="order-panel__eta">${escapeHtml(ti18n("order.eta"))}: ${escapeHtml(formatGameDate(eta))}</span>
+  `;
+
+  // 4 色ゲージ (アイコン + 現在/目標、縦積み)
   elements.innerHTML = ELEMENTS.map(k => {
     const cur = ac.progress[k] || 0;
     const tgt = ac.targets[k] || 0;
-    return `<span class="order-panel__el" title="${escapeHtml(elementLabel(k))} ${cur}/${tgt}">
-      <span class="order-panel__el-icon order-panel__el-icon--${k}"></span>
-      <span class="order-panel__el-val">${cur}/${tgt}</span>
+    const reached = tgt > 0 && cur >= tgt;
+    return `<span class="order-panel__el ${reached ? "order-panel__el--reached" : ""}" title="${escapeHtml(elementLabel(k))} ${cur}/${tgt}">
+      <img class="order-panel__el-icon" src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
+      <span class="order-panel__el-val"><strong>${cur}</strong>/<span class="order-panel__el-tgt">${tgt}</span></span>
     </span>`;
   }).join("");
-  const totalCur = ELEMENTS.reduce((s, k) => s + (ac.progress[k] || 0), 0);
+
+  // 進捗バー (4 色合計の達成率)
+  const totalCur = ELEMENTS.reduce((s, k) => s + Math.min(ac.progress[k] || 0, ac.targets[k] || 0), 0);
   const totalTgt = Math.max(1, ELEMENTS.reduce((s, k) => s + (ac.targets[k] || 0), 0));
   const pctVal = Math.min(100, Math.floor((totalCur / totalTgt) * 100));
   fill.style.width = pctVal + "%";
   pct.textContent = pctVal + "%";
+}
+
+/** activeCraft.startedAt + durationWeeks から完成予定日を計算 */
+function computeEtaDate(ac) {
+  const start = ac.startedAt; // {year, month, week}
+  let weeks = ac.durationWeeks;
+  let y = start.year, m = start.month, w = start.week;
+  while (weeks > 0) {
+    w += 1;
+    if (w > WEEKS_PER_MONTH) { w = 1; m += 1; }
+    if (m > 12) { m = 1; y += 1; }
+    weeks -= 1;
+  }
+  return { year: y, month: m, week: w };
+}
+
+function formatGameDate(d) {
+  if (getLang() === "en") return `${d.year} ${monthNameEn(d.month)} W${d.week}`;
+  return `${d.year}年${d.month}月${d.week}週`;
+}
+
+/** ─── Workshop hero sprites + floating gain numbers ──────────────── */
+
+/** 工房スプライトを動的更新する。
+ *  - スプライト本体 (.workshop-hero) は配属が変わるまで DOM 維持し、
+ *    属性 (sleeping クラス / stamina width) のみ更新する → CSS animation
+ *    が tick ごとに再起動するのを防ぐ。
+ *  - +N 浮上値は「その tick で発生したもの」だけ append する (1 秒で消える)。
+ *  - bounce アニメも同上で、新規 float があるスロットだけ class を付け直す。
+ */
+function renderWorkshop() {
+  const host = $("workshopHeroes");
+  if (!host) return;
+  if (!state.activeCraft) {
+    host.innerHTML = "";
+    return;
+  }
+  const ac = state.activeCraft;
+  // 配属が変わった (heroId 列が変わった) ときだけ全 rebuild。それ以外は属性更新のみ。
+  const fingerprint = ac.team.join(",");
+  if (host.dataset.fingerprint !== fingerprint) {
+    host.dataset.fingerprint = fingerprint;
+    host.innerHTML = ac.team.map((heroId, slotIdx) => {
+      if (heroId == null) return "";
+      const hero = findHero(heroId);
+      if (!hero) return "";
+      const pos = WORKSHOP_SLOT_POS[slotIdx] || WORKSHOP_SLOT_POS[0];
+      return `<div class="workshop-hero" data-slot="${slotIdx}" data-hero-id="${hero.heroId}"
+        style="left:${pos.x}; top:${pos.y};"
+        title="${escapeHtml(tHero(hero.heroId, hero.nameJa))}">
+        <span class="workshop-hero__sleep hidden" title="${escapeHtml(ti18n("hero.state.resting"))}">💤</span>
+        <img class="workshop-hero__img" src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="workshop-hero__stam"><div class="workshop-hero__stam-fill"></div></div>
+        <div class="workshop-hero__floats"></div>
+      </div>`;
+    }).join("");
+  }
+  // ── 属性更新 (sleeping / stamina) ──
+  for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
+    const heroId = ac.team[slotIdx];
+    if (heroId == null) continue;
+    const sprite = host.querySelector(`.workshop-hero[data-slot="${slotIdx}"]`);
+    if (!sprite) continue;
+    const hero = findHero(heroId);
+    if (!hero) continue;
+    const sleeping = hero.state === HERO_STATE.RESTING;
+    sprite.classList.toggle("workshop-hero--sleeping", sleeping);
+    sprite.querySelector(".workshop-hero__sleep")?.classList.toggle("hidden", !sleeping);
+    const stamPct = hero.stamina.max > 0
+      ? Math.max(0, Math.min(100, (hero.stamina.current / hero.stamina.max) * 100))
+      : 0;
+    const fill = sprite.querySelector(".workshop-hero__stam-fill");
+    if (fill) fill.style.width = stamPct.toFixed(1) + "%";
+  }
+  // ── 今 tick で発生した floats / bounce を反映 (=既存の DOM に追加だけ) ──
+  // 既に DOM に存在する float-id を集めて差分だけ append + bounce class を一度だけ付ける
+  const liveFloats = state.spriteFloats.filter(f => f.createdTick === state.tickCount);
+  const bouncedSlots = new Set();
+  for (const f of liveFloats) {
+    const sprite = host.querySelector(`.workshop-hero[data-slot="${f.slotIdx}"]`);
+    if (!sprite) continue;
+    const floatHost = sprite.querySelector(".workshop-hero__floats");
+    if (!floatHost) continue;
+    if (floatHost.querySelector(`[data-float-id="${f.id}"]`)) continue;
+    const span = document.createElement("span");
+    span.className = `workshop-hero__float workshop-hero__float--${f.element}`;
+    span.setAttribute("data-float-id", String(f.id));
+    span.textContent = `+${f.value}`;
+    floatHost.appendChild(span);
+    // CSS animation 終了後に DOM から消す (1.0s)
+    setTimeout(() => span.remove(), 1100);
+    bouncedSlots.add(f.slotIdx);
+  }
+  // bounce クラス: 該当スロットに 1 度だけ付与し、アニメ終了後に自動除去
+  for (const slotIdx of bouncedSlots) {
+    const sprite = host.querySelector(`.workshop-hero[data-slot="${slotIdx}"]`);
+    if (!sprite) continue;
+    sprite.classList.remove("workshop-hero--bounce");
+    // フォース reflow して即時に再付与 → アニメ再開
+    void sprite.offsetWidth;
+    sprite.classList.add("workshop-hero--bounce");
+    setTimeout(() => sprite.classList.remove("workshop-hero--bounce"), 460);
+  }
+}
+
+/** 工房内の 5 配置座標 (workshop 領域の % 座標) */
+const WORKSHOP_SLOT_POS = [
+  { x: "12%", y: "55%" },
+  { x: "30%", y: "60%" },
+  { x: "48%", y: "55%" },
+  { x: "66%", y: "60%" },
+  { x: "82%", y: "55%" },
+];
+
+/** ─── Passive notification banner ────────────────────────────────── */
+/** 通知バナーの差分更新。
+ *  - 新規 notification (data-id がまだ DOM に存在しないもの) のみ append
+ *    → 既存通知の CSS animation が再起動しない
+ *  - 古くなって state から消えた notification は DOM からも除去
+ *  - 表示数は 3 件まで (古い順から DOM ごと削除)
+ */
+function renderNotifications() {
+  const host = $("notifBanner");
+  if (!host) return;
+  if (state.notifications.length === 0) {
+    host.classList.add("hidden");
+    host.innerHTML = "";
+    return;
+  }
+  host.classList.remove("hidden");
+
+  const stateIds = new Set(state.notifications.map(n => String(n.id)));
+  // 1. DOM 上にあって state に無いものを除去
+  Array.from(host.children).forEach(child => {
+    const id = child.getAttribute("data-id");
+    if (!id || !stateIds.has(id)) child.remove();
+  });
+  // 2. state にあって DOM 上に無いものを append (新着のみ)
+  for (const n of state.notifications) {
+    if (host.querySelector(`[data-id="${n.id}"]`)) continue;
+    const div = document.createElement("div");
+    div.className = `notif notif--${n.element}`;
+    div.setAttribute("data-id", String(n.id));
+    div.innerHTML = `<span class="notif__text">${escapeHtml(n.text)}</span>`;
+    host.appendChild(div);
+  }
+  // 3. 表示数を 3 件に制限 (古いものから DOM ごと削除)
+  while (host.children.length > 3) host.firstElementChild.remove();
+}
+
+/** ─── Hero detail popup (tap workshop sprite) ────────────────────── */
+function openHeroDetailPopup(heroId) {
+  const hero = findHero(heroId);
+  if (!hero) return;
+  state.popupHeroId = heroId;
+  const modal = $("heroDetailPopup");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  pauseTime();
+  renderHeroDetailPopup();
+}
+
+function renderHeroDetailPopup() {
+  if (state.popupHeroId == null) return;
+  const hero = findHero(state.popupHeroId);
+  if (!hero) return;
+  const name = tHero(hero.heroId, hero.nameJa);
+  const stamPct = hero.stamina.max > 0
+    ? Math.max(0, Math.min(100, (hero.stamina.current / hero.stamina.max) * 100))
+    : 0;
+  const stateLbl = heroStateLabel(hero.state);
+  $("heroDetailPortrait").src = hero.img();
+  $("heroDetailName").textContent = name;
+  $("heroDetailState").textContent = stateLbl;
+  $("heroDetailState").setAttribute("data-state", hero.state);
+  $("heroDetailRarity").textContent = ti18n("rarity." + hero.rarity, hero.rarity);
+  $("heroDetailRarity").setAttribute("data-rarity", hero.rarity);
+  $("heroDetailStaminaText").textContent = `${hero.stamina.current} / ${hero.stamina.max}`;
+  $("heroDetailStaminaFill").style.width = stamPct.toFixed(1) + "%";
+  $("heroDetailCl").textContent = craftLevel(hero).toLocaleString();
+  // 4 色の craft 寄与値 (1/3 重み込み)
+  $("heroDetailElements").innerHTML = ELEMENTS.map(k => {
+    const v = elementValueForCraft(hero, k);
+    return `<div class="hero-detail__el">
+      <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" />
+      <span class="hero-detail__el-label">${escapeHtml(elementLabel(k))}</span>
+      <strong class="hero-detail__el-val">${v}</strong>
+    </div>`;
+  }).join("");
+  // パッシブ
+  const pBlock = $("heroDetailPassive");
+  if (hero.passiveName) {
+    pBlock.innerHTML = `<span class="hero-detail__passive-label">${escapeHtml(ti18n("hero.passive"))}:</span>
+      <strong>${escapeHtml(hero.passiveName)}</strong>`;
+    pBlock.classList.remove("hidden");
+  } else {
+    pBlock.classList.add("hidden");
+  }
+}
+function closeHeroDetailPopup() {
+  $("heroDetailPopup")?.classList.add("hidden");
+  state.popupHeroId = null;
+  resumeTime();
 }
 
 /** ─── Title screen ──────────────────────────────────────────────── */
@@ -754,6 +1077,8 @@ async function init() {
   renderOrderPanel();
   renderHeroTeam();
   renderHeroList();
+  renderWorkshop();
+  renderNotifications();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");
@@ -817,6 +1142,18 @@ async function init() {
   $("maiModalClose")?.addEventListener("click", closeMaiModal);
   $("maiModal")?.addEventListener("click", (e) => {
     if (e.target.id === "maiModal") closeMaiModal();
+  });
+
+  // ── Workshop sprite tap → ヒーロー詳細ポップアップ ──
+  $("workshopHeroes")?.addEventListener("click", (ev) => {
+    const sprite = ev.target.closest(".workshop-hero");
+    if (!sprite) return;
+    const id = parseInt(sprite.getAttribute("data-hero-id"), 10);
+    if (Number.isFinite(id)) openHeroDetailPopup(id);
+  });
+  $("heroDetailClose")?.addEventListener("click", closeHeroDetailPopup);
+  $("heroDetailPopup")?.addEventListener("click", (e) => {
+    if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
 
   // ── Craft view bindings (Phase 1B) ──
@@ -886,6 +1223,9 @@ async function init() {
     renderOrderPanel();
     renderHeroTeam();
     renderHeroList();
+    renderWorkshop();
+    renderNotifications();
+    if (state.popupHeroId != null) renderHeroDetailPopup();
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -897,6 +1237,7 @@ async function init() {
   // ── Esc closes any open overlay ──
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
+    if (!$("heroDetailPopup")?.classList.contains("hidden")) { closeHeroDetailPopup(); return; }
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
     if (!$("stubView")?.classList.contains("hidden")) { closeStub(); return; }

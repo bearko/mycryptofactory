@@ -134,3 +134,78 @@ export function buildOwnedHeroes() {
 export function elementIconUrl(elementKey) {
   return "./Image/Factory/elem-" + elementKey + ".webp";
 }
+
+/** ─── Phase 1B-2: per-tick craft simulation ──────────────────────── */
+
+/** クラフト中ヒーロー 1 名の 1 tick あたり stamina 消費量 (≥2)。
+ *  hpMax (= raw garuda) が大きいヒーローほど絶対値は減るが相対比は同等。 */
+export function staminaDecayPerTick(hero) {
+  const max = hero?.stamina?.max || 0;
+  return Math.max(2, Math.ceil(max / 60));
+}
+
+/** 睡眠中 (= resting) の 1 tick あたり回復量。
+ *  ユーザー仕様: 「消費の 5 倍の速さで回復」。 */
+export function staminaRecoverPerTick(hero) {
+  return staminaDecayPerTick(hero) * 5;
+}
+
+/**
+ * 1 tick の中で 1 ヒーローが「どの 4 色の値をいくら獲得するか」をロール。
+ *
+ * 仕様 (ユーザー指定):
+ *  - クラフトレベルが高いヒーローほど頻度高く獲得
+ *  - パラメータの高い色ほど 1 回の獲得値が大きい
+ *
+ * モデル:
+ *  - 獲得 chance = clamp(0.4 + craftLevel / 300, 0.4, 0.9)
+ *  - 獲得時は element を per-element 値で重み付き抽選
+ *  - 獲得値 = max(1, round(elementValue * 0.1))
+ *
+ * 睡眠中ヒーローが渡されたら null を返す (ロールしない)。
+ *
+ * @returns {{ element: string, value: number } | null}
+ */
+export function rollCraftGain(hero, rng = Math.random) {
+  if (!hero || hero.state === HERO_STATE.RESTING) return null;
+  // 4 元素値 (ガルーダ 1/3 補正後)
+  const vals = ELEMENTS.map(k => {
+    const raw = hero.element?.[k] || 0;
+    return k === "garuda" ? Math.round(raw * (1 / 3)) : raw;
+  });
+  const cl = vals[0] + vals[1] + vals[2] + vals[3];
+  const chance = Math.min(0.9, Math.max(0.4, 0.4 + cl / 300));
+  if (rng() > chance) return null;
+  const total = vals.reduce((s, v) => s + Math.max(1, v), 0);
+  let r = rng() * total;
+  let pickedIdx = 0;
+  for (let i = 0; i < ELEMENTS.length; i++) {
+    r -= Math.max(1, vals[i]);
+    if (r <= 0) { pickedIdx = i; break; }
+  }
+  const elKey = ELEMENTS[pickedIdx];
+  const gain  = Math.max(1, Math.round(vals[pickedIdx] * 0.1));
+  return { element: elKey, value: gain };
+}
+
+/**
+ * 1 tick で hero がパッシブを発動するか判定。
+ *
+ * Phase 1B-2 では簡易モデル:
+ *  - hero.passiveName が無いヒーローは発動しない
+ *  - 睡眠中は発動しない
+ *  - 発動 chance = 4% / tick
+ *  - 発動時は random element に元素値 × 0.15 (min 3) をボーナス
+ *
+ * @returns {{ passiveName: string, element: string, value: number } | null}
+ */
+export function rollPassiveTrigger(hero, rng = Math.random) {
+  if (!hero || hero.state === HERO_STATE.RESTING) return null;
+  if (!hero.passiveName) return null;
+  if (rng() > 0.04) return null;
+  const elKey = ELEMENTS[Math.floor(rng() * ELEMENTS.length)];
+  const raw = hero.element?.[elKey] || 0;
+  const adj = elKey === "garuda" ? Math.round(raw * (1 / 3)) : raw;
+  const value = Math.max(3, Math.round(adj * 0.15));
+  return { passiveName: hero.passiveName, element: elKey, value };
+}
