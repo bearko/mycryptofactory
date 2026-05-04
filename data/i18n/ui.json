@@ -162,6 +162,7 @@
   "sell.cancel":               { "ja": "キャンセル", "en": "Cancel" },
   "sell.noSeller":             { "ja": "担当できるヒーローがいません (同等以上の rarity または 商 属性が必要)。", "en": "No eligible seller (need matching rarity or 商 attribute)." },
   "sell.mai.sold":             { "ja": "出品中のエクステンションが売れました！GUMが工房の収入になりますよ。", "en": "Your listed extension sold! GUM has been added to the workshop." },
+  "sale.overlay.remain":       { "ja": "あと {n} 週", "en": "{n}wk left" },
 
   "hero.actions.rest":         { "ja": "休憩", "en": "Rest" },
 

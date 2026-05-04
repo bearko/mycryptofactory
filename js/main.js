@@ -511,12 +511,32 @@ function closeQuestView() {
 }
 
 function renderQuestView() {
-  // ノード一覧 (4 通常ノード)
+  // ノード一覧 (4 通常ノード)。Phase 1D-9: 名前に "node : " 接頭辞 +
+  // 難易度に応じた取得可能素材アイコンを動的表示 (上級だけレア素材)
+  const lang = getLang() === "en" ? "en" : "ja";
+  const isHard = state.questPickedDifficulty === "hard";
   $("questNodeList").innerHTML = NORMAL_NODES.map(n => {
     const sel = n.id === state.questPickedNodeId ? " quest-node--sel" : "";
+    // 表示する素材: 通常素材は常に、レア素材 (poolHighTier) は hard のみ
+    const matIds = [];
+    const seen = new Set();
+    for (const id of (n.poolNormal || [])) {
+      if (!seen.has(id)) { seen.add(id); matIds.push(id); }
+    }
+    if (isHard) {
+      for (const id of (n.poolHighTier || [])) {
+        if (!seen.has(id)) { seen.add(id); matIds.push(id); }
+      }
+    }
+    const matsHtml = matIds.length === 0 ? "" : `<span class="quest-node__mats">${matIds.map(id => {
+      const isRare = (n.poolHighTier || []).includes(id);
+      return `<img class="quest-node__mat${isRare ? " quest-node__mat--rare" : ""}" src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" title="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />`;
+    }).join("")}</span>`;
+    const displayName = `node : ${lang === "en" ? (n.nameEn || n.nameJa) : n.nameJa}`;
     return `<button type="button" class="quest-node${sel}" data-node="${n.id}">
-      <span class="quest-node__name">${escapeHtml(n.nameJa)}</span>
+      <span class="quest-node__name">${escapeHtml(displayName)}</span>
       <span class="quest-node__note">${escapeHtml(extractNote(n.note, getLang()))}</span>
+      ${matsHtml}
     </button>`;
   }).join("");
 
@@ -786,11 +806,12 @@ function renderHeader() {
     const pct = (state.weekProgress / SECONDS_PER_WEEK) * 100;
     gauge.setAttribute("stroke-dasharray", `${pct.toFixed(2)} 100`);
   }
-  // Phase 1D-5: 工房レベル = 所有ヒーロー全員の craftLevel 合計
+  // Phase 1D-10 (改): 工房レベル = ファクトリーレベル (state.factoryLevel)
+  // ※ 旧: 全ヒーロー craftLevel 合計を表示していたが、本来の意味と乖離するため
+  //   ファクトリーレベルの整数 (1〜5) を表示するよう変更。
   const lvEl = $("factoryLvText");
   if (lvEl) {
-    const total = state.ownedHeroes.reduce((s, h) => s + craftLevel(h), 0);
-    lvEl.textContent = ti18n("header.factoryLv").replace("{n}", total.toLocaleString());
+    lvEl.textContent = ti18n("header.factoryLv").replace("{n}", String(state.factoryLevel));
   }
 }
 
@@ -2056,7 +2077,9 @@ function startSale() {
     status: "listed",
   });
   closeSellModal();
-  renderMarketSell();
+  // Phase 1D-10: 出品確定後はホームに戻る (時間進めるため、雇用フローと同じ)
+  closeMarketView();
+  renderSaleOverlay();
 }
 let _saleId = 0;
 
@@ -2107,7 +2130,10 @@ function tickActiveSales() {
     // とりあえず固定メッセージ + console
     console.log(`[market] ${completed.length} ext sold for total ${totalNet} GUM`);
     renderHeader();
+    renderSaleOverlay();
   }
+  // 出品中もしくは tick ごとに進捗バーが進む overlay を更新
+  if (state.activeSales.length > 0) renderSaleOverlay();
 }
 
 /** Phase 1D-3 雇用タブの描画 */
@@ -2201,6 +2227,7 @@ function startHirePlan(planId, recruiterId) {
   // Phase 1D-7: 雇用開始 → そのままホームに戻して時間を進める
   closeMarketView();
   renderHireOverlay();
+  renderSaleOverlay();
 }
 
 /** 雇用進行中の表示 */
@@ -2281,6 +2308,7 @@ function tickActiveHire() {
   if (!ah || ah.candidates) {
     // 既に候補生成済みなら overlay の進捗 % のみ更新
     renderHireOverlay();
+  renderSaleOverlay();
     return;
   }
   const elapsed = state.tickCount - ah.startedAtTick;
@@ -2298,6 +2326,7 @@ function tickActiveHire() {
     });
   }
   renderHireOverlay();
+  renderSaleOverlay();
 }
 
 function pickHireCandidate(heroId) {
@@ -2354,6 +2383,7 @@ function finalizeHire(candIdx) {
   renderHeroTeam();
   renderHeroList();
   renderHireOverlay();
+  renderSaleOverlay();
   renderMarketHire();
   // Phase 1D-7: 雇用成功通知 (portrait 付き)
   showHireSuccessModal(newHero);
@@ -2362,6 +2392,7 @@ function finalizeHire(candIdx) {
 function skipAllHireCandidates() {
   state.activeHire = null;
   renderHireOverlay();
+  renderSaleOverlay();
   renderMarketHire();
 }
 
@@ -2497,6 +2528,42 @@ function renderHireOverlay() {
       <span class="hire-overlay__remain">${escapeHtml(ti18n("hire.overlay.candRemain").replace("{n}", ah.candidates.length))}</span>
     `;
   }
+  host.classList.remove("hidden");
+}
+
+/** Phase 1D-10: ホーム画面 上部 overlay に「出品中」インジケータを描画。
+ *  各 active sale を 1 行ずつ列挙: ext / 担当 / 残り週数 / 進捗バー。 */
+function renderSaleOverlay() {
+  const host = $("saleOverlay");
+  if (!host) return;
+  if (!state.activeSales || state.activeSales.length === 0) {
+    host.classList.add("hidden");
+    host.innerHTML = "";
+    return;
+  }
+  const lang = getLang() === "en" ? "en" : "ja";
+  host.innerHTML = state.activeSales.map(s => {
+    const w = state.warehouse[s.warehouseIdx];
+    const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
+    const seller = findHero(s.sellerId);
+    const sellerName = seller ? tHero(seller.heroId, seller.nameJa) : "—";
+    const elapsed = state.tickCount - s.listedAtTick;
+    const totalTicks = s.weeks * SECONDS_PER_WEEK;
+    const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
+    const remainTicks = Math.max(0, totalTicks - elapsed);
+    const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK);
+    const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
+    const iconUrl = ext ? extIconUrl(ext.extId) : "";
+    return `<div class="sale-overlay__row">
+      <img class="sale-overlay__icon" src="${iconUrl}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="sale-overlay__main">
+        <span class="sale-overlay__name">${escapeHtml(extName)}</span>
+        <span class="sale-overlay__seller">${escapeHtml(ti18n("sell.seller"))}: ${escapeHtml(sellerName)}</span>
+      </div>
+      <span class="sale-overlay__bar"><span class="sale-overlay__bar-fill" style="width:${pct}%"></span></span>
+      <span class="sale-overlay__remain">${escapeHtml(ti18n("sale.overlay.remain").replace("{n}", remainWeeks))}</span>
+    </div>`;
+  }).join("");
   host.classList.remove("hidden");
 }
 
@@ -2738,6 +2805,7 @@ async function init() {
   renderNotifications();
   renderQuestOverlay();
   renderHireOverlay();
+  renderSaleOverlay();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");
@@ -3137,6 +3205,7 @@ async function init() {
     }
     renderQuestOverlay();
     renderHireOverlay();
+  renderSaleOverlay();
     if (!$("fireModal")?.classList.contains("hidden")) renderFireModal();
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();

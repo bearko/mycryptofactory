@@ -71,12 +71,12 @@ export const TUTORIALS = {
   heroTeam: {
     ja: [
       "ここではエクステンションをクラフトするヒーローを編成できます。",
-      "今は3体のみですが、最大5体のヒーローを配置できます。",
+      "今は4体のみですが、最大5体のヒーローを配置できます。",
       "ヒーローを配属させたら、右上の戻るボタンで戻りましょう。",
     ],
     en: [
       "Here you can assemble the heroes who'll craft your extensions.",
-      "You have 3 heroes for now — up to 5 can be assigned.",
+      "You have 4 heroes for now — up to 5 can be assigned.",
       "Once heroes are placed, tap the back button at top right to return.",
     ],
   },
@@ -118,7 +118,7 @@ export function makeInitialTutorialState() {
 /** 初期所持ヒーロー (3 名固定 / Common):
  *  シートン (1004) / 伊能忠敬 (1005) / ピタゴラス (1006)
  */
-export const INITIAL_HERO_IDS = [1004, 1005, 1006];
+export const INITIAL_HERO_IDS = [1003, 1004, 1005, 1006];  // 張遼 / シートン / 伊能忠敬 / ピタゴラス
 
 /** 初期解放エクステンション (4 件):
  *  ノービスブレード (1001) / ノービスマスケット (1002) /
