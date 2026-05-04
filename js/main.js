@@ -171,6 +171,8 @@ function onTick() {
   if (state.activeCraft) {
     tickActiveCraft();
   }
+  // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft 配属外) の自動回復
+  tickPassiveRestRecovery();
   // Notifications/floats の TTL GC + 描画更新
   pruneEphemerals();
   renderHeader();
@@ -286,6 +288,22 @@ function pickQualityTier(ratio) {
   if (ratio < 1.0) return "under";
   if (ratio >= 1.5) return "excellent";
   return "good";
+}
+
+/** activeCraft の team 外で RESTING になっているヒーローを自動回復させる。
+ *  手動「休憩」ボタンで RESTING 入りしたヒーローや、過去のクラフトで疲れた
+ *  ヒーローが対象。recover_per_tick は staminaRecoverPerTick(hero) と同じ。 */
+function tickPassiveRestRecovery() {
+  const activeTeam = new Set(
+    (state.activeCraft?.team || []).filter(id => id != null)
+  );
+  for (const hero of state.ownedHeroes) {
+    if (!hero) continue;
+    if (hero.state !== HERO_STATE.RESTING) continue;
+    if (activeTeam.has(hero.heroId)) continue; // クラフト team は tickActiveCraft が処理
+    adjustStamina(hero, staminaRecoverPerTick(hero));
+    if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
+  }
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える) */
@@ -474,6 +492,15 @@ function renderHeroList() {
         <span class="hero-card__elem-val">${val}</span>
       </span>`;
     }).join("");
+    // 「休憩」ボタン: HP 減 (cur < max) かつ assigned/CRAFTING/QUESTING 中でない
+    //   → 手動で RESTING 入りさせて回復を強制する。
+    const canRest = !assigned
+      && hero.state !== HERO_STATE.CRAFTING
+      && hero.state !== HERO_STATE.QUESTING
+      && hero.stamina.current < hero.stamina.max;
+    const restBtn = canRest
+      ? `<button type="button" class="hero-card__rest-btn" data-rest-hero="${hero.heroId}" data-i18n="hero.actions.rest">休憩</button>`
+      : "";
     return `<div class="${cardCls}" data-hero-id="${hero.heroId}" data-rarity="${hero.rarity}" data-assigned="${assigned ? "1" : "0"}">
       <div class="hero-card__head">
         <img class="hero-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
@@ -481,6 +508,7 @@ function renderHeroList() {
           <div class="hero-card__name">${escapeHtml(name)}</div>
           <div class="hero-card__state" data-state="${hero.state}">${escapeHtml(stateLbl)}</div>
         </div>
+        ${restBtn}
       </div>
       <div class="hero-card__elements">${elementsHtml}</div>
       <div class="hero-card__stamina" title="${escapeHtml(ti18n("hero.stamina"))}: ${hero.stamina.current}/${hero.stamina.max}">
@@ -1199,6 +1227,56 @@ function closeCompletionScreen() {
   openAppraisalScreen();
 }
 
+/** ─── Market view: 倉庫タブ (Phase 1B-5) ─────────────────────────── */
+
+function openMarketView() {
+  pauseTime();
+  $("marketView")?.classList.remove("hidden");
+  renderMarketWarehouse();
+}
+function closeMarketView() {
+  $("marketView")?.classList.add("hidden");
+  resumeTime();
+}
+
+function renderMarketWarehouse() {
+  const host = $("warehouseList");
+  if (!host) return;
+  if (state.warehouse.length === 0) {
+    host.innerHTML = `<p class="warehouse-empty">${escapeHtml(ti18n("warehouse.empty"))}</p>`;
+    return;
+  }
+  // 新しい順に表示
+  const items = state.warehouse.slice().reverse();
+  host.innerHTML = items.map((w, i) => {
+    const ext = EXTENSION_BY_ID[String(w.extId)];
+    const name = ext ? ext.nameJa : `ext ${w.extId}`;
+    const rarityLbl = ext ? ti18n("rarity." + ext.rarity, ext.rarity) : "";
+    const dateLbl = formatGameDate(w.achievedAt || { year: 2018, month: 12, week: 1 });
+    const apr  = w.appraisal;
+    const tierLbl = apr ? ti18n("appraisal.tier." + apr.tier) : "—";
+    const score   = apr ? apr.totalScore : 0;
+    return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${ext ? ext.rarity : "common"}">
+      <img class="warehouse-item__icon" src="${extIconUrl(w.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="warehouse-item__main">
+        <div class="warehouse-item__name-row">
+          <span class="warehouse-item__name">${escapeHtml(name)}</span>
+          <span class="warehouse-item__rarity" data-rarity="${ext ? ext.rarity : "common"}">${escapeHtml(rarityLbl)}</span>
+        </div>
+        <div class="warehouse-item__meta">
+          <span class="warehouse-item__date">${escapeHtml(dateLbl)}</span>
+          <span class="warehouse-item__duration">${ti18n("craft.weeks").replace("{n}", w.durationActualWeeks || 0)}</span>
+        </div>
+        ${apr ? `
+        <div class="warehouse-item__score">
+          <span class="warehouse-item__tier" data-tier="${apr.tier}">${escapeHtml(tierLbl)}</span>
+          <span class="warehouse-item__score-num"><strong>${score}</strong> / 50</span>
+        </div>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
 /** ─── Craft appraisal (Phase 1B-4) ───────────────────────────────── */
 
 /** 品評会画面を開く ─ pendingCompletion をベースに 5 名審査員を抽選し、
@@ -1428,15 +1506,13 @@ async function init() {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-menu");
       closeMenu();
-      // Phase 1A: 'hero' menu opens the real hero view
       if (key === "hero") { openHeroView(); return; }
-      // Phase 1B: 'craft' menu opens the real craft view —
-      //   ただし他のクラフトが進行中ならマイが説明して開かない (並列クラフト禁止)
       if (key === "craft") {
         if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
         openCraftView();
         return;
       }
+      if (key === "market") { openMarketView(); return; }
       openStub(key);
     });
   });
@@ -1466,6 +1542,9 @@ async function init() {
   $("craftDoneClose")?.addEventListener("click", closeCompletionScreen);
   // 完成画面は背景タップでは閉じない (重要画面なので明示クリック必須)
   $("appraisalClose")?.addEventListener("click", closeAppraisalScreen);
+
+  // ── Market view: 倉庫タブ (Phase 1B-5) ──
+  $("marketViewBack")?.addEventListener("click", closeMarketView);
 
   // ── Craft view bindings (Phase 1B) ──
   $("craftViewBack")?.addEventListener("click", () => {
@@ -1515,6 +1594,21 @@ async function init() {
     renderHeroList();
   });
   $("heroList")?.addEventListener("click", (ev) => {
+    // 「休憩」ボタン: クリック伝播を止めてカード本体への反応を抑止
+    const restBtn = ev.target.closest("[data-rest-hero]");
+    if (restBtn) {
+      ev.stopPropagation();
+      const hid = parseInt(restBtn.getAttribute("data-rest-hero"), 10);
+      if (Number.isFinite(hid)) {
+        const h = findHero(hid);
+        if (h) {
+          h.state = HERO_STATE.RESTING;
+          renderHeroList();
+          renderHeroTeam();
+        }
+      }
+      return;
+    }
     const card = ev.target.closest(".hero-card");
     if (!card) return;
     const id = parseInt(card.getAttribute("data-hero-id"), 10);
@@ -1543,6 +1637,7 @@ async function init() {
     if (state.pendingAppraisal != null && !$("appraisalModal")?.classList.contains("hidden")) {
       renderAppraisalScreen();
     }
+    if (!$("marketView")?.classList.contains("hidden")) renderMarketWarehouse();
     if (!$("craftView")?.classList.contains("hidden")) {
       if (state.craftScreen === "confirm") renderConfirm();
       else renderExtList();
@@ -1561,6 +1656,7 @@ async function init() {
     if (!$("maiModal")?.classList.contains("hidden")) { closeMaiModal(); return; }
     if (!$("helpOverlay")?.classList.contains("hidden")) { closeHelp(); return; }
     if (!$("stubView")?.classList.contains("hidden")) { closeStub(); return; }
+    if (!$("marketView")?.classList.contains("hidden")) { closeMarketView(); return; }
     if (!$("menuOverlay")?.classList.contains("hidden")) { closeMenu(); return; }
   });
 }

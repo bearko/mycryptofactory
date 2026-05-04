@@ -99,6 +99,12 @@
   "appraisal.tier.masterpiece": { "ja": "傑作", "en": "Masterpiece" },
   "appraisal.toWarehouse":     { "ja": "倉庫へ収納", "en": "Send to warehouse" },
 
+  "market.title":              { "ja": "マーケット", "en": "Market" },
+  "market.tab.warehouse":      { "ja": "倉庫", "en": "Warehouse" },
+  "warehouse.empty":           { "ja": "完成品はまだありません。クラフトを完成させると倉庫に収納されます。", "en": "No completed items yet. Finished crafts will appear here." },
+
+  "hero.actions.rest":         { "ja": "休憩", "en": "Rest" },
+
   "craft.weeks":               { "ja": "{n} 週", "en": "{n} wk" },
   "craft.targets":             { "ja": "必要基準値", "en": "Required base values" },
   "craft.materials":           { "ja": "必要素材", "en": "Required materials" },
