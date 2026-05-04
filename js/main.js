@@ -83,6 +83,11 @@ import {
   INITIAL_UNLOCKED_EXT_IDS,
 } from "./factory-tutorial.js";
 import {
+  playBgm,
+  playSe,
+  preloadAllSe,
+} from "./factory-audio.js";
+import {
   HIRE_PLANS,
   PLAN_BY_ID,
   canBeRecruiter,
@@ -310,6 +315,8 @@ function tickActiveCraft() {
     if (gain) {
       ac.progress[gain.element] = (ac.progress[gain.element] || 0) + gain.value;
       pushSpriteFloat(slotIdx, gain.element, gain.value);
+      // Phase 1D-6: クラフト値獲得 SE (連発防止スロットルあり)
+      playSe("craftGain");
     }
     // 3. パッシブ発動ロール
     const passive = rollPassiveTrigger(hero);
@@ -1240,6 +1247,8 @@ function startActiveCraft() {
   // 安全チェック (ボタンが disabled でも念のため)
   const avail = craftAvailability(ext, teamHeroes, state.materials);
   if (!avail.materialOk) return;
+  // Phase 1D-6: クラフト開始 SE
+  playSe("craftStart");
   const targets = extElementTargets(ext);
   const dur = estimateDurationWeeks(ext, teamHeroes);
   const recipe = recipeFor(ext);
@@ -1545,6 +1554,10 @@ function closeHeroDetailPopup() {
 function dismissTitle() {
   const titleEl = $("titleView");
   if (!titleEl || titleEl.classList.contains("hidden")) return;
+  // Phase 1D-6: タイトルタップ = 最初のユーザー操作なので、ここで BGM 再生開始
+  // (ブラウザの autoplay policy 突破のため、user gesture 直後で呼ぶ必要あり)
+  playBgm();
+  preloadAllSe();
   titleEl.classList.add("title-out");
   setTimeout(() => {
     titleEl.classList.add("hidden");
@@ -1723,6 +1736,8 @@ function openCompletionScreen() {
   }
   const modal = $("craftDoneModal");
   if (!modal) return;
+  // Phase 1D-6: 完成画面表示時のファンファーレ SE
+  playSe("craftDone");
   pauseTime();
   modal.classList.remove("hidden");
   renderCompletionScreen();
@@ -2015,6 +2030,8 @@ function tickActiveSales() {
     }
     // Mai 通知
     const totalNet = completed.reduce((a, b) => a + b.finalNet, 0);
+    // Phase 1D-6: 取引成立 SE
+    playSe("saleSettled");
     maiSays("sell.mai.sold", { onClose: () => {} });
     // 通知本文に金額が出るように i18n を上書きするのは複雑なので、
     // とりあえず固定メッセージ + console
