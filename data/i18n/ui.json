@@ -32,6 +32,16 @@
   "menu.land.todo":            { "ja": "ランドnodeは将来のアップデートで実装予定です。", "en": "Land nodes are coming in a future update." },
   "menu.auction.todo":          { "ja": "オークション機能はまだ準備中です。今しばらくお待ちください！", "en": "Auction is still in preparation. Please stay tuned!" },
 
+  "recipe.popup.title":          { "ja": "レシピを獲得！", "en": "Recipe acquired!" },
+  "recipe.popup.seriesLabel":    { "ja": "シリーズ", "en": "Series" },
+  "recipe.popup.extsLabel":      { "ja": "作成可能になったエクステンション:", "en": "Now craftable:" },
+  "recipe.popup.futureNote":     { "ja": "工房レベルが上がれば同シリーズの上位レアリティも自動解放されます。", "en": "Higher rarities of this series will auto-unlock as your workshop levels up." },
+  "recipe.popup.closeBtn":       { "ja": "受け取る", "en": "Claim" },
+  "recipe.from.quest":           { "ja": "クエスト報酬として受け取りました。", "en": "Found as a quest reward." },
+  "recipe.from.sale":            { "ja": "取引で常連客から受け取りました。", "en": "A regular customer gifted you this recipe." },
+  "recipe.from.hire":            { "ja": "新たに雇ったヒーローが持参してくれました。", "en": "Your new hire brought this recipe along." },
+  "recipe.from.rankUp":          { "ja": "ヒーローのランクアップ祝いに進呈されました。", "en": "Granted as a rank-up reward." },
+
   "quest.section.pick":        { "ja": "1. クエストを選択", "en": "1. Pick a quest" },
   "quest.section.diff":        { "ja": "2. 難易度を選択", "en": "2. Pick difficulty" },
   "quest.section.team":        { "ja": "3. ヒーローを編成", "en": "3. Assemble heroes" },

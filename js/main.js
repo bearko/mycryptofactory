@@ -60,6 +60,10 @@ import {
   sortByCraftability,
   teamCraftLevelTotal,
   craftLevelRequiredFor,
+  isExtUnlocked,
+  rarityAllowedAtFactoryLevel,
+  maxRarityForFactoryLevel,
+  lockedSeriesList,
 } from "./factory-craft.js";
 import {
   MATERIALS,
@@ -87,6 +91,7 @@ import {
   makeInitialTutorialState,
   INITIAL_HERO_IDS,
   INITIAL_UNLOCKED_EXT_IDS,
+  INITIAL_UNLOCKED_SERIES,
 } from "./factory-tutorial.js";
 import {
   playBgm,
@@ -240,6 +245,12 @@ const state = {
   /** Phase 1D-5 解放済みエクステンション。初期は 4 件 (ノービス系)。
    *  ファクトリーレベル up や本編進行で増える。 */
   unlockedExtIds: /** @type {Set<number>} */ (new Set(INITIAL_UNLOCKED_EXT_IDS)),
+  /** Phase 1D-22: 解放済みシリーズ (= レシピ所持リスト)。クラフト可能 ext は
+   *  unlockedSeries × factoryLevel で動的に決定 (= isExtUnlocked)。 */
+  unlockedSeries: /** @type {Set<string>} */ (new Set(INITIAL_UNLOCKED_SERIES)),
+  /** Phase 1D-22: クエスト結果画面が閉じた後に発火する recipe drop の理由 i18n キー
+   *  (success 時に確率で設定、closeQuestResultScreen で消化) */
+  pendingRecipeReason: /** @type {string | null} */ (null),
 };
 
 const QUEST_TEAM_SIZE = 3;
@@ -549,6 +560,9 @@ function triggerQuestComplete(aq) {
   state.activeQuest = null;
   // Phase 1D-15: クエスト成功時のみ SE (失敗時は無音)
   if (success) playSe("questSuccess");
+  // Phase 1D-22: クエスト成功で 12% の確率で未取得シリーズレシピが手に入る
+  //   (発火は result 画面が閉じた後に showRecipePopup 起動)
+  state.pendingRecipeReason = (success && Math.random() < 0.12) ? "recipe.from.quest" : null;
   // Mai ポップアップ → 閉じるとレポート画面
   maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
     onClose: openQuestResultScreen,
@@ -1010,6 +1024,12 @@ function closeQuestResultScreen() {
   state.questTeam = [null, null, null];
   resumeTime();
   renderQuestOverlay();
+  // Phase 1D-22: 結果画面 close 後にシリーズレシピ獲得を試行
+  if (state.pendingRecipeReason) {
+    const reason = state.pendingRecipeReason;
+    state.pendingRecipeReason = null;
+    setTimeout(() => acquireRandomSeriesRecipe(reason), 350);
+  }
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える)。
@@ -1467,6 +1487,14 @@ function rankUpHero(heroId) {
   // 成功時のサウンド + Mai 通知
   playSe("appraisalHigh");
   pushHeroFlavor(hero.heroId, "passive", { name: `Rank ${hero.rank}` });
+  // Phase 1D-22: ランクアップでレシピ獲得チャンス
+  //   Rank 3 達成は確定 1 件、Rank 5 達成も確定 1 件、それ以外は 25% で抽選
+  const newRank = hero.rank;
+  let chance = 0.25;
+  if (newRank === 3 || newRank === 5) chance = 1.0;
+  if (Math.random() < chance) {
+    setTimeout(() => acquireRandomSeriesRecipe("recipe.from.rankUp"), 500);
+  }
 }
 
 /** Phase 1D-12: 編成 view のタブ切替 (craft / quest) */
@@ -1580,12 +1608,77 @@ function escapeHtml(s) {
 const ELEMENT_OF_STAT = { hp: "garuda", phy: "ifrit", int: "leviathan", agi: "tiamat" };
 
 function commonExtensions() {
-  // Phase 1D-5: 解放済みエクステンション (INITIAL_UNLOCKED_EXT_IDS) のみ表示。
-  // ファクトリーレベル up や本編進行で state.unlockedExtIds に追加される。
-  return EXTENSIONS.filter(e => {
-    if ((e.rarity || "").toLowerCase() !== "common") return false;
-    return state.unlockedExtIds.has(e.extId);
-  });
+  // Phase 1D-22: 「シリーズ解放済み + 工房 Lv 上限以下の rarity」を全件返す。
+  // (関数名は legacy だが「現在クラフトできる ext 全件」の意味で使い続ける)
+  return EXTENSIONS.filter(e => isExtUnlocked(e, state.unlockedSeries, state.factoryLevel));
+}
+
+/** Phase 1D-22: シリーズレシピを獲得する。
+ *  - 既に所持していたら no-op で false を返す
+ *  - 新規取得時は state.unlockedSeries に add + ポップアップ + SE 再生
+ *
+ *  @param {string} seriesName 例: "ブレード"
+ *  @param {string} [reasonKey] i18n キー (e.g. "recipe.from.quest")
+ *  @returns {boolean} 新規取得したか
+ */
+function acquireSeriesRecipe(seriesName, reasonKey = null) {
+  if (!seriesName) return false;
+  if (state.unlockedSeries.has(seriesName)) return false;
+  state.unlockedSeries.add(seriesName);
+  // 該当シリーズに含まれる ext のうち現工房 Lv で許可される Common 例 (= 通常表示するアイコン)
+  const sample = EXTENSIONS.find(e => e.series === seriesName && rarityAllowedAtFactoryLevel(e.rarity, state.factoryLevel));
+  showRecipePopup(seriesName, sample, reasonKey);
+  playSe("recipeAcquire");
+  return true;
+}
+
+/** ランダムに未取得シリーズを 1 つ選んで獲得を試みる。
+ *  全シリーズ取得済みなら null を返す。 */
+function acquireRandomSeriesRecipe(reasonKey = null) {
+  const locked = lockedSeriesList(state.unlockedSeries);
+  if (locked.length === 0) return null;
+  const pick = locked[Math.floor(Math.random() * locked.length)];
+  if (acquireSeriesRecipe(pick, reasonKey)) return pick;
+  return null;
+}
+
+/** レシピ獲得ポップアップ表示 */
+function showRecipePopup(seriesName, sampleExt, reasonKey) {
+  const modal = $("recipePopup");
+  if (!modal) return;
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  const seriesLabel = seriesName;
+  $("recipePopupSeries").textContent = seriesLabel;
+  const iconImg = $("recipePopupIcon");
+  if (iconImg) {
+    if (sampleExt) {
+      iconImg.src = extIconUrl(sampleExt.extId);
+      iconImg.style.display = "";
+    } else {
+      iconImg.style.display = "none";
+    }
+  }
+  const reason = reasonKey ? ti18n(reasonKey) : "";
+  $("recipePopupReason").textContent = reason;
+  // 工房 Lv で見える ext 名 (Common only at Lv 1) を列挙
+  const visibles = EXTENSIONS.filter(e => e.series === seriesName && rarityAllowedAtFactoryLevel(e.rarity, state.factoryLevel));
+  const list = $("recipePopupExts");
+  if (list) {
+    list.innerHTML = visibles.map(e => {
+      const name = lang === "en" ? (e.nameEn || e.nameJa) : e.nameJa;
+      return `<li class="recipe-popup__ext-item" data-rarity="${e.rarity}">
+        <img src="${extIconUrl(e.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="recipe-popup__ext-name">${escapeHtml(name)}</span>
+        <span class="recipe-popup__ext-rarity" data-rarity="${e.rarity}">${escapeHtml(ti18n("rarity." + e.rarity, e.rarity))}</span>
+      </li>`;
+    }).join("");
+  }
+  modal.classList.remove("hidden");
+}
+function closeRecipePopup() {
+  $("recipePopup")?.classList.add("hidden");
+  resumeTime();
 }
 function sortedExtensions() {
   const arr = commonExtensions();
@@ -2387,6 +2480,10 @@ function _initProgressCarousel() {
   sc.addEventListener("click", (ev) => {
     const target = ev.target.closest("[data-craft-go],[data-quest-go],[data-market-go]");
     if (!target || target.disabled) return;
+    // Phase 1D-22: メニューが開いたまま遷移する不具合修正
+    //   ホームの進捗カードボタンを押した瞬間にメニューを必ず閉じる。
+    const menuOpen = !$("menuOverlay")?.classList.contains("hidden");
+    if (menuOpen) closeMenu();
     if (target.hasAttribute("data-craft-go")) {
       // Craft → 新規開発
       if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
@@ -3080,7 +3177,17 @@ function tickActiveSales() {
     const totalNet = completed.reduce((a, b) => a + b.finalNet, 0);
     // Phase 1D-6: 取引成立 SE
     playSe("saleSettled");
-    maiSays("sell.mai.sold", { onClose: () => {} });
+    maiSays("sell.mai.sold", {
+      onClose: () => {
+        // Phase 1D-22: 売却 1 件あたり 6% で未取得シリーズレシピが手に入る
+        //   (常連客がレシピをくれた風情)
+        for (let k = 0; k < completed.length; k++) {
+          if (Math.random() < 0.06) {
+            setTimeout(() => acquireRandomSeriesRecipe("recipe.from.sale"), 200 + k * 220);
+          }
+        }
+      },
+    });
     // 通知本文に金額が出るように i18n を上書きするのは複雑なので、
     // とりあえず固定メッセージ + console
     console.log(`[market] ${completed.length} ext sold for total ${totalNet} GUM`);
@@ -3362,10 +3469,22 @@ function showHireSuccessModal(hero) {
   $("hireSuccessMsg").textContent = ti18n("hire.mai.hired").replace("{name}", tHero(hero.heroId, hero.nameJa));
   modal.classList.remove("hidden");
   pauseTime();
+  // Phase 1D-22: hire success の rarity を保存 → close 時にレシピ抽選
+  state.lastHiredRarity = hero.rarity || "common";
 }
 function closeHireSuccessModal() {
   $("hireSuccessModal")?.classList.add("hidden");
   resumeTime();
+  // Phase 1D-22: 雇用後にレシピ獲得チャンス
+  //   Common 8% / Uncommon 15% / Rare 25% / Epic 35% / Legendary 50%
+  const r = state.lastHiredRarity;
+  state.lastHiredRarity = null;
+  if (r) {
+    const pct = { common: 0.08, uncommon: 0.15, rare: 0.25, epic: 0.35, legendary: 0.50 }[r] || 0.08;
+    if (Math.random() < pct) {
+      setTimeout(() => acquireRandomSeriesRecipe("recipe.from.hire"), 350);
+    }
+  }
 }
 
 /** Phase 1D-7: 解雇 modal を開く (定員溢れ時 or 任意) */
@@ -4076,6 +4195,11 @@ async function init() {
   $("qlInfoClose")?.addEventListener("click", closeQlInfoModal);
   $("qlInfoModal")?.addEventListener("click", (e) => {
     if (e.target.id === "qlInfoModal") closeQlInfoModal();
+  });
+  // Phase 1D-22: シリーズレシピ獲得ポップアップ close
+  $("recipePopupClose")?.addEventListener("click", closeRecipePopup);
+  $("recipePopup")?.addEventListener("click", (e) => {
+    if (e.target.id === "recipePopup") closeRecipePopup();
   });
   $("questHeroPick")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-hero]");

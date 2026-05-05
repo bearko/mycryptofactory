@@ -124,3 +124,8 @@ export const INITIAL_HERO_IDS = [1003, 1004, 1005, 1006];  // 張遼 / シート
  *  以降のエクステンションはファクトリーレベル up や本編進行で解放予定。
  */
 export const INITIAL_UNLOCKED_EXT_IDS = [1001, 1002, 1003, 1004];
+
+/** Phase 1D-22: 初期解放シリーズ (= レシピ初期所持)。
+ *  上記 4 件の ext がそれぞれ属するシリーズ。クラフト解放は
+ *  unlockedSeries × factoryLevel から動的に決定される。 */
+export const INITIAL_UNLOCKED_SERIES = ["ブレード", "マスケット", "ペン", "アーマー"];

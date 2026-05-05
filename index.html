@@ -1976,6 +1976,141 @@
     }
     .quest-diff-row__btn--sel .quest-diff-row__sel-btn { background: var(--accent); }
 
+    /* Phase 1D-22: シリーズレシピ獲得ポップアップ */
+    .recipe-popup {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(15, 12, 22, 0.88);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+      backdrop-filter: blur(2px);
+      animation: recipe-fade-in 0.28s ease-out;
+    }
+    .recipe-popup.hidden { display: none !important; }
+    @keyframes recipe-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .recipe-popup__card {
+      max-width: 460px; width: 100%;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.2rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      color: var(--text);
+      box-shadow: 0 0 24px rgba(196,163,90,0.4), 0 8px 32px rgba(0,0,0,0.6);
+      animation: recipe-pop-in 0.4s cubic-bezier(.25, 1.4, .5, 1);
+    }
+    @keyframes recipe-pop-in {
+      0%   { transform: scale(0.6) translateY(40px); opacity: 0; }
+      60%  { transform: scale(1.04) translateY(-4px); opacity: 1; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .recipe-popup__header {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.5rem;
+    }
+    .recipe-popup__sparkle {
+      font-size: 1.3rem; color: var(--accent);
+      animation: recipe-sparkle 1.4s ease-in-out infinite;
+    }
+    @keyframes recipe-sparkle {
+      0%, 100% { transform: scale(1) rotate(0); opacity: 1; }
+      50%      { transform: scale(1.2) rotate(15deg); opacity: 0.85; }
+    }
+    .recipe-popup__title {
+      margin: 0;
+      font-size: 1.15rem;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-shadow: 0 0 8px rgba(196,163,90,0.4);
+    }
+    .recipe-popup__body {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.45rem;
+      padding: 0.6rem 0;
+    }
+    .recipe-popup__icon {
+      width: 84px; height: 84px;
+      background: rgba(255,255,255,0.04);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      box-shadow: 0 0 12px rgba(196,163,90,0.4);
+    }
+    .recipe-popup__series-block {
+      display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+    }
+    .recipe-popup__series-label {
+      font-size: 0.7rem; color: var(--muted);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .recipe-popup__series {
+      font-size: 1.3rem; color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .recipe-popup__reason {
+      margin: 0; color: var(--text); font-size: 0.85rem;
+      text-align: center;
+    }
+    .recipe-popup__reason:empty { display: none; }
+    .recipe-popup__exts-label {
+      margin: 0.3rem 0 0;
+      font-size: 0.72rem; color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .recipe-popup__exts {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.3rem;
+      width: 100%;
+    }
+    .recipe-popup__ext-item {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.35rem 0.5rem;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .recipe-popup__ext-item img {
+      width: 36px; height: 36px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .recipe-popup__ext-name {
+      font-size: 0.85rem; font-weight: 700;
+    }
+    .recipe-popup__ext-rarity {
+      padding: 0.1rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.65rem; font-weight: 700;
+      background: #5b6b8a; color: #fff;
+    }
+    .recipe-popup__ext-rarity[data-rarity="legendary"] { background: #c45c6a; }
+    .recipe-popup__ext-rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .recipe-popup__ext-rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .recipe-popup__ext-rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
+    .recipe-popup__future-note {
+      margin: 0.3rem 0 0;
+      font-size: 0.7rem; color: var(--muted);
+      text-align: center; line-height: 1.4;
+    }
+    .recipe-popup__close {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 800; font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      align-self: stretch;
+      transition: background 0.18s;
+    }
+    .recipe-popup__close:hover { background: #d6b873; }
+
     /* QL info popup (Phase 1D-11) */
     .ql-info-modal {
       position: fixed; inset: 0; z-index: 295;
@@ -4291,6 +4426,29 @@
     <div class="hero-view__body">
       <p class="hero-enhance__intro" data-i18n="enhance.intro">GUM を支払ってヒーローのランクを上げよう (☆☆☆☆☆ → ★★★★★)</p>
       <div class="hero-enhance-list" id="heroEnhanceList"></div>
+    </div>
+  </div>
+
+  <!-- Phase 1D-22: シリーズレシピ獲得ポップアップ -->
+  <div class="recipe-popup hidden" id="recipePopup" role="dialog" aria-modal="true" aria-labelledby="recipePopupTitle">
+    <div class="recipe-popup__card">
+      <div class="recipe-popup__header">
+        <span class="recipe-popup__sparkle">✨</span>
+        <h3 class="recipe-popup__title" id="recipePopupTitle" data-i18n="recipe.popup.title">レシピを獲得！</h3>
+        <span class="recipe-popup__sparkle">✨</span>
+      </div>
+      <div class="recipe-popup__body">
+        <img class="recipe-popup__icon" id="recipePopupIcon" src="" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="recipe-popup__series-block">
+          <span class="recipe-popup__series-label" data-i18n="recipe.popup.seriesLabel">シリーズ</span>
+          <strong class="recipe-popup__series" id="recipePopupSeries">—</strong>
+        </div>
+        <p class="recipe-popup__reason" id="recipePopupReason"></p>
+        <p class="recipe-popup__exts-label" data-i18n="recipe.popup.extsLabel">作成可能になったエクステンション:</p>
+        <ul class="recipe-popup__exts" id="recipePopupExts"></ul>
+        <p class="recipe-popup__future-note" data-i18n="recipe.popup.futureNote">工房レベルが上がれば同シリーズの上位レアリティも自動解放されます。</p>
+      </div>
+      <button type="button" class="recipe-popup__close" id="recipePopupClose" data-i18n="recipe.popup.closeBtn">受け取る</button>
     </div>
   </div>
 
