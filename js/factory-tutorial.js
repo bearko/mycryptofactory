@@ -9,109 +9,91 @@
  * 文字列配列。
  */
 
-/** 全チュートリアルフロー */
+/** 全チュートリアルフロー
+ *  Phase 1D-19: 同一画面でのセリフを最大 2 行に圧縮 (3 回以上は冗長)。
+ *  ゲーム専門用語は <span class="term">..</span> で強調する。 */
 export const TUTORIALS = {
   /** 初回ホーム (タイトルから入った直後) */
   home: {
     ja: [
-      "はじめまして！本工房のアシスタントを務めますマイです。",
-      "一緒にこの工房を発展させていきましょう！",
-      "まずはメニューを開いて、クラフトをしていきましょう。",
+      "はじめまして！本工房のアシスタント、マイです。一緒に工房を発展させましょう♪",
+      "まずはメニューから<span class=\"term\">クラフト</span>を始めてみてください。",
     ],
     en: [
-      "Hello! I'm Mai, your workshop assistant.",
-      "Let's grow this workshop together!",
-      "First, open the menu and start crafting.",
+      "Hi! I'm Mai, your workshop assistant. Let's grow this place together♪",
+      "Open the menu and try a <span class=\"term\">Craft</span> first.",
     ],
   },
 
   /** クラフト選択画面の初回 */
   craftSelect: {
     ja: [
-      "ここではクラフトするエクステンションを選べます。",
-      "今はまだ作れるエクステンションは少ないですが、工房が大きくなればつくれるエクステンションも増えていきます！",
-      "まずは好きなエクステンションを選んでみてください。",
+      "ここでは<span class=\"term\">エクステンション</span>を選んでクラフトできます。",
+      "工房が成長すれば作れる種類も増えますよ。お好きなものをどうぞ！",
     ],
     en: [
-      "Here you can pick an extension to craft.",
-      "Available options are limited for now, but they'll grow as the workshop expands!",
-      "Pick whichever extension catches your eye.",
+      "Pick an <span class=\"term\">Extension</span> to craft here.",
+      "More options unlock as the workshop grows. Choose your favorite!",
     ],
   },
 
   /** クラフト確認画面 (ヒーロー未編成) の初回 */
   craftConfirmNoTeam: {
     ja: [
-      "エクステンションは鉄や銅などの素材に、クラフトパワーを注ぐことで開発できます。",
-      "クラフトパワーを注ぐには、ヒーローを配置しましょう。",
-      "配属チームの「+」ボタンか「変更」ボタンを押してヒーローを編成しましょう。",
+      "エクステンションは素材に<span class=\"term\">クラフトパワー</span>を注いで作ります。",
+      "「+」または「変更」ボタンからヒーローを配属しましょう。",
     ],
     en: [
-      "Extensions are crafted by pouring craft power into materials like iron and copper.",
-      "To pour craft power, we need to assign heroes.",
-      "Tap the '+' slot or 'Change' button to assemble your team.",
+      "Extensions are made by pouring <span class=\"term\">Craft Power</span> into materials.",
+      "Tap the '+' slot or 'Change' to assign heroes.",
     ],
   },
 
   /** クラフト確認画面 (ヒーロー編成済み) の初回 */
   craftConfirmWithTeam: {
     ja: [
-      "エクステンションは鉄や銅などの素材に、クラフトパワーを注ぐことで開発できます。",
-      "クラフトパワーを注ぐには、ヒーローを配置しましょう。",
-      "早速クラフト開始しましょう！",
+      "エクステンションは素材に<span class=\"term\">クラフトパワー</span>を注いで作ります。",
+      "ヒーロー編成 OK ！早速クラフトを始めましょう！",
     ],
     en: [
-      "Extensions are crafted by pouring craft power into materials like iron and copper.",
-      "To pour craft power, we need to assign heroes.",
-      "Let's start the craft right away!",
+      "Extensions are made by pouring <span class=\"term\">Craft Power</span> into materials.",
+      "Team's ready — let's start the craft!",
     ],
   },
 
   /** クラフトチーム編成画面 (= ヒーロー画面) の初回 */
   heroTeam: {
     ja: [
-      "ここではエクステンションをクラフトするヒーローを編成できます。",
-      "今は4体のみですが、最大5体のヒーローを配置できます。",
-      "ヒーローを配属させたら、右上の戻るボタンで戻りましょう。",
+      "ここで<span class=\"term\">クラフトチーム</span>を編成します (最大 5 体)。",
+      "配属したら右上の「戻る」でクラフト画面へ戻りましょう。",
     ],
     en: [
-      "Here you can assemble the heroes who'll craft your extensions.",
-      "You have 4 heroes for now — up to 5 can be assigned.",
-      "Once heroes are placed, tap the back button at top right to return.",
+      "Set your <span class=\"term\">Craft Team</span> here (up to 5).",
+      "When done, tap 'Back' top-right to return.",
     ],
   },
 
   /** クラフト中画面の初回 (= 戻ってきて activeCraft が走っているとき) */
   craftInProgress: {
     ja: [
-      "クラフトは自動で進行します。",
-      "ヒーローから出ているアイコンがクラフトパワーです。",
-      "クラフトパワーはガルーダ、イフリート、リヴァイアサン、ティアマトの4種類があります。",
-      "名前、かっこいいですよね♪",
-      "クラフトパワーは4種類あって、エクステンションごとに色別のノルマが設定されています。",
-      "クラフト完了までにノルマを達成できれば、高品質のエクステンションとなります。",
+      "クラフトは自動進行！ヒーローから出るアイコンが<span class=\"term\">クラフトパワー</span>です (4 色あり)。",
+      "完了までに色別ノルマを達成できれば、より<span class=\"term\">高品質</span>な仕上がりに♪",
     ],
     en: [
-      "Crafts progress automatically.",
-      "The floating icons coming off your heroes are craft power.",
-      "There are 4 craft powers: Garuda, Ifrit, Leviathan, and Tiamat.",
-      "Cool names, right? ♪",
-      "Each extension sets per-color norms for these powers.",
-      "Hit all the norms before completion to produce a higher-quality piece.",
+      "Crafts run automatically — the icons heroes emit are <span class=\"term\">Craft Power</span> (4 colors).",
+      "Hit all color norms before time runs out for a <span class=\"term\">higher-quality</span> piece♪",
     ],
   },
 
   /** ランドタブ初回オープン時 (= state.homeLand がまだ無い状態) */
   landFirstFree: {
     ja: [
-      "ランドノードは「ランドセクタの通行証」が必要です。",
-      "通行証は通常 500 GUM ですが、最初に１つだけ「ホームランド」として無料で加入できます！",
-      "好きなランドを選んで「ランドに加入」ボタンを押してください。後から変更できないので慎重に♪",
+      "ランドノードには<span class=\"term\">ランドセクタの通行証</span>が必要です (通常 500 GUM)。",
+      "最初の 1 つだけ<span class=\"term\">ホームランド</span>として無料で加入できます。後から変更不可なので慎重に♪",
     ],
     en: [
-      "Land nodes need a Land Sector Pass to enter.",
-      "Passes normally cost 500 GUM, but your very first land can be claimed FREE as your home!",
-      "Pick a favorite and tap \"Join land\". You can't change it later, so choose wisely♪",
+      "Land nodes need a <span class=\"term\">Land Sector Pass</span> (normally 500 GUM).",
+      "Your first land is FREE as your <span class=\"term\">Home Land</span>. Choose carefully — you can't change it later♪",
     ],
   },
 };
