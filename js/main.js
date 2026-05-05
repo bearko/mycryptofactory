@@ -42,6 +42,9 @@ import {
   isFullyRested,
   isExhausted,
   adjustStamina,
+  rankMultiplier,
+  rankUpCost,
+  RANK_MAX,
 } from "./factory-hero.js";
 import {
   loadExtensions,
@@ -1291,6 +1294,8 @@ function renderHeroList() {
     const passiveLine = (passiveBadge || passiveDesc)
       ? `<div class="hero-card__passive">${passiveBadge}<span class="hero-card__passive-text">${escapeHtml(passiveDesc)}</span></div>`
       : "";
+    // Phase 1D-20: ランク表示 (☆/★)
+    const rankHtml = renderRankStars(hero.rank || 0);
     return `<div class="${cardCls}" data-hero-id="${hero.heroId}" data-rarity="${hero.rarity}" data-assigned="${assigned ? "1" : "0"}">
       <div class="hero-card__head">
         <img class="hero-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
@@ -1299,6 +1304,7 @@ function renderHeroList() {
             <span class="hero-card__name">${escapeHtml(name)}</span>
             ${renderHeroAttrBadges(hero)}
           </div>
+          <div class="hero-card__rank">${rankHtml}</div>
           <div class="hero-card__state" data-state="${hero.state}">${escapeHtml(stateLbl)}</div>
         </div>
         ${restBtn}
@@ -1322,6 +1328,86 @@ function openHeroView() {
   renderHeroList();
   // Phase 1D-5: 初回ヒーロー画面でクラフトチーム編成の解説
   runTutorialOnce("heroTeam");
+}
+
+/** Phase 1D-20: 強化 view を開く */
+function openHeroEnhanceView() {
+  pauseTime();
+  $("heroEnhanceView")?.classList.remove("hidden");
+  renderHeroEnhanceList();
+}
+function closeHeroEnhanceView() {
+  $("heroEnhanceView")?.classList.add("hidden");
+  resumeTime();
+}
+
+/** Phase 1D-20: ヒーロー強化リストを描画 */
+function renderHeroEnhanceList() {
+  const host = $("heroEnhanceList");
+  if (!host) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => {
+    // ランクが高いものを上位に → 同じならクラフトレベル降順
+    if ((b.rank || 0) !== (a.rank || 0)) return (b.rank || 0) - (a.rank || 0);
+    return craftLevel(b) - craftLevel(a);
+  });
+  host.innerHTML = heroes.map(hero => {
+    const name = tHero(hero.heroId, hero.nameJa);
+    const rank = hero.rank || 0;
+    const isMax = rank >= RANK_MAX;
+    const cost = isMax ? 0 : rankUpCost(hero);
+    const cl = craftLevel(hero);
+    const insufficientGum = !isMax && (state.gum || 0) < cost;
+    const starsHtml = renderRankStars(rank);
+    const btnHtml = isMax
+      ? `<div class="hero-enhance-row__max">${escapeHtml(ti18n("enhance.maxRank"))}</div>`
+      : `<button type="button" class="hero-enhance-row__btn" data-enhance-hero="${hero.heroId}" ${insufficientGum ? "disabled" : ""}>
+          ${escapeHtml(ti18n("enhance.rankUpBtn")
+            .replace("{rank}", rank).replace("{next}", rank + 1).replace("{gum}", cost.toLocaleString()))}
+        </button>`;
+    return `<div class="hero-enhance-row" data-rarity="${hero.rarity}">
+      <img class="hero-enhance-row__portrait" src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="hero-enhance-row__main">
+        <span class="hero-enhance-row__name">${escapeHtml(name)}</span>
+        <div class="hero-enhance-row__rank-line">
+          ${starsHtml}
+          <span class="hero-enhance-row__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></span>
+        </div>
+      </div>
+      ${btnHtml}
+    </div>`;
+  }).join("");
+}
+
+/** ランクスター表示 (右から塗りつぶし: ☆☆☆☆☆ → ☆☆☆☆★ → ★★★★★) */
+function renderRankStars(rank) {
+  const filled = Math.max(0, Math.min(RANK_MAX, rank || 0));
+  const empty = RANK_MAX - filled;
+  return `<span class="hero-rank">${"☆".repeat(empty)}<span class="hero-rank__filled">${"★".repeat(filled)}</span></span>`;
+}
+
+/** Phase 1D-20: ヒーローのランクを 1 段階アップ */
+function rankUpHero(heroId) {
+  const hero = findHero(heroId);
+  if (!hero) return;
+  const cur = hero.rank || 0;
+  if (cur >= RANK_MAX) return;
+  const cost = rankUpCost(hero);
+  if ((state.gum || 0) < cost) {
+    maiSays("enhance.notEnoughGum");
+    return;
+  }
+  state.gum -= cost;
+  hero.rank = cur + 1;
+  // ガルーダ (= stamina max) もランク連動で再計算 → 体力上限が伸びる感を出す
+  // (current は割合保持) — オプション: rank 反映を体力 max にも適用
+  // → ここでは element の garuda は不変、表示用 elementValueForCraft で
+  //   rank 倍率かけるのみ。stamina max は MCH 由来のまま据え置き。
+  renderHeader();
+  renderHeroEnhanceList();
+  // 成功時のサウンド + Mai 通知
+  playSe("appraisalHigh");
+  pushHeroFlavor(hero.heroId, "passive", { name: `Rank ${hero.rank}` });
 }
 
 /** Phase 1D-12: 編成 view のタブ切替 (craft / quest) */
@@ -3655,13 +3741,14 @@ async function init() {
     });
   });
 
-  // ヒーロー submenu: クラフトチーム / 雇用 (Phase 1D-9: 雇用 を market から移設)
+  // ヒーロー submenu: クラフトチーム / 雇用 / 強化 (Phase 1D-20)
   document.querySelectorAll(".menu-item[data-hero-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = btn.getAttribute("data-hero-action");
       hideAllSubmenus();
       closeMenu();
       if (action === "craft-team" || action === "formation") openHeroView();
+      else if (action === "enhance") openHeroEnhanceView();
       else if (action === "hire") {
         // 雇用は引き続き market view 内のタブで動かす (data モデル維持)
         state.marketTab = "hire";
@@ -3944,6 +4031,14 @@ async function init() {
 
   // ── Hero view: back button + sort change + card/slot clicks ──
   $("heroViewBack")?.addEventListener("click", closeHeroView);
+  // Phase 1D-20: 強化 view の back + ランクアップボタン delegation
+  $("heroEnhanceBack")?.addEventListener("click", closeHeroEnhanceView);
+  $("heroEnhanceList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-enhance-hero]");
+    if (!btn || btn.disabled) return;
+    const hid = parseInt(btn.getAttribute("data-enhance-hero"), 10);
+    if (Number.isFinite(hid)) rankUpHero(hid);
+  });
   // Phase 1D-12: 編成 view の tab 切替
   document.querySelectorAll(".hero-team-tab").forEach(btn => {
     btn.addEventListener("click", () => {

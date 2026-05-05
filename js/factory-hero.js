@@ -63,9 +63,43 @@ export function makeFactoryHero(mchHero) {
     img: typeof mchHero.img === "function" ? mchHero.img : (() => ""),
     /** 士農工商属性 (Phase 1D-1)。inferAttributes で割り当てる。 */
     attributes: /** @type {string[]} */ ([]),
+    /** Phase 1D-20: ランクアップ強化レベル (0..RANK_MAX、初期 0)。
+     *  rankMultiplier(hero) で 4 元素値に倍率がかかる。 */
+    rank: 0,
   };
   factoryHero.attributes = inferAttributes(factoryHero);
   return factoryHero;
+}
+
+/** Phase 1D-20: ランクアップ最大値 (= 5 段階) */
+export const RANK_MAX = 5;
+
+/** ランクアップによるクラフトパワー倍率。
+ *  - Rank 0: 1.0
+ *  - Rank 1: 1.4
+ *  - Rank 2: 1.8 (= Common Rank2 が Uncommon 初期値相当)
+ *  - Rank 3: 2.2
+ *  - Rank 4: 2.6
+ *  - Rank 5: 3.0
+ */
+export function rankMultiplier(hero) {
+  const r = Math.max(0, Math.min(RANK_MAX, hero?.rank || 0));
+  return 1 + 0.4 * r;
+}
+
+/** ランクアップに必要な GUM コスト。
+ *  - 基本: 100 GUM × (現ランク + 1) — Rank0→1=100、Rank4→5=500
+ *  - レアリティ倍率: Common 1x / Uncommon 2x / Rare 4x / Epic 8x / Legendary 16x
+ */
+const RANK_RARITY_MULT = {
+  common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 16,
+};
+export function rankUpCost(hero) {
+  if (!hero) return Infinity;
+  const cur = hero.rank || 0;
+  if (cur >= RANK_MAX) return Infinity;
+  const rarityMult = RANK_RARITY_MULT[hero.rarity] || 1;
+  return 100 * (cur + 1) * rarityMult;
 }
 
 /** ガルーダ (HP) は他パラメータと比べて 6 倍程度大きいので、
@@ -74,7 +108,8 @@ export function makeFactoryHero(mchHero) {
 export const GARUDA_WEIGHT = 1 / 6;
 
 /** クラフトレベル = ガルーダ × 1/6 + 他 3 元素 の合計 (整数に丸め)。
- *  + 工 属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)。 */
+ *  + 工 属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)。
+ *  + Phase 1D-20: ランクアップ倍率 (rankMultiplier) を適用。 */
 export function craftLevel(hero) {
   if (!hero || !hero.element) return 0;
   const e = hero.element;
@@ -83,7 +118,8 @@ export function craftLevel(hero) {
                (e.leviathan || 0) +
                (e.tiamat || 0);
   const boost = attributeBoostFactor(hero, "ko"); // 工 = クラフト
-  return Math.round(base * boost);
+  const rankMult = rankMultiplier(hero);
+  return Math.round(base * boost * rankMult);
 }
 
 /** ヒーロー個別の元素値を「クラフト用 (= ガルーダ × GARUDA_WEIGHT)」に変換した表示値。
@@ -98,7 +134,9 @@ export function craftLevel(hero) {
 export function elementValueForCraft(hero, key) {
   if (!hero || !hero.element) return 0;
   const raw = hero.element[key] || 0;
-  return key === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
+  const adj = key === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
+  // Phase 1D-20: ランクアップ倍率
+  return Math.round(adj * rankMultiplier(hero));
 }
 
 /** Stamina が max まで戻ったか。Resting → Idle 遷移判定に使う。 */
@@ -175,9 +213,12 @@ export function staminaRecoverPerTick(hero) {
 export function rollCraftGain(hero, rng = Math.random) {
   if (!hero || hero.state === HERO_STATE.RESTING) return null;
   // 4 元素値 (ガルーダは GARUDA_WEIGHT で補正後、現状 1/6)
+  // Phase 1D-20: ランクアップ倍率を全要素に適用
+  const rMult = rankMultiplier(hero);
   const vals = ELEMENTS.map(k => {
     const raw = hero.element?.[k] || 0;
-    return k === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
+    const adj = k === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
+    return Math.round(adj * rMult);
   });
   const cl = vals[0] + vals[1] + vals[2] + vals[3];
   const chance = Math.min(0.9, Math.max(0.4, 0.4 + cl / 300));
@@ -212,6 +253,7 @@ export function rollPassiveTrigger(hero, rng = Math.random) {
   const elKey = ELEMENTS[Math.floor(rng() * ELEMENTS.length)];
   const raw = hero.element?.[elKey] || 0;
   const adj = elKey === "garuda" ? Math.round(raw * GARUDA_WEIGHT) : raw;
-  const value = Math.max(3, Math.round(adj * 0.15));
+  // Phase 1D-20: ランクアップ倍率
+  const value = Math.max(3, Math.round(adj * 0.15 * rankMultiplier(hero)));
   return { passiveName: hero.passiveName, element: elKey, value };
 }
