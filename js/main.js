@@ -64,6 +64,9 @@ import {
   materialIcon,
   buildInitialInventory,
   ALL_MATERIAL_IDS,
+  NORMAL_MATERIAL_IDS,
+  HIGH_TIER_MATERIAL_IDS,
+  LAND_MATERIAL_IDS,
 } from "./factory-material.js";
 import {
   pickAppraisalJudges,
@@ -903,6 +906,8 @@ function pushPassiveNotification(hero, passive) {
     id, text, element: passive.element, value: passive.value,
     createdTick: state.tickCount,
   });
+  // Phase 1D-14: パッシブ発動 SE
+  playSe("passiveTrigger");
 }
 let _notifId = 0;
 
@@ -1013,6 +1018,96 @@ function renderHeroAttrBadges(hero) {
   }).join("")}</span>`;
 }
 
+/** ─── Phase 1D-14: 士/農/工/商 適性別パッシブテキスト ─────────────
+ *
+ *  ヒーローの primary attribute を見て、3 種類のパッシブを
+ *  決定論的に割り当てる:
+ *
+ *   工 (ko)  → クラフトパワー特定要素を + に。要素はヒーロー最強要素
+ *               (factory-weighted) で固定、ボーナス値は rarity に比例
+ *   農 (no)  → クエストの素材ドロップ強化。素材は heroId から
+ *               決定論的に選ぶ
+ *   商 (sho) → マーケットの 3 種特典 (期間短縮 / 金額アップ /
+ *               低品質高売り) のうち 1 つ
+ *   士 (shi) → デュエルが将来実装される旨の placeholder
+ *
+ *  実数値は表示用 (description のみ)。実ゲーム反映は Phase 1D-15+ で別途。 */
+
+const PASSIVE_BONUS_BY_RARITY = {
+  common: 3, uncommon: 4, rare: 5, epic: 6, legendary: 8,
+};
+/** "農" パッシブ用の素材プール。heroId から決定論的に 1 つ選ぶ。 */
+const FARM_MATERIAL_POOL = [
+  "iron", "copper", "zinc",
+  "chromium", "titanium", "tungsten",
+  "aquamarine", "rhodochrosite", "topaz", "peridot", "onyx",
+  "amethyst", "jade", "lapis", "garnet",
+];
+/** "商" パッシブ用 3 種ボーナスの ID。0,1,2 を heroId % 3 で振る。 */
+const MERCHANT_BONUS_KEYS = ["periodShort", "priceUp", "lowTierBoost"];
+
+/** 文脈付きの primary 属性を返す (= attributes[0])。 */
+function primaryAttrOf(hero) {
+  return Array.isArray(hero?.attributes) && hero.attributes.length > 0
+    ? hero.attributes[0]
+    : null;
+}
+
+/** ヒーロー固有のパッシブ説明文を返す。
+ *  @param {object} hero
+ *  @param {"ja"|"en"} lang
+ *  @returns {string} 1 行の人間可読テキスト (空なら "")
+ */
+function passiveDescriptionFor(hero, lang) {
+  const primary = primaryAttrOf(hero);
+  if (!primary) return "";
+  const isEn = lang === "en";
+  const bonus = PASSIVE_BONUS_BY_RARITY[hero.rarity] || 3;
+
+  if (primary === "ko") {
+    // 4 元素のうち最も factory-weighted な要素を選ぶ
+    const sorted = ELEMENTS.map(k => ({ key: k, val: elementValueForCraft(hero, k) }))
+      .sort((a, b) => b.val - a.val);
+    const top = sorted[0];
+    if (!top || top.val <= 0) {
+      return isEn ? `Boosts craft power by +${bonus}` : `クラフト時にクラフトパワーを +${bonus}`;
+    }
+    const elName = elementLabel(top.key);
+    return isEn
+      ? `Boosts ${elName} by +${bonus} on craft trigger`
+      : `クラフト時に${elName}を +${bonus}`;
+  }
+
+  if (primary === "no") {
+    // heroId から決定論的に素材を 1 つ選ぶ
+    const id = (typeof hero.heroId === "number" ? hero.heroId : 0) | 0;
+    const matId = FARM_MATERIAL_POOL[Math.abs(id) % FARM_MATERIAL_POOL.length];
+    const matName = materialName(matId, lang);
+    return isEn
+      ? `${matName} drops more often on quests`
+      : `クエストで${matName}が掘りやすい`;
+  }
+
+  if (primary === "sho") {
+    const id = (typeof hero.heroId === "number" ? hero.heroId : 0) | 0;
+    const key = MERCHANT_BONUS_KEYS[Math.abs(id) % MERCHANT_BONUS_KEYS.length];
+    if (key === "periodShort") {
+      return isEn ? "Sales conclude faster on the market" : "マーケットでの成約までの期間が短くなる";
+    }
+    if (key === "priceUp") {
+      return isEn ? "Higher market sale prices" : "マーケットでの成約金額が上がる";
+    }
+    // lowTierBoost
+    return isEn ? "Even low-tier extensions fetch good prices" : "査定が低いエクステンションも高めに売れる";
+  }
+
+  if (primary === "shi") {
+    return isEn ? "Built for duels (coming in a future update)" : "デュエルで活躍 (将来実装予定)";
+  }
+
+  return "";
+}
+
 function renderHeroTeam() {
   const host = $("heroTeamSlots");
   if (!host) return;
@@ -1099,6 +1194,14 @@ function renderHeroList() {
     const restBtn = canRest
       ? `<button type="button" class="hero-card__rest-btn" data-rest-hero="${hero.heroId}" data-i18n="hero.actions.rest">休憩</button>`
       : "";
+    // Phase 1D-14: 士/農/工/商 適性別パッシブテキスト (1 行)
+    const passiveDesc = passiveDescriptionFor(hero, getLang() === "en" ? "en" : "ja");
+    const passiveBadge = hero.passiveName
+      ? `<span class="hero-card__passive-name">${escapeHtml(hero.passiveName)}</span>`
+      : "";
+    const passiveLine = (passiveBadge || passiveDesc)
+      ? `<div class="hero-card__passive">${passiveBadge}<span class="hero-card__passive-text">${escapeHtml(passiveDesc)}</span></div>`
+      : "";
     return `<div class="${cardCls}" data-hero-id="${hero.heroId}" data-rarity="${hero.rarity}" data-assigned="${assigned ? "1" : "0"}">
       <div class="hero-card__head">
         <img class="hero-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
@@ -1116,6 +1219,7 @@ function renderHeroList() {
         <div class="hero-card__stamina-fill" style="width:${stamPct.toFixed(1)}%"></div>
       </div>
       <div class="hero-card__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></div>
+      ${passiveLine}
     </div>`;
   }).join("");
 }
@@ -2132,11 +2236,18 @@ function renderHeroDetailPopup() {
       <strong class="hero-detail__el-val">${v}</strong>
     </div>`;
   }).join("");
-  // パッシブ
+  // パッシブ + Phase 1D-14: 士/農/工/商 適性別 description
   const pBlock = $("heroDetailPassive");
-  if (hero.passiveName) {
-    pBlock.innerHTML = `<span class="hero-detail__passive-label">${escapeHtml(ti18n("hero.passive"))}:</span>
-      <strong>${escapeHtml(hero.passiveName)}</strong>`;
+  const passiveDesc = passiveDescriptionFor(hero, getLang() === "en" ? "en" : "ja");
+  if (hero.passiveName || passiveDesc) {
+    const nameLine = hero.passiveName
+      ? `<span class="hero-detail__passive-label">${escapeHtml(ti18n("hero.passive"))}:</span>
+         <strong>${escapeHtml(hero.passiveName)}</strong>`
+      : "";
+    const descLine = passiveDesc
+      ? `<p class="hero-detail__passive-desc">${escapeHtml(passiveDesc)}</p>`
+      : "";
+    pBlock.innerHTML = nameLine + descLine;
     pBlock.classList.remove("hidden");
   } else {
     pBlock.classList.add("hidden");

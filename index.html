@@ -981,6 +981,13 @@
       color: var(--muted); font-size: 0.7rem;
       letter-spacing: 0.05em; margin-right: 0.35rem;
     }
+    /* Phase 1D-14: 士/農/工/商 適性別パッシブ description */
+    .hero-detail__passive-desc {
+      margin: 0.35rem 0 0;
+      color: var(--text);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
     .hero-detail__close {
       align-self: flex-end;
       appearance: none;
@@ -2948,6 +2955,23 @@
       text-align: right;
     }
     .hero-card__cl strong { color: var(--accent); font-size: 0.8rem; }
+    /* Phase 1D-14: 士/農/工/商 適性別パッシブテキスト */
+    .hero-card__passive {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      padding-top: 0.3rem;
+      border-top: 1px dashed rgba(196,163,90,0.25);
+      margin-top: 0.2rem;
+    }
+    .hero-card__passive-name {
+      font-size: 0.72rem; font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .hero-card__passive-text {
+      font-size: 0.68rem; color: var(--text);
+      line-height: 1.35;
+    }
+    .hero-card__passive-text:empty { display: none; }
     .hero-list-empty {
       grid-column: 1 / -1;
       text-align: center; color: var(--muted);
