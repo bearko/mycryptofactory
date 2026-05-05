@@ -955,6 +955,21 @@ function renderCraftEventPicker() {
     ? (lang === "en" ? "Soul Injection" : "ソウル注入")
     : (lang === "en" ? "Aura Bestowal" : "オーラ付与");
 
+  // Phase 1D-28: 現在のクラフト進捗 (各色 cur/tgt) を表示。
+  //   これによりプレイヤーは「どの色が足りていないか」を見て注入対象を選べる。
+  const progHost = $("craftEventPickerProgress");
+  if (progHost) {
+    progHost.innerHTML = ELEMENTS.map(k => {
+      const cur = ac.progress[k] || 0;
+      const tgt = ac.targets[k]  || 0;
+      const reached = tgt === 0 || cur >= tgt;
+      return `<span class="craft-event-picker__prog-el${reached ? " craft-event-picker__prog-el--reached" : ""}" title="${escapeHtml(elementLabel(k))} ${cur}/${tgt}">
+        <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" onerror="this.style.opacity='0.2'" />
+        <strong>${cur}</strong><span class="pe-tgt">/${tgt}</span>
+      </span>`;
+    }).join("");
+  }
+
   // 1. 要素選択 (4 種)
   $("craftEventElements").innerHTML = ELEMENTS.map(k => {
     const sel = k === state.craftEventPickedElement ? " craft-event__el--sel" : "";
@@ -1033,11 +1048,28 @@ function runCraftEventAnimation() {
   let total = 0;
   $("craftEventAnimTotal").textContent = `${total}`;
 
-  // アイコン射出 (一定間隔で iconCount 回)
+  // アイコン射出 (緩急つきで iconCount 回)
   const stage = $("craftEventAnimStage");
-  if (stage) stage.innerHTML = "";
-  const intervalMs = 220 + Math.random() * 80;
+  if (stage) {
+    // Phase 1D-28 fix: stage.innerHTML="" は hero/ext img まで吹き飛ばすので、
+    //   旧 fly / pop 残骸だけ取り除く。
+    stage.querySelectorAll(".craft-event__fly, .craft-event__pop").forEach(el => el.remove());
+  }
   let fired = 0;
+  // Phase 1D-28: 緩急演出 — 同じ間隔で打つのではなく、
+  //   2-4 連の高速バースト → 短い余韻 → 次のバースト の繰り返し。
+  //   さらに最後の 1 撃は溜め (+N が大きく出る)。
+  let burstRemaining = 0;
+  const planNextDelay = () => {
+    const isLast = fired >= iconCount - 1;
+    if (isLast) return 600; // 大溜めで最後を強調
+    if (burstRemaining > 0) {
+      burstRemaining--;
+      return 70 + Math.random() * 50;       // バースト中: 70-120ms
+    }
+    burstRemaining = 1 + Math.floor(Math.random() * 3); // 次のバーストは 2-4 連
+    return 280 + Math.random() * 160;        // 余韻: 280-440ms
+  };
   const fireOne = () => {
     if (fired >= iconCount) {
       // 終了演出
@@ -1045,6 +1077,7 @@ function runCraftEventAnimation() {
       return;
     }
     fired++;
+    const isLast = fired === iconCount;
     // 飛ぶアイコンを spawn
     if (stage) {
       const ic = document.createElement("img");
@@ -1053,14 +1086,33 @@ function runCraftEventAnimation() {
       stage.appendChild(ic);
       setTimeout(() => ic.remove(), 800);
     }
-    // 0.5 秒後に着弾 → progress 加算
+    // 0.5 秒後に着弾 → progress 加算 + ダメージ風 +N ポップ
     setTimeout(() => {
-      ac.progress[elKey] = (ac.progress[elKey] || 0) + perIconGain;
-      total += perIconGain;
+      // 最後の 1 撃はクリティカル風に大きめゲイン
+      const isCrit = isLast;
+      const wobble = 0.85 + Math.random() * 0.5;   // 0.85x-1.35x (緩急)
+      const gain = Math.max(1, Math.round(perIconGain * wobble * (isCrit ? 2.4 : 1)));
+      ac.progress[elKey] = (ac.progress[elKey] || 0) + gain;
+      total += gain;
       $("craftEventAnimTotal").textContent = `${total}`;
+      // +N ダメージ風 popup
+      if (stage) {
+        const pop = document.createElement("span");
+        const big = gain >= perIconGain * 1.2 ? " craft-event__pop--big" : "";
+        const crit = isCrit ? " craft-event__pop--crit" : "";
+        pop.className = `craft-event__pop craft-event__pop--${elKey}${big}${crit}`;
+        // 着弾位置をランダムに少しずらして連発時の重なりを避ける
+        const dx = (Math.random() - 0.5) * 30;
+        const dy = (Math.random() - 0.5) * 24;
+        pop.style.right = `${60 - dx}px`;
+        pop.style.top   = `calc(50% + ${dy}px)`;
+        pop.textContent = `+${gain}`;
+        stage.appendChild(pop);
+        setTimeout(() => pop.remove(), 900);
+      }
       playSe("craftGain");
     }, 500);
-    setTimeout(fireOne, intervalMs);
+    setTimeout(fireOne, planNextDelay());
   };
   fireOne();
 }
