@@ -138,22 +138,28 @@ for (const s of SALE_SPEED_OPTIONS) SALE_SPEED_BY_ID[s.id] = s;
 /** マーケット手数料 (成約時に GUM から控除する割合) */
 export const MARKET_FEE_RATE = 0.10;
 
-/** rarity ごとの基準売却価格 (GUM)。査定 tier で更にスケールする。 */
+/** rarity ごとの基準売却価格 (GUM)。査定 tier で更にスケールする。
+ *  Phase 1D-36: GUM 投資 (= 工房レベルアップ / ヒーローランクアップ) のリターンを
+ *  確保するため、 Uncommon 以上の売却額を大きく引き上げ。 1 週あたりの収益:
+ *    Common 22.5 / Uncommon 50.6 / Rare 112.5 / Epic 225 / Legendary 562.5 (= fine 査定基準)
+ *  これにより工房 Lv up のコストを 1〜2 個の高 rarity 売却で回収できるようになる。 */
 const BASE_PRICE_BY_RARITY = {
-  common:    300,
-  uncommon:  600,
-  rare:     1200,
-  epic:     3000,
-  legendary: 8000,
+  common:      300,   // 22.5 GUM/wk @ fine
+  uncommon:    900,   // 50.6 GUM/wk (旧 600 → 900、 +50%)
+  rare:       3000,   // 112.5 GUM/wk (旧 1,200 → 3,000、 +150%)
+  epic:       9000,   // 225 GUM/wk (旧 3,000 → 9,000、 +200%)
+  legendary: 30000,   // 562.5 GUM/wk (旧 8,000 → 30,000、 +275%)
 };
 
-/** 査定 tier ごとの価格倍率 */
+/** 査定 tier ごとの価格倍率
+ *  Phase 1D-36: great / masterpiece の伸びを大きくし、 ヒーローランクアップの
+ *  リターン (= 高 tier ヒット率向上) が金額として明確に効くように調整。 */
 const TIER_MULTIPLIER = {
-  poor:        0.55,
-  decent:      0.80,
-  fine:        1.00,
-  great:       1.30,
-  masterpiece: 1.80,
+  poor:        0.55,  // unchanged
+  decent:      0.80,  // unchanged
+  fine:        1.00,  // unchanged
+  great:       1.45,  // 旧 1.30 → 1.45 (+11.5%)
+  masterpiece: 2.20,  // 旧 1.80 → 2.20 (+22%)
 };
 
 /**
