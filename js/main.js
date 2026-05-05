@@ -1513,7 +1513,8 @@ function isBuffActive(key) {
   return false;
 }
 
-
+/** 受注クラフト picker view を開く */
+function openCommissionView() {
   const view = $("commissionView");
   if (!view) return;
   // 初回オープン時に commission がまだ無ければ即生成
