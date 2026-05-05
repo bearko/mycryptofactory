@@ -45,6 +45,8 @@ const SE_FILES = {
   rankUpDone:     "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/mission.mp3",
   /** Phase 1D-23: 工房レベルアップ達成時 SE */
   factoryLvDone:  "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/facilities.mp3",
+  /** Phase 1D-29: ソウル注入 / オーラ付与 演出冒頭の発動 SE (バフ効果音) */
+  craftBuff:      "4_buff.mp3",
 };
 
 /** デフォルト音量 (0..1)。BGM は控えめ、SE は中ぐらい。 */
@@ -76,6 +78,7 @@ const SE_THROTTLE_MS = {
   buttonClick:    100,
   rankUpDone:     500,
   factoryLvDone:  500,
+  craftBuff:      300,
 };
 
 let _bgmEl = null;

@@ -255,6 +255,11 @@
   "sale.overlay.remain":       { "ja": "あと {n} 週", "en": "{n}wk left" },
 
   "hero.actions.rest":         { "ja": "休憩", "en": "Rest" },
+  "hero.quick.craft":          { "ja": "クラフト", "en": "Craft" },
+  "hero.quick.quest":          { "ja": "クエスト", "en": "Quest" },
+  "hero.quick.hire":           { "ja": "雇用", "en": "Hire" },
+  "hero.quick.rest":           { "ja": "休憩", "en": "Rest" },
+  "hero.quick.trade":          { "ja": "取引", "en": "Trade" },
 
   "mai.questBusy":             { "ja": "他のクエストが進行中です。終わるまでお待ちください。", "en": "Another quest is in progress. Please wait until it finishes." },
 
