@@ -1043,65 +1043,9 @@ const COMMISSION_DEADLINE_BONUS_WEEKS = 3; // 通常 durationWeeks + 3 週を期
 
 let _commissionId = 0;
 
-/** Phase 1D-33: extensions.json には Common 147 種のみ収録されているが、
- *  工房レベル 2-5 で本来作れるはずの上位 rarity (Uncommon〜Legendary) の data が
- *  存在せず、Lv up しても作れる ext が増えない問題を解消する。
- *  Common ext 1 つにつき 4 つの上位 variant を自動生成し EXTENSIONS / EXTENSION_BY_ID
- *  に追加する。
- *
- *  - extId は固定オフセットで衝突回避 (Common 1001 → Uncommon 101001 / Rare 201001 / …)
- *  - 名前は「アマチュア ブレード」「プロ ブレード」のような rarity プレフィックス付与
- *  - params は rarity に応じて 1.6x / 2.5x / 4x / 6.5x スケール
- *  - skillName は元 ext のものを継承
- *
- *  本番データに Uncommon ext が後で追加された場合: extId 衝突回避のため
- *  本関数は ID で重複チェックしてスキップする (= 実データ優先)。
- */
-function expandRarityVariants() {
-  if (!Array.isArray(EXTENSIONS) || EXTENSIONS.length === 0) return;
-  const VARIANT_TIERS = [
-    { rarity: "uncommon",  prefixJa: "アマチュア",   prefixEn: "Greater ",   mult: 1.6, idOffset: 100000 },
-    { rarity: "rare",      prefixJa: "プロ",         prefixEn: "Superior ",  mult: 2.5, idOffset: 200000 },
-    { rarity: "epic",      prefixJa: "マスター",     prefixEn: "Master ",    mult: 4.0, idOffset: 300000 },
-    { rarity: "legendary", prefixJa: "レジェンド",   prefixEn: "Legendary ", mult: 6.5, idOffset: 400000 },
-  ];
-  const existingIds = new Set(EXTENSIONS.map(e => e.extId));
-  const generated = [];
-  for (const ext of EXTENSIONS.slice()) {
-    if ((ext.rarity || "").toLowerCase() !== "common") continue;
-    for (const tier of VARIANT_TIERS) {
-      const newId = ext.extId + tier.idOffset;
-      if (existingIds.has(newId)) continue;  // 実データがあるなら上書きしない
-      const baseName = ext.nameJa || "";
-      // 「ノービス」プレフィックスがあれば置換、なければ「[rarity prefix] [シリーズ]」
-      const cleanName = baseName.startsWith("ノービス") ? baseName.slice(4) : baseName;
-      const variant = {
-        extId: newId,
-        nameJa: `${tier.prefixJa}${cleanName}`,
-        nameEn: ext.nameEn ? `${tier.prefixEn}${ext.nameEn.replace(/^Novice /, "")}` : undefined,
-        series: ext.series,
-        rarity: tier.rarity,
-        params: {
-          hp:  Math.round((ext.params?.hp  || 0) * tier.mult),
-          phy: Math.round((ext.params?.phy || 0) * tier.mult),
-          int: Math.round((ext.params?.int || 0) * tier.mult),
-          agi: Math.round((ext.params?.agi || 0) * tier.mult),
-        },
-        skillNameJa: ext.skillNameJa,
-        skillNameEn: ext.skillNameEn,
-        // 自動生成マーカー (将来のデバッグ用)
-        _autogen: true,
-      };
-      generated.push(variant);
-      existingIds.add(newId);
-    }
-  }
-  for (const v of generated) {
-    EXTENSIONS.push(v);
-    EXTENSION_BY_ID[String(v.extId)] = v;
-  }
-  console.log(`[ext] Auto-generated ${generated.length} rarity variants from ${EXTENSIONS.length - generated.length} base exts`);
-}
+/** Phase 1D-33 → 1D-37: 旧自動生成関数 expandRarityVariants は削除。
+ *  Phase 1D-37 で公式 MCH 辞書 (956 ext / 全 5 rarity / 178 シリーズ) を
+ *  data/extensions.json に取り込んだため、上位 rarity の自動生成が不要になった。 */
 
 /** 解放済みエクステンションのプールから rarity 重み付きで 1 つ抽選する */
 function pickRandomUnlockedExt() {
@@ -5939,10 +5883,10 @@ async function init() {
   // Extension master data (Phase 1B craft view)
   try {
     await loadExtensions();
-    // Phase 1D-33: 上位 rarity (Uncommon / Rare / Epic / Legendary) の ext data が
-    //   未整備のため、 Common ext 1 つにつき 4 つの上位 variant を自動生成する。
-    //   工房 Lv 上昇で「レアリティが解放されるのに作るものがない」状況を解消。
-    expandRarityVariants();
+    // Phase 1D-33 → 1D-37: 旧 expandRarityVariants() で Common から 4 段の自動
+    //   variant を生成していたが、 Phase 1D-37 で公式 MCH 辞書 (956 ext / 全 5
+    //   rarity) を data/extensions.json に取り込んだため不要に。 名前 / params /
+    //   skill 名 / アイコンが MCH と整合する。
   } catch (e) {
     console.warn("[init] extensions.json load failed", e);
   }
