@@ -102,6 +102,256 @@
       gap: 0.5rem;
     }
 
+    /* ── Phase 1D-13: Home stage (workshop + progress area) ───────
+     *   モバイル: 縦積み (workshop の下に進捗エリア = 横スワイプカルーセル)
+     *   PC      : 横並び (workshop 左、進捗カード縦スタック 右)
+     * ────────────────────────────────────────────────────────────── */
+    .factory-stage {
+      width: 100%;
+      display: flex; flex-direction: column;
+      gap: 0.5rem;
+    }
+    .progress-area {
+      position: relative;
+      width: 100%;
+      background: #ece6d6;
+      color: #1a1420;
+      border-top: 1px solid #4a3f33;
+      /* モバイル: 右側に矢印分の余白 */
+      padding-right: 36px;
+    }
+    .progress-area__scroller {
+      display: flex; flex-direction: row;
+      overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .progress-area__scroller::-webkit-scrollbar { display: none; }
+    .progress-card {
+      flex: 0 0 100%;
+      min-width: 100%;
+      scroll-snap-align: start;
+      padding: 0.55rem 0.7rem 0.6rem;
+      box-sizing: border-box;
+      display: flex; flex-direction: column;
+      gap: 0.35rem;
+    }
+    .progress-card__title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #1a1420;
+    }
+    .progress-card__body {
+      flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
+      gap: 0.35rem;
+    }
+    .progress-card__empty {
+      color: #5a4f3f; font-size: 0.85rem; font-weight: 600;
+      text-align: center; padding: 0.6rem 0.4rem;
+    }
+    /* Quest progress card */
+    .quest-card-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .quest-card-row__heroes {
+      display: flex; gap: 0.2rem;
+    }
+    .quest-card-row__hero {
+      width: 44px; height: 44px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      background: #4a4438;
+      border-radius: 4px;
+    }
+    .quest-card-row__node {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+    }
+    .quest-card-row__node-name {
+      font-weight: 800; font-size: 0.9rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .quest-card-row__node-status {
+      font-size: 0.72rem; color: #5a4f3f; font-weight: 600;
+    }
+    .quest-card__bar {
+      width: 100%; height: 14px;
+      background: #d2c7a8;
+      border: 1px solid #6b5e3f;
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+    .quest-card__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50 0%, #2e8b32 100%);
+      transition: width 1s linear;
+    }
+    .quest-card__pct {
+      position: absolute; right: 0.4rem; top: 50%;
+      transform: translateY(-50%);
+      font-weight: 800; font-size: 0.75rem;
+      color: #1a1420;
+      mix-blend-mode: multiply;
+    }
+    /* Market card: Trade + Auction の 2 サブカード横並び */
+    .market-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+    }
+    .market-sub {
+      background: rgba(255,255,255,0.5);
+      border: 1px solid #b9a978;
+      border-radius: 4px;
+      padding: 0.4rem 0.45rem;
+      display: flex; flex-direction: column; gap: 0.25rem;
+      min-width: 0;
+    }
+    .market-sub__title {
+      font-size: 0.7rem; font-weight: 700; color: #5a4f3f;
+      letter-spacing: 0.04em;
+    }
+    .market-sub__row {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .market-sub__icon {
+      width: 36px; height: 36px;
+      object-fit: cover; image-rendering: pixelated;
+      background: #4a4438; border-radius: 3px;
+    }
+    .market-sub__main {
+      display: flex; flex-direction: column; min-width: 0;
+    }
+    .market-sub__name {
+      font-size: 0.78rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .market-sub__meta {
+      font-size: 0.7rem; color: #5a4f3f; font-weight: 600;
+      display: flex; gap: 0.4rem; align-items: center;
+    }
+    .market-sub__meta--gum {
+      color: var(--accent); font-weight: 800;
+    }
+    .market-sub__bar {
+      height: 10px;
+      background: #d2c7a8; border: 1px solid #6b5e3f;
+      border-radius: 2px; overflow: hidden;
+      position: relative;
+    }
+    .market-sub__bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50 0%, #2e8b32 100%);
+      transition: width 1s linear;
+    }
+    .market-sub__bar-pct {
+      position: absolute; right: 0.3rem; top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.65rem; font-weight: 800; color: #1a1420;
+      mix-blend-mode: multiply;
+    }
+    .market-sub__empty {
+      font-size: 0.72rem; color: #5a4f3f; text-align: center;
+      padding: 0.4rem 0.2rem;
+    }
+    /* Mobile arrow nav (モバイルのみ表示) */
+    .progress-area__nav {
+      position: absolute;
+      right: 4px; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 4px;
+      z-index: 4;
+    }
+    .progress-area__arrow {
+      appearance: none;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid #6b5e3f;
+      border-radius: 4px;
+      width: 26px; height: 26px;
+      cursor: pointer;
+      font-size: 0.85rem; line-height: 1;
+      color: #1a1420;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .progress-area__arrow:hover { background: #fff; }
+    .progress-area__arrow:disabled {
+      opacity: 0.35; cursor: default;
+    }
+    .progress-area__dots {
+      display: flex; flex-direction: column;
+      gap: 2px; align-items: center;
+      padding: 1px 0;
+    }
+    .progress-area__dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(74, 63, 51, 0.4);
+    }
+    .progress-area__dot--active {
+      background: #1a1420;
+    }
+
+    /* ── PC / 横長レイアウト (workshop 左 + 進捗 右) ─────────────── */
+    @media (min-width: 880px) {
+      .factory-app {
+        max-width: 1280px;
+      }
+      .factory-stage {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0.6rem;
+        padding: 0 0.6rem;
+      }
+      .workshop {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 50%;
+        aspect-ratio: 1 / 1;
+        border-radius: 6px;
+      }
+      .progress-area {
+        flex: 1 1 0;
+        min-width: 0;
+        background: transparent;
+        border-top: none;
+        padding-right: 0;
+        max-height: calc(100vh - 110px);
+      }
+      .progress-area__scroller {
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scroll-snap-type: none;
+        gap: 0.6rem;
+        padding-right: 4px;
+      }
+      .progress-card {
+        flex: 0 0 auto;
+        min-width: 0;
+        background: #ece6d6;
+        border: 1px solid #4a3f33;
+        border-radius: 6px;
+        scroll-snap-align: none;
+      }
+      .progress-card__title {
+        font-size: 1.05rem;
+      }
+      .progress-area__nav { display: none; }
+      /* PC では下部の order-panel(=旧仕様) は非表示。Craft カード内に再配置済み */
+      .factory-app > .order-panel { display: none; }
+    }
+
     /* Header (always visible) */
     .factory-header {
       width: 100%;
@@ -526,15 +776,20 @@
     }
     .mai-modal.hidden { display: none !important; }
     .mai-modal__card {
-      max-width: 540px; width: 100%;
+      /* Phase 1D-13: 画面幅にあわせてバブル幅を伸ばす
+       *   - スマホ (≤540px): 100% 幅
+       *   - 中間〜PC: 90vw を上限に拡大
+       *   - 超ワイド (>1300px): 1200px でキャップ */
+      width: 100%;
+      max-width: clamp(540px, 90vw, 1200px);
       background: rgba(30, 26, 40, 0.96);   /* var(--panel) 相当 + 不透明寄せ */
       border-top: 2px solid var(--accent);
       border-radius: 12px 12px 0 0;
-      padding: 0.85rem 1rem 0.95rem;
+      padding: clamp(0.85rem, 0.6rem + 0.5vw, 1.4rem) clamp(1rem, 0.6rem + 0.7vw, 1.8rem) clamp(0.95rem, 0.6rem + 0.5vw, 1.5rem);
       display: grid;
-      grid-template-columns: 56px 1fr auto;
+      grid-template-columns: clamp(56px, 4vw + 40px, 96px) 1fr auto;
       grid-template-rows: auto auto;
-      gap: 0.4rem 0.7rem;
+      gap: clamp(0.4rem, 0.3rem + 0.2vw, 0.8rem) clamp(0.7rem, 0.5rem + 0.3vw, 1.1rem);
       align-items: center;
       box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.55);
       backdrop-filter: blur(6px);
@@ -545,7 +800,8 @@
     }
     .mai-modal__portrait {
       grid-column: 1; grid-row: 1 / span 2;
-      width: 56px; height: 56px;
+      width: clamp(56px, 4vw + 40px, 96px);
+      height: clamp(56px, 4vw + 40px, 96px);
       border-radius: 50%;
       background: #2a2438;
       object-fit: cover;
@@ -556,7 +812,8 @@
     .mai-modal__name {
       grid-column: 2; grid-row: 1;
       color: var(--accent);
-      font-weight: 800; font-size: 0.85rem;
+      font-weight: 800;
+      font-size: clamp(0.85rem, 0.6rem + 0.5vw, 1.15rem);
       letter-spacing: 0.04em;
     }
     .mai-modal__body {
@@ -564,7 +821,8 @@
       margin: 0;
       color: var(--text);
       line-height: 1.55;
-      font-size: 0.95rem;
+      /* 画面幅にあわせてフォントを拡大 */
+      font-size: clamp(0.95rem, 0.55rem + 1.0vw, 1.5rem);
     }
     .mai-modal__close {
       grid-column: 3; grid-row: 1 / span 2;
@@ -572,9 +830,10 @@
       appearance: none;
       background: var(--accent); color: #1a1420;
       border: none; border-radius: 6px;
-      padding: 0.45rem 1.2rem;
+      padding: clamp(0.45rem, 0.3rem + 0.3vw, 0.85rem) clamp(1.2rem, 0.8rem + 0.6vw, 2rem);
       font-weight: 700; cursor: pointer;
-      min-height: 56px;
+      font-size: clamp(0.85rem, 0.6rem + 0.4vw, 1.15rem);
+      min-height: clamp(56px, 4vw + 40px, 96px);
     }
 
     /* Hero detail popup (workshop sprite tap) */
@@ -3251,38 +3510,71 @@
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
 
-    <!-- Workshop view -->
-    <div class="workshop" id="workshopView">
-      <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
-      <!-- ── オーバーレイ群 (workshop 画像の上に重ねる: 縦方向にレイアウトを押さない) ── -->
-      <div class="workshop__overlays">
-        <!-- Quest progress overlay (Phase 1C-1) — クエスト中のみ表示 -->
-        <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
-        <!-- Hire progress overlay (Phase 1D-7) — 雇用中のみ表示 -->
-        <div class="hire-overlay hidden" id="hireOverlay" aria-live="polite"></div>
-        <!-- Sale progress overlay (Phase 1D-10) — 出品中のみ表示 (1〜複数件) -->
-        <div class="sale-overlay hidden" id="saleOverlay" aria-live="polite"></div>
-        <!-- Notification banner (Phase 1B-2) — passive 発動などで表示、3 秒で消える -->
-        <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
-      </div>
-      <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
-      <div class="workshop__heroes" id="workshopHeroes"></div>
-      <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
-    </div>
-
-    <!-- Order panel (bottom) — Phase 1B-2 mockup 準拠 -->
-    <div class="order-panel order-panel--empty" id="orderPanel">
-      <div class="order-panel__top">
-        <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
-        <div class="order-panel__info">
-          <span class="order-panel__desc" id="orderDesc" data-i18n="order.none">受注なし</span>
-          <div class="order-panel__meta" id="orderMeta"></div>
+    <!-- ── Phase 1D-13: Stage (workshop + progress area) ─────────
+     *   モバイル: 縦並び (workshop / 進捗カルーセル)
+     *   PC    : 横並び (workshop 左 / 進捗カードスタック 右)
+     * ─────────────────────────────────────────────────────────── -->
+    <div class="factory-stage">
+      <!-- Workshop view -->
+      <div class="workshop" id="workshopView">
+        <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
+        <!-- ── オーバーレイ群 (workshop 画像の上に重ねる: 縦方向にレイアウトを押さない) ── -->
+        <div class="workshop__overlays">
+          <!-- Quest progress overlay (Phase 1C-1) — クエスト中のみ表示 -->
+          <div class="quest-overlay hidden" id="questOverlay" aria-live="polite"></div>
+          <!-- Hire progress overlay (Phase 1D-7) — 雇用中のみ表示 -->
+          <div class="hire-overlay hidden" id="hireOverlay" aria-live="polite"></div>
+          <!-- Sale progress overlay (Phase 1D-10) — 出品中のみ表示 (1〜複数件) -->
+          <div class="sale-overlay hidden" id="saleOverlay" aria-live="polite"></div>
+          <!-- Notification banner (Phase 1B-2) — passive 発動などで表示、3 秒で消える -->
+          <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
         </div>
-        <div class="order-panel__elements" id="orderElements"></div>
+        <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
+        <div class="workshop__heroes" id="workshopHeroes"></div>
+        <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
       </div>
-      <div class="order-panel__progress">
-        <div class="order-panel__bar"><div class="order-panel__bar-fill" id="orderBarFill"></div></div>
-        <span class="order-panel__pct" id="orderPct"></span>
+
+      <!-- Progress area: 3 カード (Craft / Quest / Market) の Carousel -->
+      <div class="progress-area" id="progressArea">
+        <div class="progress-area__scroller" id="progressScroller">
+          <!-- Card 1: Craft (= 既存 order-panel をカード内に保持。データ差し替え無し) -->
+          <section class="progress-card" data-card-id="craft">
+            <h3 class="progress-card__title" data-i18n="progress.craft">Craft</h3>
+            <div class="order-panel order-panel--empty" id="orderPanel">
+              <div class="order-panel__top">
+                <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
+                <div class="order-panel__info">
+                  <span class="order-panel__desc" id="orderDesc" data-i18n="order.none">受注なし</span>
+                  <div class="order-panel__meta" id="orderMeta"></div>
+                </div>
+                <div class="order-panel__elements" id="orderElements"></div>
+              </div>
+              <div class="order-panel__progress">
+                <div class="order-panel__bar"><div class="order-panel__bar-fill" id="orderBarFill"></div></div>
+                <span class="order-panel__pct" id="orderPct"></span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Card 2: Quest -->
+          <section class="progress-card" data-card-id="quest">
+            <h3 class="progress-card__title" data-i18n="progress.quest">Quest</h3>
+            <div class="progress-card__body" id="questCard"></div>
+          </section>
+
+          <!-- Card 3: Market (Trade + Auction) -->
+          <section class="progress-card" data-card-id="market">
+            <h3 class="progress-card__title" data-i18n="progress.market">Market</h3>
+            <div class="progress-card__body" id="marketCard"></div>
+          </section>
+        </div>
+
+        <!-- Mobile-only: 矢印 nav + dots (PC では CSS で hidden) -->
+        <div class="progress-area__nav" id="progressNav" aria-hidden="true">
+          <button type="button" class="progress-area__arrow" data-progress-nav="prev" aria-label="prev">▲</button>
+          <span class="progress-area__dots" id="progressDots"></span>
+          <button type="button" class="progress-area__arrow" data-progress-nav="next" aria-label="next">▼</button>
+        </div>
       </div>
     </div>
   </div>

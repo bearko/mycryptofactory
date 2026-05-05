@@ -303,7 +303,7 @@ function onTick() {
   renderHeader();
   renderWorkshop();
   renderNotifications();
-  renderOrderPanel();
+  renderProgressCards();
   renderQuestOverlay();
 }
 
@@ -793,11 +793,15 @@ function startActiveQuest() {
 /** ─── Quest progress overlay (top of workshop) ───────────────────── */
 function renderQuestOverlay() {
   const host = $("questOverlay");
-  if (!host) return;
+  if (!host) {
+    if (typeof renderQuestCard === "function") renderQuestCard();
+    return;
+  }
   const aq = state.activeQuest;
   if (!aq) {
     host.classList.add("hidden");
     host.innerHTML = "";
+    if (typeof renderQuestCard === "function") renderQuestCard();
     return;
   }
   host.classList.remove("hidden");
@@ -816,6 +820,7 @@ function renderQuestOverlay() {
     </div>
     <div class="quest-overlay__bar"><div class="quest-overlay__bar-fill" style="width:${pctVal}%"></div></div>
   `;
+  if (typeof renderQuestCard === "function") renderQuestCard();
 }
 
 /** ─── Quest result screen (Phase 1C-1) ────────────────────────────── */
@@ -1696,6 +1701,219 @@ function workshopSlotPosFor(idx, total) {
   const yByRow = [55, 72, 88];
   const y = yByRow[Math.min(row, yByRow.length - 1)] || 55;
   return { x: x.toFixed(0) + "%", y: y + "%" };
+}
+
+/** ─── Phase 1D-13: Progress cards (Craft / Quest / Market) ─────────
+ *  ホーム画面の右ペイン (PC) / 下部カルーセル (モバイル) に表示する
+ *  3 枚のカード。Craft カードは既存 order-panel をそのまま再利用するため
+ *  ここでは Quest / Market のみ実装する。 */
+
+/** Quest progress card 描画 */
+function renderQuestCard() {
+  const host = $("questCard");
+  if (!host) return;
+  const aq = state.activeQuest;
+  if (!aq) {
+    host.innerHTML = `<div class="progress-card__empty" data-i18n="progress.quest.empty">${escapeHtml(ti18n("progress.quest.empty"))}</div>`;
+    return;
+  }
+  const node = NODE_BY_ID[aq.nodeId];
+  const lang = getLang() === "en" ? "en" : "ja";
+  const nodeName = node ? (lang === "en" ? (node.nameEn || node.nameJa) : node.nameJa) : aq.nodeId;
+  const pctVal = Math.floor((aq.progress || 0) * 100);
+  const heroesHtml = aq.team.filter(id => id != null).slice(0, 3).map(id => {
+    const h = findHero(id);
+    if (!h) return "";
+    return `<img class="quest-card-row__hero" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />`;
+  }).join("");
+  const statusLbl = ti18n("progress.quest.statusInProgress");
+  host.innerHTML = `
+    <div class="quest-card-row">
+      <div class="quest-card-row__heroes">${heroesHtml}</div>
+      <div class="quest-card-row__node">
+        <span class="quest-card-row__node-name">${escapeHtml(ti18n("quest.nodeLabel"))}: ${escapeHtml(nodeName)}</span>
+        <span class="quest-card-row__node-status">${escapeHtml(statusLbl)}</span>
+      </div>
+    </div>
+    <div class="quest-card__bar">
+      <div class="quest-card__bar-fill" style="width:${pctVal}%"></div>
+      <span class="quest-card__pct">${pctVal}%</span>
+    </div>
+  `;
+}
+
+/** Market progress card 描画 (Trade + Auction の 2 サブカード) */
+function renderMarketCard() {
+  const host = $("marketCard");
+  if (!host) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+
+  // Trade: 現在の active sale (1 件目を表示。複数あれば別途 overlay 側で全件表示)
+  let tradeHtml = `<div class="market-sub__empty">${escapeHtml(ti18n("progress.market.tradeEmpty"))}</div>`;
+  if (state.activeSales && state.activeSales.length > 0) {
+    const s = state.activeSales[0];
+    const w = state.warehouse[s.warehouseIdx];
+    const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
+    const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
+    const iconUrl = ext ? extIconUrl(ext.extId) : "";
+    const elapsed = state.tickCount - s.listedAtTick;
+    const totalTicks = s.weeks * SECONDS_PER_WEEK;
+    const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
+    const speedDef = SALE_SPEED_BY_ID?.[s.speedId];
+    const speedLbl = speedDef ? (lang === "en" ? speedDef.nameEn : speedDef.nameJa) : (s.speedId || "");
+    const askGum = typeof s.expectedPrice === "number" ? s.expectedPrice : 0;
+    tradeHtml = `
+      <div class="market-sub__row">
+        <img class="market-sub__icon" src="${iconUrl}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="market-sub__main">
+          <span class="market-sub__name">${escapeHtml(extName)}</span>
+          <div class="market-sub__meta">
+            <span>${escapeHtml(speedLbl)}</span>
+            <span class="market-sub__meta--gum">G ${askGum}</span>
+          </div>
+        </div>
+      </div>
+      <div class="market-sub__bar">
+        <div class="market-sub__bar-fill" style="width:${pct}%"></div>
+        <span class="market-sub__bar-pct">${pct}%</span>
+      </div>
+    `;
+  }
+
+  // Auction: 月次 (4 週ごと) の固定イベント countdown (placeholder)
+  const remainW = computeAuctionWeeksRemaining();
+  const auctionLbl = ti18n("progress.market.auctionWait").replace("{n}", remainW);
+  const auctionHtml = `
+    <div class="market-sub__row">
+      <div class="market-sub__icon"></div>
+      <div class="market-sub__main">
+        <span class="market-sub__name">${escapeHtml(auctionLbl)}</span>
+        <div class="market-sub__meta">
+          <span>${escapeHtml(ti18n("progress.market.auctionAttention"))}: —</span>
+          <span>${escapeHtml(ti18n("progress.market.auctionPopularity"))}: —</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  host.innerHTML = `
+    <div class="market-card">
+      <div class="market-sub">
+        <span class="market-sub__title">${escapeHtml(ti18n("progress.market.trade"))}</span>
+        ${tradeHtml}
+      </div>
+      <div class="market-sub">
+        <span class="market-sub__title">${escapeHtml(ti18n("progress.market.auction"))}</span>
+        ${auctionHtml}
+      </div>
+    </div>
+  `;
+}
+
+/** 月次 (4 game-week) サイクルで開催される auction 仮設の残週数を返す。
+ *  実 auction 機能未実装の placeholder。 */
+function computeAuctionWeeksRemaining() {
+  const y = state.year ?? 2018;
+  const m = state.month ?? 12;
+  const w = state.week ?? 1;
+  // (year * 12 + month) * 4 + week → 通算ゲーム週
+  const totalW = (y * 12 + (m - 1)) * 4 + (w - 1);
+  const cycle = 4;
+  const r = cycle - (totalW % cycle);
+  return r === 0 ? cycle : r;
+}
+
+/** Progress Card 全体の再描画 (Craft + Quest + Market) */
+function renderProgressCards() {
+  renderOrderPanel();
+  renderQuestCard();
+  renderMarketCard();
+  updateProgressCarouselIndicators();
+}
+
+/** ─── Phase 1D-13: Progress carousel navigation (mobile) ──────── */
+let _progressCardIdx = 0;
+const PROGRESS_CARD_COUNT = 3;
+
+function _isProgressCarouselMode() {
+  return window.matchMedia("(max-width: 879px)").matches;
+}
+
+function navigateProgressCard(delta) {
+  if (!_isProgressCarouselMode()) return;
+  const next = Math.max(0, Math.min(PROGRESS_CARD_COUNT - 1, _progressCardIdx + delta));
+  if (next === _progressCardIdx) return;
+  _progressCardIdx = next;
+  scrollProgressToCurrent();
+  updateProgressCarouselIndicators();
+}
+
+function scrollProgressToCurrent() {
+  const sc = $("progressScroller");
+  if (!sc) return;
+  const cards = sc.querySelectorAll(".progress-card");
+  const target = cards[_progressCardIdx];
+  if (target) {
+    sc.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+  }
+}
+
+function updateProgressCarouselIndicators() {
+  const dots = $("progressDots");
+  if (dots) {
+    dots.innerHTML = "";
+    for (let i = 0; i < PROGRESS_CARD_COUNT; i++) {
+      const d = document.createElement("span");
+      d.className = "progress-area__dot" + (i === _progressCardIdx ? " progress-area__dot--active" : "");
+      dots.appendChild(d);
+    }
+  }
+  const prevBtn = document.querySelector('[data-progress-nav="prev"]');
+  const nextBtn = document.querySelector('[data-progress-nav="next"]');
+  if (prevBtn) prevBtn.disabled = (_progressCardIdx === 0);
+  if (nextBtn) nextBtn.disabled = (_progressCardIdx === PROGRESS_CARD_COUNT - 1);
+}
+
+/** scroller を監視してユーザーが直接スワイプした際に _progressCardIdx を更新 */
+function _initProgressCarousel() {
+  const sc = $("progressScroller");
+  if (!sc || sc.dataset.progressInit === "1") return;
+  sc.dataset.progressInit = "1";
+  let scrollTimer;
+  sc.addEventListener("scroll", () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      if (!_isProgressCarouselMode()) return;
+      const cards = sc.querySelectorAll(".progress-card");
+      let nearestIdx = 0;
+      let nearestDist = Infinity;
+      cards.forEach((c, i) => {
+        const d = Math.abs(c.offsetLeft - sc.scrollLeft);
+        if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+      });
+      if (nearestIdx !== _progressCardIdx) {
+        _progressCardIdx = nearestIdx;
+        updateProgressCarouselIndicators();
+      }
+    }, 80);
+  });
+  // 矢印ボタン
+  document.querySelectorAll('[data-progress-nav]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      const dir = btn.getAttribute("data-progress-nav");
+      navigateProgressCard(dir === "prev" ? -1 : 1);
+    });
+  });
+  // 初期 dots
+  updateProgressCarouselIndicators();
+  // ビューポート切替時に PC モードならスクロール位置をリセット
+  window.addEventListener("resize", () => {
+    if (!_isProgressCarouselMode()) {
+      sc.scrollTo({ left: 0 });
+    } else {
+      scrollProgressToCurrent();
+    }
+  });
 }
 
 /** ─── Passive notification banner ────────────────────────────────── */
@@ -2730,6 +2948,8 @@ function renderHireOverlay() {
  *  各 active sale を 1 行ずつ列挙: ext / 担当 / 残り週数 / 進捗バー。 */
 function renderSaleOverlay() {
   const host = $("saleOverlay");
+  // Phase 1D-13: Market progress card は overlay とは別に常時更新
+  if (typeof renderMarketCard === "function") renderMarketCard();
   if (!host) return;
   if (!state.activeSales || state.activeSales.length === 0) {
     host.classList.add("hidden");
@@ -2993,7 +3213,7 @@ async function init() {
 
   // Initial render
   renderHeader();
-  renderOrderPanel();
+  renderProgressCards();   // Craft / Quest / Market 3 カード初期描画 (Phase 1D-13)
   renderHeroTeam();
   renderHeroList();
   renderWorkshop();
@@ -3001,6 +3221,8 @@ async function init() {
   renderQuestOverlay();
   renderHireOverlay();
   renderSaleOverlay();
+  // Phase 1D-13: 進捗カードカルーセルの矢印 / dots / scroll listener を一度だけ初期化
+  _initProgressCarousel();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");

@@ -236,6 +236,18 @@
   "btn.cancel":                { "ja": "キャンセル", "en": "Cancel" },
   "btn.save":                  { "ja": "保存", "en": "Save" },
 
+  "progress.craft":            { "ja": "Craft",  "en": "Craft" },
+  "progress.quest":            { "ja": "Quest",  "en": "Quest" },
+  "progress.market":           { "ja": "Market", "en": "Market" },
+  "progress.quest.empty":      { "ja": "クエスト中ではありません", "en": "No active quest" },
+  "progress.market.trade":     { "ja": "Trade",  "en": "Trade" },
+  "progress.market.auction":   { "ja": "Auction","en": "Auction" },
+  "progress.market.tradeEmpty":{ "ja": "出品なし", "en": "No active sale" },
+  "progress.market.auctionWait": { "ja": "開催まで {n} 週", "en": "Starts in {n}w" },
+  "progress.market.auctionAttention": { "ja": "注目度", "en": "Attention" },
+  "progress.market.auctionPopularity":{ "ja": "人気",   "en": "Popularity" },
+  "progress.quest.statusInProgress": { "ja": "攻略中", "en": "In progress" },
+
   "footer.meta":               { "ja": "MyCryptoFactory α version · 非営利のファン制作", "en": "MyCryptoFactory α version · Non-commercial fan project" },
   "footer.credit.full":        { "ja": "キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> 参照。", "en": "Character artwork / assets belong to <strong>My Crypto Heroes (MCH Co., Ltd.)</strong>. See <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> for usage terms." }
 }
