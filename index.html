@@ -2620,7 +2620,13 @@
       padding: 0.7rem 0.8rem;
       display: flex; flex-direction: column; gap: 0.35rem;
     }
-    .hire-plan--disabled { opacity: 0.55; }
+    .hire-plan--disabled { opacity: 0.55; filter: grayscale(0.4); }
+    /* Phase 1D-24: 不可理由を赤字で表示 */
+    .hire-plan__reason {
+      margin: 0.1rem 0 0;
+      font-size: 0.72rem; color: var(--ifrit);
+      font-weight: 700;
+    }
     .hire-plan__head {
       display: flex; align-items: baseline; justify-content: space-between;
     }
@@ -2815,6 +2821,28 @@
       display: inline-flex; align-items: center; gap: 0.18rem;
     }
     .hire-cand__el img { width: 14px; height: 14px; image-rendering: pixelated; }
+    /* Phase 1D-24: 採用候補カードに編成画面同等の craftLv + パッシブ表示 */
+    .hire-cand-card__cl {
+      font-size: 0.7rem; color: var(--muted);
+      text-align: right;
+    }
+    .hire-cand-card__cl strong { color: var(--accent); font-size: 0.85rem; }
+    .hire-cand-card__passive {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      padding-top: 0.3rem;
+      border-top: 1px dashed rgba(196,163,90,0.25);
+      margin-top: 0.1rem;
+    }
+    .hire-cand-card__passive-name {
+      font-size: 0.72rem; font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .hire-cand-card__passive-text {
+      font-size: 0.7rem; color: var(--text);
+      line-height: 1.35;
+    }
+    .hire-cand-card__passive-text:empty { display: none; }
     .hire-cand-card__foot {
       display: flex; align-items: center; justify-content: space-between;
       gap: 0.4rem;
@@ -2949,6 +2977,79 @@
       object-fit: contain;
       image-rendering: pixelated;
     }
+    /* Phase 1D-24: 解雇候補に編成画面同等の情報 (4 元素 + 適性 + パッシブ) */
+    .fire-cand__elements {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.15rem;
+      width: 100%;
+      font-size: 0.62rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .fire-cand__elements > span {
+      display: inline-flex; align-items: center; gap: 0.12rem;
+      justify-content: center;
+    }
+    .fire-cand__elements img { width: 11px; height: 11px; image-rendering: pixelated; }
+    .fire-cand__passive {
+      width: 100%;
+      font-size: 0.6rem;
+      color: var(--text);
+      text-align: center;
+      line-height: 1.3;
+      padding-top: 0.2rem;
+      border-top: 1px dashed rgba(196,163,90,0.2);
+    }
+    .fire-cand__passive-name { color: var(--accent); font-weight: 700; }
+    /* Phase 1D-24: 解雇確認 modal */
+    .fire-confirm {
+      position: fixed; inset: 0; z-index: 297;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .fire-confirm.hidden { display: none !important; }
+    .fire-confirm__card {
+      max-width: 360px; width: 100%;
+      background: var(--panel);
+      border: 2px solid var(--ifrit);
+      border-radius: 10px;
+      padding: 1.1rem;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.6rem;
+      text-align: center;
+      box-shadow: 0 0 16px rgba(231,96,96,0.45);
+    }
+    .fire-confirm__portrait {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: #2a2438;
+      object-fit: cover; image-rendering: pixelated;
+      border: 2px solid var(--ifrit);
+    }
+    .fire-confirm__title {
+      margin: 0;
+      font-size: 1.05rem; color: var(--text);
+      font-weight: 800; letter-spacing: 0.04em;
+    }
+    .fire-confirm__msg {
+      margin: 0;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .fire-confirm__buttons {
+      display: flex; gap: 0.5rem; width: 100%;
+    }
+    .fire-confirm__back, .fire-confirm__do {
+      flex: 1;
+      appearance: none;
+      border: none; border-radius: 6px;
+      padding: 0.55rem 0.9rem;
+      font-weight: 800; font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .fire-confirm__back { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+    .fire-confirm__do   { background: var(--ifrit); color: #fff; }
+    .fire-confirm__do:hover { background: #d04848; }
     .fire-cand__name { font-weight: 700; font-size: 0.78rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .fire-cand__rarity {
       padding: 0.06rem 0.4rem;
@@ -3778,6 +3879,14 @@
       font-size: 0.75rem; color: var(--ifrit);
       margin-top: 0.4rem;
     }
+    /* Phase 1D-24: Mai アドバイス時はエラー赤ではなく金 (info) 風 */
+    .craft-confirm__warning[data-mode="advice"] {
+      color: var(--accent);
+      background: rgba(196,163,90,0.10);
+      border-left: 3px solid var(--accent);
+      padding: 0.4rem 0.55rem;
+      border-radius: 4px;
+    }
 
     /* Help overlay (placeholder shell, content TBD) */
     #helpOverlay {
@@ -4328,6 +4437,19 @@
       <div class="fire-list" id="fireList"></div>
       <div class="fire-modal__buttons">
         <button type="button" class="fire-modal__cancel" id="fireCancelBtn" data-i18n="btn.cancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 1D-24: 解雇確認 modal (◯◯ を解雇しますか？) -->
+  <div class="fire-confirm hidden" id="fireConfirmModal" role="dialog" aria-modal="true">
+    <div class="fire-confirm__card">
+      <img class="fire-confirm__portrait" id="fireConfirmPortrait" src="" alt="" />
+      <h3 class="fire-confirm__title" id="fireConfirmTitle">—</h3>
+      <p class="fire-confirm__msg" data-i18n="fire.confirmMsg">この決断を取り消すことはできません。</p>
+      <div class="fire-confirm__buttons">
+        <button type="button" class="fire-confirm__back" id="fireConfirmBack" data-i18n="btn.cancel">キャンセル</button>
+        <button type="button" class="fire-confirm__do" id="fireConfirmDo" data-i18n="fire.confirmBtn">改めて解雇する</button>
       </div>
     </div>
   </div>

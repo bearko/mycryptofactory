@@ -46,6 +46,13 @@
   "goal.maxed":                 { "ja": "工房は最大 Lv.5 に到達しました！", "en": "Workshop reached max Lv.5!" },
   "menu.land.todo":            { "ja": "ランドnodeは将来のアップデートで実装予定です。", "en": "Land nodes are coming in a future update." },
   "menu.auction.todo":          { "ja": "オークション機能はまだ準備中です。今しばらくお待ちください！", "en": "Auction is still in preparation. Please stay tuned!" },
+  "hero.lock.busy":              { "ja": "このヒーローは別の作業に従事中です。", "en": "This hero is busy on another task." },
+  "hire.block.gum":              { "ja": "GUM 不足 ({cur} / {cost})", "en": "Not enough GUM ({cur} / {cost})" },
+  "hire.block.recruiter":        { "ja": "{rarity} 以上の採用担当ヒーローが必要です", "en": "Requires at least one {rarity} recruiter" },
+  "fire.confirmTitle":           { "ja": "{name} を解雇しますか？", "en": "Fire {name}?" },
+  "fire.confirmMsg":             { "ja": "この決断を取り消すことはできません。", "en": "This decision is final." },
+  "fire.confirmBtn":             { "ja": "改めて解雇する", "en": "Confirm fire" },
+  "fire.mai.firedNamed":         { "ja": "{name} を解雇しました。", "en": "{name} has been fired." },
 
   "recipe.popup.title":          { "ja": "レシピを獲得！", "en": "Recipe acquired!" },
   "recipe.popup.seriesLabel":    { "ja": "シリーズ", "en": "Series" },
@@ -139,6 +146,9 @@
   "craft.material.qtyHave":    { "ja": "× {qty} (在庫: {have})", "en": "× {qty} (stock: {have})" },
   "craft.warn.noMaterial":     { "ja": "素材が不足しています。", "en": "Not enough materials." },
   "craft.warn.lowLevel":       { "ja": "クラフトLv 不足 ({cur} / {req}) — 編成を変更してください。", "en": "Craft Lv too low ({cur} / {req}) — change the team." },
+  "craft.advice.tooLow":       { "ja": "（マイ）クラフトLv が大きく不足しています ({cur}/{req})。今のままだと品質はかなり低めになりそうです。可能なら編成を見直しましょう♪", "en": "(Mai) Craft Lv is far below requirement ({cur}/{req}). Quality will be quite low. Consider rebalancing your team♪" },
+  "craft.advice.low":          { "ja": "（マイ）クラフトLv が少し足りません ({cur}/{req})。品質はそこそこに留まりそうです。", "en": "(Mai) Craft Lv is slightly low ({cur}/{req}). Quality will be moderate." },
+  "craft.advice.borderline":   { "ja": "（マイ）クラフトLv が少しだけ不足 ({cur}/{req}) ですが、品質ノルマには近づけそうです！", "en": "(Mai) Craft Lv is just slightly under ({cur}/{req}). You're close to hitting quality norms!" },
 
   "mai.name":                  { "ja": "マイ", "en": "Mai" },
   "mai.next":                  { "ja": "次へ", "en": "Next" },
