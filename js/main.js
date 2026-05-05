@@ -2519,6 +2519,105 @@ function _elemDescSort(key) {
   return (a, b) => elementValueForCraft(b, key) - elementValueForCraft(a, key);
 }
 
+/** ─── Phase 1D-35: おまかせ編成 ─── */
+
+/** クラフト編成: state.craftPickedExtId / state.activeCraft の target に応じて
+ *  最適な 5 名を選ぶ。 編成可能 (= IDLE & 他作業に占有されていない) なヒーローを
+ *  「target>0 の色のクラフトパワー合算値」で降順 sort し、上位 5 名を採用。
+ *  ext が選ばれていない場合は 4 色全体の合算値で sort (= craft level proxy)。 */
+function autoFormCraftTeam() {
+  // 既にクラフト中ならフォーム変更は不可 (= 既存編成 UI のロックと整合)
+  if (state.activeCraft) {
+    maiSays("mai.craftBusy");
+    return;
+  }
+  // 対象 ext (= 確認画面で picked、または activeCraft で進行中)
+  let targets = null;
+  const pickedExt = state.craftPickedExtId != null
+    ? EXTENSION_BY_ID[String(state.craftPickedExtId)] : null;
+  if (pickedExt) targets = extElementTargets(pickedExt);
+  // 編成可能なヒーロー = IDLE & not locked (craftTeam 自体は ignore で許容)
+  const eligible = (state.ownedHeroes || []).filter(h => {
+    if (!h) return false;
+    if (h.state !== HERO_STATE.IDLE) return false;
+    if (isHeroLocked(h.heroId, { ignoreCraftTeam: true })) return false;
+    return true;
+  });
+  // スコア計算: target ありなら target 色のみ加算、なければ 4 色合計
+  const score = (h) => {
+    if (targets) {
+      let s = 0;
+      for (const k of ELEMENTS) {
+        if ((targets[k] || 0) > 0) s += elementValueForCraft(h, k);
+      }
+      return s;
+    }
+    return ELEMENTS.reduce((acc, k) => acc + elementValueForCraft(h, k), 0);
+  };
+  const sorted = eligible.slice().sort((a, b) => score(b) - score(a));
+  // 上位 5 名を craftTeam に配置
+  const picks = sorted.slice(0, TEAM_SIZE);
+  state.craftTeam = new Array(TEAM_SIZE).fill(null);
+  for (let i = 0; i < picks.length; i++) state.craftTeam[i] = picks[i].heroId;
+  // 通知
+  state.notifications.push({
+    id: ++_notifId,
+    text: ti18n("formation.notif.craftAuto", "クラフトおまかせ編成: {n} 名を配属")
+      .replace("{n}", String(picks.length)),
+    element: "garuda",
+    value: 0,
+    createdTick: state.tickCount,
+  });
+  if (typeof renderHeroTeam === "function") renderHeroTeam();
+  if (typeof renderHeroList === "function") renderHeroList();
+  if (typeof renderConfirm === "function" && state.craftScreen === "confirm") renderConfirm();
+  if (typeof renderNotifications === "function") renderNotifications();
+}
+
+/** クエスト編成: 編成可能ヒーローの中から QL (= heroQuestLevelBreakdown.ql)
+ *  が高い順に 3 名を採用。 既存 questTeam 配属を上書き。 */
+function autoFormQuestTeam() {
+  if (state.activeQuest) {
+    maiSays("mai.questBusy");
+    return;
+  }
+  const eligible = (state.ownedHeroes || []).filter(h => {
+    if (!h) return false;
+    if (h.state !== HERO_STATE.IDLE) return false;
+    // craftTeam に居るのは許容 (= ロスター段階)。実 craft / quest / sale / hire 中は除外
+    if (isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true })) return false;
+    return true;
+  });
+  const sorted = eligible.slice().sort((a, b) => {
+    const qa = heroQuestLevelBreakdown(a).ql;
+    const qb = heroQuestLevelBreakdown(b).ql;
+    return qb - qa;
+  });
+  const picks = sorted.slice(0, QUEST_TEAM_SIZE);
+  state.questTeam = new Array(QUEST_TEAM_SIZE).fill(null);
+  for (let i = 0; i < picks.length; i++) state.questTeam[i] = picks[i].heroId;
+  // クラフト編成からも自動除外 (1D-29 の整合性)
+  if (Array.isArray(state.craftTeam)) {
+    for (let i = 0; i < state.craftTeam.length; i++) {
+      if (state.craftTeam[i] != null && state.questTeam.includes(state.craftTeam[i])) {
+        state.craftTeam[i] = null;
+      }
+    }
+  }
+  state.notifications.push({
+    id: ++_notifId,
+    text: ti18n("formation.notif.questAuto", "クエストおまかせ編成: {n} 名を配属")
+      .replace("{n}", String(picks.length)),
+    element: "leviathan",
+    value: 0,
+    createdTick: state.tickCount,
+  });
+  if (typeof renderHeroTeam === "function") renderHeroTeam();
+  if (typeof renderHeroList === "function") renderHeroList();
+  if (typeof renderQuestView === "function") renderQuestView();
+  if (typeof renderNotifications === "function") renderNotifications();
+}
+
 /** Phase 1D-27: 体力満タン想定のクエストレベル (= heroQuestLevelBreakdown.ql の HP=100% 相当) */
 function _heroQuestLvFullHp(hero) {
   if (!hero || !hero.element) return 0;
@@ -6293,6 +6392,12 @@ async function init() {
   });
   $("questStartBtn")?.addEventListener("click", startActiveQuest);
   $("questResultClose")?.addEventListener("click", closeQuestResultScreen);
+
+  // Phase 1D-35: おまかせ編成ボタン (3 箇所に共通動作で配置)
+  $("craftAutoFormBtn")?.addEventListener("click", autoFormCraftTeam);
+  $("questAutoFormBtn")?.addEventListener("click", autoFormQuestTeam);
+  $("questViewAutoFormBtn")?.addEventListener("click", autoFormQuestTeam);
+  $("confirmAutoFormBtn")?.addEventListener("click", autoFormCraftTeam);
 
   // ── Craft view bindings (Phase 1B) ──
   $("craftViewBack")?.addEventListener("click", () => {
