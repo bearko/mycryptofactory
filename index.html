@@ -2201,6 +2201,13 @@
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
     }
+    /* Phase 1D-27: クラフト中介入イベント (魂注入 / オーラ付与) */
+    .craft-event-picker, .craft-event-anim {
+      position: fixed; inset: 0; z-index: 310;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
     .ranking-score-view.hidden, .activity-report-view.hidden { display: none !important; }
     .ranking-score-view__card, .activity-report-view__card {
       max-width: 520px; width: 100%;
@@ -2308,6 +2315,156 @@
       color: var(--accent); font-weight: 700;
       font-variant-numeric: tabular-nums;
       text-align: right;
+    }
+
+    /* Phase 1D-27: クラフト中介入イベント (魂注入 / オーラ付与) — children */
+    .craft-event-picker.hidden, .craft-event-anim.hidden { display: none !important; }
+    .craft-event-picker__card, .craft-event-anim__card {
+      max-width: 540px; width: 100%;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 1.1rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    .craft-event-picker__title, .craft-event-anim__title {
+      margin: 0;
+      font-size: 1.1rem;
+      color: var(--accent);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .craft-event-picker__intro {
+      margin: 0; font-size: 0.78rem; color: var(--muted);
+      text-align: center;
+    }
+    .craft-event-picker__section { display: flex; flex-direction: column; gap: 0.3rem; }
+    .craft-event-picker__sec-title {
+      margin: 0; font-size: 0.72rem; color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+    .craft-event__elements {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+    }
+    .craft-event__el {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.5rem 0.3rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      font-size: 0.7rem; font-weight: 700;
+    }
+    .craft-event__el img { width: 28px; height: 28px; image-rendering: pixelated; }
+    .craft-event__el--sel {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, #2f2740, #3a2f4a);
+      box-shadow: 0 0 10px rgba(196,163,90,0.4);
+    }
+    .craft-event__heroes {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.4rem;
+    }
+    .craft-event__empty {
+      grid-column: 1 / -1;
+      text-align: center; color: var(--muted); font-size: 0.78rem;
+    }
+    .craft-event__hero {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.3rem;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      font-size: 0.7rem;
+    }
+    .craft-event__hero img { width: 48px; height: 48px; image-rendering: pixelated; }
+    .craft-event__hero--sel {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, #2f2740, #3a2f4a);
+    }
+    .craft-event__hero-name { font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .craft-event__hero-cl   { color: var(--accent); font-weight: 700; font-size: 0.65rem; }
+    .craft-event__hero-passive { font-size: 0.62rem; color: var(--muted); }
+    .craft-event-picker__start {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem 0.9rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .craft-event-picker__start:disabled {
+      background: #3a3450; color: var(--muted); cursor: not-allowed;
+    }
+    .craft-event-anim__stage {
+      position: relative;
+      height: 160px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1rem;
+    }
+    .craft-event__anim-hero, .craft-event__anim-ext {
+      width: 96px; height: 96px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .craft-event__anim-hero--shaking { animation: hero-shake 0.32s linear infinite; }
+    @keyframes hero-shake {
+      0%, 100% { transform: translateX(0); }
+      25%      { transform: translateX(-6px) rotate(-3deg); }
+      75%      { transform: translateX(6px) rotate(3deg); }
+    }
+    .craft-event__anim-arrow {
+      font-size: 1.6rem; color: var(--accent); font-weight: 800;
+      animation: arrow-pulse 0.6s ease-in-out infinite alternate;
+    }
+    @keyframes arrow-pulse { from { opacity: 0.5; } to { opacity: 1; transform: scale(1.15); } }
+    .craft-event__fly {
+      position: absolute;
+      left: 110px; top: 50%;
+      width: 32px; height: 32px;
+      transform: translateY(-50%);
+      animation: fly-icon 0.8s ease-out forwards;
+      image-rendering: pixelated;
+      z-index: 5;
+    }
+    @keyframes fly-icon {
+      0%   { left: 110px; opacity: 0.95; transform: translateY(-50%) scale(0.6); }
+      30%  { transform: translateY(-80%) scale(1.1); }
+      100% { left: calc(100% - 130px); opacity: 0; transform: translateY(-50%) scale(0.4); }
+    }
+    .craft-event__fly--garuda    { filter: drop-shadow(0 0 6px var(--garuda)); }
+    .craft-event__fly--ifrit     { filter: drop-shadow(0 0 6px var(--ifrit)); }
+    .craft-event__fly--leviathan { filter: drop-shadow(0 0 6px var(--leviathan)); }
+    .craft-event__fly--tiamat    { filter: drop-shadow(0 0 6px var(--tiamat)); }
+    .craft-event-anim__el {
+      display: flex; align-items: center; gap: 0.35rem;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+    .craft-event-anim__el img { width: 22px; height: 22px; image-rendering: pixelated; }
+    .craft-event-anim__quote {
+      margin: 0; text-align: center;
+      font-size: 0.95rem; font-weight: 700; color: var(--text);
+      padding: 0.5rem; background: rgba(196,163,90,0.1);
+      border-radius: 6px;
+      min-height: 1.5em;
+    }
+    .craft-event-anim__total-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.5rem 0.8rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .craft-event-anim__total-row strong {
+      font-size: 1.5rem; color: var(--accent); font-variant-numeric: tabular-nums;
     }
 
     /* Phase 1D-22: シリーズレシピ獲得ポップアップ */
@@ -3712,6 +3869,44 @@
       padding: 2rem 1rem; font-size: 0.85rem;
     }
     /* Sort/filter bar */
+    /* Phase 1D-27: レアリティフィルタ chips */
+    .hero-rarity-filter {
+      display: flex; flex-wrap: wrap; gap: 0.3rem;
+      margin-bottom: 0.4rem;
+    }
+    .hero-filter__chip {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.72rem; font-weight: 700;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .hero-filter__chip:hover { border-color: var(--accent); }
+    .hero-filter__chip--active {
+      background: var(--accent); color: #1a1420; border-color: var(--accent);
+    }
+    .hero-filter__chip[data-rarity="legendary"]:not(.hero-filter__chip--active) { border-color: #c45c6a; color: #ffb8c0; }
+    .hero-filter__chip[data-rarity="epic"]:not(.hero-filter__chip--active)      { border-color: #c4a35a; color: #f0d590; }
+    .hero-filter__chip[data-rarity="rare"]:not(.hero-filter__chip--active)      { border-color: #5ab4c4; color: #a0d6e0; }
+    .hero-filter__chip[data-rarity="uncommon"]:not(.hero-filter__chip--active)  { border-color: #5ecf8a; color: #a8e0bf; }
+    .hero-filter__chip--zero { opacity: 0.45; }
+    .hero-filter__chip-count {
+      background: rgba(0,0,0,0.35);
+      padding: 0.05rem 0.35rem;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.65rem;
+    }
+    .hero-filter__chip--active .hero-filter__chip-count {
+      background: rgba(255,255,255,0.35);
+      color: #1a1420;
+    }
+
     .hero-filter-bar {
       display: flex; gap: 0.3rem; flex-wrap: wrap;
       margin-bottom: 0.5rem;
@@ -4910,17 +5105,16 @@
         </div>
       </div>
 
+      <!-- Phase 1D-27: レアリティフィルタ chips (All + 5 rarities + 各人数) -->
+      <div class="hero-rarity-filter" id="heroRarityFilter"></div>
+
       <!-- Sort/filter -->
       <div class="hero-filter-bar">
         <label>
           <span data-i18n="hero.sort">並び順:</span>
           <select id="heroSortSel">
-            <option value="cl-desc"   data-i18n="hero.sort.clDesc">クラフトレベル (高い順)</option>
-            <option value="garuda"    data-i18n="hero.sort.garuda">ガルーダ</option>
-            <option value="ifrit"     data-i18n="hero.sort.ifrit">イフリート</option>
-            <option value="leviathan" data-i18n="hero.sort.leviathan">リヴァイアサン</option>
-            <option value="tiamat"    data-i18n="hero.sort.tiamat">ティアマト</option>
-            <option value="rarity"    data-i18n="hero.sort.rarity">レアリティ</option>
+            <!-- Phase 1D-27: タブ切替時に refreshHeroSortSelect() で動的入れ替え -->
+            <option value="cl-desc"   data-i18n="hero.sort.clDesc">クラフトLv (高い順)</option>
           </select>
         </label>
       </div>
@@ -4974,6 +5168,41 @@
       </header>
       <table class="activity-report-view__table"><tbody id="activityReportTable"></tbody></table>
       <button type="button" class="activity-report-view__close-btn" id="activityReportClose" data-i18n="ranking.report.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Phase 1D-27: クラフト中介入イベント — 要素 + ヒーロー pick -->
+  <div class="craft-event-picker hidden" id="craftEventPicker" role="dialog" aria-modal="true">
+    <div class="craft-event-picker__card">
+      <h2 class="craft-event-picker__title" id="craftEventTitle">—</h2>
+      <p class="craft-event-picker__intro" data-i18n="craftEvent.intro">伸ばしたいクラフトパワーと、担当するヒーローを選んでください。</p>
+      <div class="craft-event-picker__section">
+        <h3 class="craft-event-picker__sec-title" data-i18n="craftEvent.pickElement">クラフトパワーを選択</h3>
+        <div class="craft-event__elements" id="craftEventElements"></div>
+      </div>
+      <div class="craft-event-picker__section">
+        <h3 class="craft-event-picker__sec-title" data-i18n="craftEvent.pickHero">担当ヒーローを選択</h3>
+        <div class="craft-event__heroes" id="craftEventHeroes"></div>
+      </div>
+      <button type="button" class="craft-event-picker__start" id="craftEventStart" disabled data-i18n="craftEvent.start">注入開始</button>
+    </div>
+  </div>
+
+  <!-- Phase 1D-27: 演出 view -->
+  <div class="craft-event-anim hidden" id="craftEventAnim" role="dialog" aria-modal="true">
+    <div class="craft-event-anim__card">
+      <h2 class="craft-event-anim__title" id="craftEventAnimTitle">—</h2>
+      <div class="craft-event-anim__stage" id="craftEventAnimStage">
+        <img class="craft-event__anim-hero" id="craftEventAnimHero" src="" alt="" />
+        <div class="craft-event__anim-arrow">→</div>
+        <img class="craft-event__anim-ext" id="craftEventAnimExt" src="" alt="" />
+      </div>
+      <div class="craft-event-anim__el" id="craftEventAnimEl"></div>
+      <p class="craft-event-anim__quote" id="craftEventAnimQuote">—</p>
+      <div class="craft-event-anim__total-row">
+        <span data-i18n="craftEvent.totalGain">蓄積クラフトパワー</span>
+        <strong id="craftEventAnimTotal">0</strong>
+      </div>
     </div>
   </div>
 
