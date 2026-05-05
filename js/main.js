@@ -4913,6 +4913,11 @@ function tickActiveSales() {
       s.status = "sold";
       s.finalGross = finalGross;
       s.finalNet = net;
+      // Phase 1D-32 hotfix: ext name を warehouse splice 前にスナップショット保存
+      //   (= activeSales 自体は extId を持っておらず warehouseIdx 経由なので、
+      //    splice 後だと参照不能になり notif で「ext undefined」表示されていた)
+      const w = state.warehouse[s.warehouseIdx];
+      s.extSnapshot = w ? EXTENSION_BY_ID[String(w.extId)] : null;
       completed.push(s);
     }
   }
@@ -4937,8 +4942,9 @@ function tickActiveSales() {
     playSe("saleSettled");
     for (let k = 0; k < completed.length; k++) {
       const s = completed[k];
-      const ext = EXTENSION_BY_ID[String(s.extId)];
-      const extName = ext ? (lang === "en" ? ext.nameEn : ext.nameJa) : `ext ${s.extId}`;
+      // Phase 1D-32 hotfix: extSnapshot から ext を取得 (warehouse は既に splice 済み)
+      const ext = s.extSnapshot;
+      const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : "—";
       const text = ti18n("notif.saleSettled")
         .replace("{ext}", extName)
         .replace("{gum}", s.finalNet.toLocaleString());

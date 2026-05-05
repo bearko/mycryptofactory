@@ -43,8 +43,9 @@
       margin: 0;
       min-height: 100vh;
       font-family: "Segoe UI", "Hiragino Sans", sans-serif;
-      /* Phase α: ロゴに合わせて白背景 (= タイトル / ホームの余白部分も白) */
-      background: #ffffff;
+      /* Phase 1D-32 hotfix: タイトル以外は従来通りのダークグラデーション背景に戻す。
+       *   タイトル (.title-screen) のみ白背景でロゴと馴染ませる。 */
+      background: radial-gradient(ellipse at top, #1f1a2e 0%, var(--bg) 55%);
       color: var(--text);
       display: flex;
       flex-direction: column;
@@ -423,8 +424,16 @@
         border: 1px solid #4a3f33;
         border-radius: 6px;
         scroll-snap-align: none;
-        overflow: hidden;
+        /* Phase 1D-32 hotfix: タブレット解像度で 3 枚のカードに content が
+         *   入りきらず一部見切れていた → 縦方向のオーバーフローはカード内
+         *   スクロールで吸収する。 */
+        overflow-x: hidden;
+        overflow-y: auto;
       }
+      /* スクロールバーを目立たせない (横並びレイアウトの統一感を保つ) */
+      .progress-card::-webkit-scrollbar { width: 6px; }
+      .progress-card::-webkit-scrollbar-thumb { background: rgba(74,63,51,0.35); border-radius: 3px; }
+      .progress-card::-webkit-scrollbar-track { background: transparent; }
       .progress-card__title {
         font-size: 1.05rem;
       }
