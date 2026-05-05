@@ -346,7 +346,11 @@
       .factory-app {
         max-width: 1280px;
       }
+      /* Phase 1D-17: 工房 (1:1) と進捗エリアを横並びにし、stage 全体に
+       * aspect-ratio: 2/1 を与えることで「stage 高さ = workshop 高さ」を
+       * 確定させる。これで 3 枚のカードを 1fr 等分割して工房と同じ高さに揃える。 */
       .factory-stage {
+        aspect-ratio: 2 / 1;
         flex-direction: row;
         align-items: stretch;
         gap: 0.6rem;
@@ -355,9 +359,10 @@
       .workshop {
         flex: 1 1 0;
         min-width: 0;
+        height: 100%;
         max-width: 50%;
-        aspect-ratio: 1 / 1;
         border-radius: 6px;
+        /* aspect-ratio は不要 (height: 100% で stage 高さに追従、stage が 2/1 なので 50% 幅 = 高さ) */
       }
       .progress-area {
         flex: 1 1 0;
@@ -365,23 +370,31 @@
         background: transparent;
         border-top: none;
         padding-right: 0;
-        max-height: calc(100vh - 110px);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
       .progress-area__scroller {
+        flex: 1 1 0;
         flex-direction: column;
         overflow-x: hidden;
-        overflow-y: auto;
+        overflow-y: hidden;
         scroll-snap-type: none;
         gap: 0.6rem;
         padding-right: 4px;
+        min-height: 0;
       }
       .progress-card {
-        flex: 0 0 auto;
+        /* 3 枚のカードで progress-area 高さを等分割 → 工房高さと自動一致 */
+        flex: 1 1 0;
+        min-height: 0;
         min-width: 0;
         background: #ece6d6;
         border: 1px solid #4a3f33;
         border-radius: 6px;
         scroll-snap-align: none;
+        overflow: hidden;
       }
       .progress-card__title {
         font-size: 1.05rem;
