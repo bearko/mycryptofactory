@@ -27,6 +27,12 @@ const SE_FILES = {
   craftStart:   "production.mp3",
   /** エクステンション完成画面の表示時 */
   craftDone:    "cp-mining-complete.mp3",
+  /** Phase 1D-13: 品評会 — 0-4 点 (低スコア) */
+  appraisalLow:  "crash.mp3",
+  /** Phase 1D-13: 品評会 — 5-7 点 (中スコア) */
+  appraisalMid:  "production.mp3",
+  /** Phase 1D-13: 品評会 — 8 点以上 (高スコア) */
+  appraisalHigh: "open_treasure.mp3",
 };
 
 /** デフォルト音量 (0..1)。BGM は控えめ、SE は中ぐらい。 */
@@ -40,6 +46,10 @@ const SE_THROTTLE_MS = {
   craftStart:   200,
   craftDone:    500,
   saleSettled:  500,
+  // 品評会の SE は 700ms 間隔で reveal されるので軽いスロットルで連発抑止
+  appraisalLow:  150,
+  appraisalMid:  150,
+  appraisalHigh: 150,
 };
 
 let _bgmEl = null;

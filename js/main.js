@@ -1546,8 +1546,24 @@ function renderOrderPanel() {
     fill.style.width = "0%";
     pct.textContent = "";
     icon.innerHTML = "";
+    // Phase 1D-13: 「クラフトする」遷移ボタンを表示
+    const ah = $("orderActionHost");
+    if (ah) {
+      ah.innerHTML = `
+        <div class="progress-card__actions">
+          <div class="progress-card__action-row">
+            <button type="button" class="progress-card__action-btn" data-craft-go="new">
+              ${escapeHtml(ti18n("progress.craft.actionStart"))}
+            </button>
+          </div>
+        </div>
+      `;
+    }
     return;
   }
+  // 稼働中: アクションボタンは隠す
+  const ah = $("orderActionHost");
+  if (ah) ah.innerHTML = "";
   // 進行中 (or 完成 Mai 通知 → 完成画面の間も表示維持)
   const ac = state.activeCraft || state.pendingCompletion;
   const ext = EXTENSION_BY_ID[String(ac.extId)];
@@ -1689,18 +1705,35 @@ function renderWorkshop() {
   }
 }
 
-/** Phase 1D-12: ヒーロー数に応じて workshop 内の配置座標を計算。
- *  最大 cap (15 名) まで対応するように 5 列 × 3 行のグリッドで配置。 */
+/** Phase 1D-13: 工房内の 12 固定配置座標 (workshop 領域の % 座標)。
+ *
+ *   上段 (2F バルコニー): 9, 10, 11, 12
+ *   中段 (1F 工作スペース): 3, 5, 6
+ *   下段 (1F 床面)        : 1, 2, 4, 7, 8
+ *
+ *   ヒーローが床の上に立っているように見える位置を狙ったが、設備拡張時に
+ *   壁/装置を貫通しない範囲で近似している。配属順 (slotIdx) と画面上の番号
+ *   が一致するように並べる。 */
+const WORKSHOP_SLOT_POS = [
+  { x: "23%", y: "78%" },   // 1: 床下段 左
+  { x: "44%", y: "80%" },   // 2: 床下段 中
+  { x: "63%", y: "70%" },   // 3: 中段右
+  { x: "85%", y: "62%" },   // 4: 床下段 右端
+  { x: "60%", y: "55%" },   // 5: 中段中央
+  { x: "33%", y: "57%" },   // 6: 中段左寄り
+  { x: "10%", y: "63%" },   // 7: 床下段 最左
+  { x: "70%", y: "82%" },   // 8: 床下段 右
+  { x: "18%", y: "33%" },   // 9: 2F バルコニー左
+  { x: "44%", y: "30%" },   // 10: 2F バルコニー中央
+  { x: "60%", y: "30%" },   // 11: 2F バルコニー中央右
+  { x: "82%", y: "17%" },   // 12: 2F バルコニー右上
+];
+
+/** Phase 1D-12 → Phase 1D-13: ヒーロー数に応じた workshop 配置座標。
+ *  もともと 5 列 × 3 行のグリッドだったが、ユーザー仕様の 12 固定スロットに
+ *  差し替え。13 名以上 (= cap 拡張) になった場合は modulo でラップする。 */
 function workshopSlotPosFor(idx, total) {
-  const cols = 5;
-  const col = idx % cols;
-  const row = Math.floor(idx / cols);  // 0, 1, 2
-  // 横方向: 12% から 88% に等間隔 (5 ヒーロー均等)
-  const x = 12 + (col / (cols - 1)) * 76;
-  // 縦方向: 0行=55%, 1行=72%, 2行=88%
-  const yByRow = [55, 72, 88];
-  const y = yByRow[Math.min(row, yByRow.length - 1)] || 55;
-  return { x: x.toFixed(0) + "%", y: y + "%" };
+  return WORKSHOP_SLOT_POS[idx % WORKSHOP_SLOT_POS.length] || WORKSHOP_SLOT_POS[0];
 }
 
 /** ─── Phase 1D-13: Progress cards (Craft / Quest / Market) ─────────
@@ -1714,7 +1747,26 @@ function renderQuestCard() {
   if (!host) return;
   const aq = state.activeQuest;
   if (!aq) {
-    host.innerHTML = `<div class="progress-card__empty" data-i18n="progress.quest.empty">${escapeHtml(ti18n("progress.quest.empty"))}</div>`;
+    // 未稼働: 空メッセージ + 通常 / ランド ボタン
+    const heroAvail = countQuestEligibleHeroes();
+    const noHero = heroAvail === 0;
+    const noteHtml = noHero ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.quest.noHero"))}</p>` : "";
+    host.innerHTML = `
+      <div class="progress-card__empty">${escapeHtml(ti18n("progress.quest.empty"))}</div>
+      <div class="progress-card__actions">
+        <div class="progress-card__action-row">
+          <button type="button" class="progress-card__action-btn" data-quest-go="normal" ${noHero ? "disabled" : ""}>
+            ${escapeHtml(ti18n("progress.quest.actionNormal"))}
+          </button>
+          ${noHero ? noteHtml : ""}
+        </div>
+        <div class="progress-card__action-row">
+          <button type="button" class="progress-card__action-btn" data-quest-go="land" ${noHero ? "disabled" : ""}>
+            ${escapeHtml(ti18n("progress.quest.actionLand"))}
+          </button>
+        </div>
+      </div>
+    `;
     return;
   }
   const node = NODE_BY_ID[aq.nodeId];
@@ -1742,14 +1794,40 @@ function renderQuestCard() {
   `;
 }
 
-/** Market progress card 描画 (Trade + Auction の 2 サブカード) */
+/** クエストに行ける(IDLE な)ヒーロー人数を返す */
+function countQuestEligibleHeroes() {
+  if (!Array.isArray(state.ownedHeroes)) return 0;
+  return state.ownedHeroes.filter(h => h.state === HERO_STATE.IDLE).length;
+}
+
+/** Trade を担当できる(IDLE な)ヒーロー人数を返す */
+function countTradeEligibleHeroes() {
+  if (!Array.isArray(state.ownedHeroes)) return 0;
+  return state.ownedHeroes.filter(h => h.state === HERO_STATE.IDLE).length;
+}
+
+/** Phase 1D-13: オークション出品料 (placeholder)。実装時に factory-market に移管予定。 */
+const AUCTION_LISTING_FEE = 100;
+
+/** Market progress card 描画 (Trade + Auction の 2 サブカード)
+ *
+ *  各サブカードは未稼働 (active sale なし) のとき遷移ボタンを表示する。
+ *  ボタンの disable 優先度 (ユーザー仕様):
+ *    1. エクステンション不足 (warehouse 空)
+ *    2. GUM 不足 (auction のみ)
+ *    3. ヒーロー不足 (trade を担当できる IDLE ヒーローなし)
+ */
 function renderMarketCard() {
   const host = $("marketCard");
   if (!host) return;
   const lang = getLang() === "en" ? "en" : "ja";
 
-  // Trade: 現在の active sale (1 件目を表示。複数あれば別途 overlay 側で全件表示)
-  let tradeHtml = `<div class="market-sub__empty">${escapeHtml(ti18n("progress.market.tradeEmpty"))}</div>`;
+  const hasExt = Array.isArray(state.warehouse) && state.warehouse.length > 0;
+  const hasHero = countTradeEligibleHeroes() > 0;
+  const hasGum  = (state.gum ?? 0) >= AUCTION_LISTING_FEE;
+
+  // Trade サブカード
+  let tradeBody;
   if (state.activeSales && state.activeSales.length > 0) {
     const s = state.activeSales[0];
     const w = state.warehouse[s.warehouseIdx];
@@ -1762,7 +1840,7 @@ function renderMarketCard() {
     const speedDef = SALE_SPEED_BY_ID?.[s.speedId];
     const speedLbl = speedDef ? (lang === "en" ? speedDef.nameEn : speedDef.nameJa) : (s.speedId || "");
     const askGum = typeof s.expectedPrice === "number" ? s.expectedPrice : 0;
-    tradeHtml = `
+    tradeBody = `
       <div class="market-sub__row">
         <img class="market-sub__icon" src="${iconUrl}" alt="" onerror="this.style.opacity='0.2'" />
         <div class="market-sub__main">
@@ -1778,12 +1856,37 @@ function renderMarketCard() {
         <span class="market-sub__bar-pct">${pct}%</span>
       </div>
     `;
+  } else {
+    // 出品なし → 遷移ボタン (disable 優先度: ext > hero) ※ trade は GUM 不要
+    let disableReason = null;
+    if (!hasExt)       disableReason = "noExt";
+    else if (!hasHero) disableReason = "noHero";
+    const disabled = disableReason !== null;
+    const note = disabled ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.market." + disableReason))}</p>` : "";
+    tradeBody = `
+      <div class="market-sub__empty">${escapeHtml(ti18n("progress.market.tradeEmpty"))}</div>
+      <div class="progress-card__action-row">
+        <button type="button" class="progress-card__action-btn" data-market-go="trade" ${disabled ? "disabled" : ""}>
+          ${escapeHtml(ti18n("progress.market.actionTrade"))}
+        </button>
+        ${note}
+      </div>
+    `;
   }
 
-  // Auction: 月次 (4 週ごと) の固定イベント countdown (placeholder)
+  // Auction サブカード (placeholder: いつでも開催待ち = 出品ボタンを表示)
   const remainW = computeAuctionWeeksRemaining();
   const auctionLbl = ti18n("progress.market.auctionWait").replace("{n}", remainW);
-  const auctionHtml = `
+  // disable 優先度: ext > GUM > hero
+  let auctionDisableReason = null;
+  if (!hasExt)            auctionDisableReason = "noExt";
+  else if (!hasGum)       auctionDisableReason = "noGum";
+  else if (!hasHero)      auctionDisableReason = "noHero";
+  const auctionDisabled = auctionDisableReason !== null;
+  const auctionNote = auctionDisabled
+    ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.market." + auctionDisableReason))}</p>`
+    : "";
+  const auctionBody = `
     <div class="market-sub__row">
       <div class="market-sub__icon"></div>
       <div class="market-sub__main">
@@ -1794,17 +1897,23 @@ function renderMarketCard() {
         </div>
       </div>
     </div>
+    <div class="progress-card__action-row">
+      <button type="button" class="progress-card__action-btn" data-market-go="auction" ${auctionDisabled ? "disabled" : ""}>
+        ${escapeHtml(ti18n("progress.market.actionAuction"))}
+      </button>
+      ${auctionNote}
+    </div>
   `;
 
   host.innerHTML = `
     <div class="market-card">
       <div class="market-sub">
         <span class="market-sub__title">${escapeHtml(ti18n("progress.market.trade"))}</span>
-        ${tradeHtml}
+        ${tradeBody}
       </div>
       <div class="market-sub">
         <span class="market-sub__title">${escapeHtml(ti18n("progress.market.auction"))}</span>
-        ${auctionHtml}
+        ${auctionBody}
       </div>
     </div>
   `;
@@ -1912,6 +2021,37 @@ function _initProgressCarousel() {
       sc.scrollTo({ left: 0 });
     } else {
       scrollProgressToCurrent();
+    }
+  });
+  // ── Phase 1D-13: アクションボタン (Craft/Quest/Market) のクリック委任 ──
+  // カードは renderXxxCard() で innerHTML 再生成されるので、毎回 listener を
+  // attach するのは無駄。scroller 上で 1 度だけ delegate する。
+  sc.addEventListener("click", (ev) => {
+    const target = ev.target.closest("[data-craft-go],[data-quest-go],[data-market-go]");
+    if (!target || target.disabled) return;
+    if (target.hasAttribute("data-craft-go")) {
+      // Craft → 新規開発
+      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      openCraftView();
+      return;
+    }
+    if (target.hasAttribute("data-quest-go")) {
+      const filter = target.getAttribute("data-quest-go");
+      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      state.questNodeType = (filter === "land") ? "land" : "normal";
+      openQuestView();
+      return;
+    }
+    if (target.hasAttribute("data-market-go")) {
+      const kind = target.getAttribute("data-market-go");
+      if (kind === "trade") {
+        state.marketTab = "sell";
+        openMarketView();
+        if (typeof setMarketTab === "function") setMarketTab("sell");
+      } else if (kind === "auction") {
+        // オークション機能は未実装 (placeholder) → Mai 通知
+        maiSays("menu.auction.todo");
+      }
     }
   });
 }
@@ -3073,6 +3213,14 @@ function scheduleAppraisalReveal() {
       return;
     }
     pa.revealCount += 1;
+    // Phase 1D-13: 直前に reveal された判定員のスコアに応じて SE
+    const just = pa.judges[pa.revealCount - 1];
+    if (just) {
+      const sc = just.score || 0;
+      if      (sc >= 8) playSe("appraisalHigh");
+      else if (sc >= 5) playSe("appraisalMid");
+      else              playSe("appraisalLow");
+    }
     renderAppraisalScreen();
   }, 700);
 }
