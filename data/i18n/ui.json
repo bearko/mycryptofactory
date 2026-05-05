@@ -40,6 +40,7 @@
   "quest.qlInfo.noBoost":      { "ja": "× 農属性ブースト", "en": "× 農 boost" },
   "quest.qlInfo.total":        { "ja": "= クエストLv", "en": "= Quest Lv" },
   "quest.land.buyBtn":         { "ja": "ランドを購入 ({n} GUM)", "en": "Buy land ({n} GUM)" },
+  "quest.land.joinFreeBtn":    { "ja": "ランドに加入 (初回のみ 0 GUM)", "en": "Join land (first one is FREE)" },
   "quest.land.mai.firstHome":  { "ja": "最初のランドはホームランドとして無料で取得しました！以降このランドは通行証なしで挑戦できます。", "en": "Your first land is your home — claimed for free! This land won't need a pass." },
   "quest.land.mai.bought":     { "ja": "ランドセクターの通行証を購入しました。これでこのランドのクエストに挑戦できます。", "en": "Land sector pass purchased. You can now run quests on this land." },
   "quest.land.mai.notEnoughGum": { "ja": "GUMが足りません。", "en": "Not enough GUM." },

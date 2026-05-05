@@ -635,8 +635,13 @@ function renderQuestView() {
     // Phase 1D-12 land: pass を持っていなければ locked 状態でカード表示
     const locked = isLandTab && !state.landPasses.has(n.id);
     const lockedCls = locked ? " quest-node-card--locked" : "";
+    // Phase 1D-16: ホームランド未設定なら「初回のみ 0 GUM で加入」、それ以降は従来の「500 GUM 購入」
+    const isFirstLand = isLandTab && state.homeLand == null;
+    const buyLabel = isFirstLand
+      ? ti18n("quest.land.joinFreeBtn")
+      : ti18n("quest.land.buyBtn").replace("{n}", LAND_PASS_COST.toLocaleString());
     const btnHtml = locked
-      ? `<button type="button" class="quest-node-card__buy-btn" data-buy-land="${n.id}">${escapeHtml(ti18n("quest.land.buyBtn").replace("{n}", LAND_PASS_COST.toLocaleString()))}</button>`
+      ? `<button type="button" class="quest-node-card__buy-btn${isFirstLand ? " quest-node-card__buy-btn--free" : ""}" data-buy-land="${n.id}">${escapeHtml(buyLabel)}</button>`
       : `<button type="button" class="quest-node-card__sel-btn" data-node="${n.id}">${escapeHtml(ti18n("quest.pickBtn"))}</button>`;
     return `<div class="quest-node-card${sel}${lockedCls}" data-node-card="${locked ? "" : n.id}">
       <div class="quest-node-card__bg" style="background-image:url('${bg}')"></div>
@@ -3680,6 +3685,10 @@ async function init() {
         state.questPickedNodeId = list[0].id;
       }
       openQuestView();
+      // Phase 1D-16: ランドタブを開いて、まだホームランド未取得 → マイの初回無料説明
+      if (filter === "land" && state.homeLand == null) {
+        setTimeout(() => runTutorialOnce("landFirstFree"), 280);
+      }
     });
   });
 

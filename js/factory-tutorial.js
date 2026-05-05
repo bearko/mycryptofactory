@@ -100,6 +100,20 @@ export const TUTORIALS = {
       "Hit all the norms before completion to produce a higher-quality piece.",
     ],
   },
+
+  /** ランドタブ初回オープン時 (= state.homeLand がまだ無い状態) */
+  landFirstFree: {
+    ja: [
+      "ランドノードは「ランドセクタの通行証」が必要です。",
+      "通行証は通常 500 GUM ですが、最初に１つだけ「ホームランド」として無料で加入できます！",
+      "好きなランドを選んで「ランドに加入」ボタンを押してください。後から変更できないので慎重に♪",
+    ],
+    en: [
+      "Land nodes need a Land Sector Pass to enter.",
+      "Passes normally cost 500 GUM, but your very first land can be claimed FREE as your home!",
+      "Pick a favorite and tap \"Join land\". You can't change it later, so choose wisely♪",
+    ],
+  },
 };
 
 /** state.tutorial 初期値 (全フローを未表示にする) */
@@ -110,6 +124,8 @@ export function makeInitialTutorialState() {
     craftConfirm: false,
     heroTeam: false,
     craftInProgress: false,
+    /** Phase 1D-16: ランドタブ初回オープンで「初回ランド無料」のマイ説明 */
+    landFirstFree: false,
   };
 }
 

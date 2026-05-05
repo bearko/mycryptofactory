@@ -564,10 +564,11 @@
       image-rendering: pixelated;
       filter: drop-shadow(0 2px 2px rgba(0,0,0,0.6));
     }
-    /* Phase 1B-2: クラフト中の配属ヒーロー sprite (タップ可) */
+    /* Phase 1B-2: クラフト中の配属ヒーロー sprite (タップ可)
+     * Phase 1D-16: アイコンを 2x (56 → 112px) */
     .workshop-hero {
       position: absolute;
-      width: 56px; height: 56px;
+      width: 112px; height: 112px;
       transform: translate(-50%, -50%);
       pointer-events: auto;
       cursor: pointer;
@@ -602,12 +603,34 @@
       0%, 100% { transform: translateY(0); opacity: 0.85; }
       50%      { transform: translateY(-3px); opacity: 1; }
     }
+    /* Phase 1D-16: workshop hero 状態アイコン (rest / craft / quest)
+     *   → アイコン 2x 化に合わせて視認できるサイズで右上に表示。 */
+    .workshop-hero__state-icon {
+      position: absolute;
+      top: 2px; right: 2px;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(20,16,28,0.78);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 50%;
+      font-size: 1rem;
+      line-height: 1;
+      pointer-events: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.55);
+    }
+    .workshop-hero__state-icon.hidden { display: none !important; }
+    .workshop-hero__state-icon--rest  { animation: sleep-bob 1.6s ease-in-out infinite; }
+    /* クエスト中はヒーロー本体をグレーアウト (ユーザー仕様) */
+    .workshop-hero--questing .workshop-hero__img { filter: grayscale(0.85) brightness(0.7); }
+    /* クラフト中ヒーローは薄い輝き */
+    .workshop-hero--crafting .workshop-hero__img { filter: drop-shadow(0 0 4px rgba(196,163,90,0.55)); }
     .workshop-hero__stam {
       position: absolute;
-      bottom: -6px; left: 4px; right: 4px;
-      height: 4px;
-      background: rgba(0,0,0,0.55);
-      border-radius: 2px;
+      /* Phase 1D-16: 2x sprite に合わせて HP バーを少し下 + 太く */
+      bottom: -8px; left: 6px; right: 6px;
+      height: 6px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 3px;
       overflow: hidden;
     }
     .workshop-hero__stam-fill {
@@ -1671,6 +1694,18 @@
       letter-spacing: 0.04em;
     }
     .quest-node-card__buy-btn:hover { background: #d04848; }
+    /* Phase 1D-16: 初回無料モード — accent カラーで目立たせる */
+    .quest-node-card__buy-btn--free {
+      background: var(--accent);
+      color: #1a1420;
+      box-shadow: 0 0 0 2px rgba(196,163,90,0.45), 0 0 12px rgba(196,163,90,0.35);
+      animation: free-pulse 1.6s ease-in-out infinite;
+    }
+    .quest-node-card__buy-btn--free:hover { background: #d6b873; }
+    @keyframes free-pulse {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(196,163,90,0.45), 0 0 6px rgba(196,163,90,0.35); }
+      50%      { box-shadow: 0 0 0 2px rgba(196,163,90,0.85), 0 0 16px rgba(196,163,90,0.7); }
+    }
     .quest-node-card {
       position: relative;
       border: 2px solid var(--border);
@@ -1999,6 +2034,19 @@
     }
     @media (max-width: 720px) {
       .quest-edit-row { grid-template-columns: 1fr; }
+    }
+    /* Phase 1D-16: PC で 2 と 3 を 1 行に並べる */
+    .quest-pick-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.7rem;
+    }
+    @media (min-width: 1100px) {
+      .quest-pick-row { grid-template-columns: 1fr 1fr; align-items: start; }
+      /* 2 セクションが半幅になるので、内部の 1fr 1fr → 1 列に畳む */
+      .quest-pick-row .quest-diff-row { grid-template-columns: 1fr; }
+      .quest-pick-row .quest-edit-row { grid-template-columns: 1fr; }
+      .quest-pick-row .quest-team-slots { max-width: none; }
     }
     .quest-section--team { min-width: 0; }
     .quest-section--pick { min-width: 0; }
@@ -3905,29 +3953,32 @@
         <div class="quest-node-cards" id="questNodeCards"></div>
       </section>
 
-      <!-- 2. 難易度を選択 (左: 詳細プレビュー / 右: 3 段難易度) -->
-      <section class="quest-section">
-        <h3 class="quest-section__title" data-i18n="quest.section.diff">2. 難易度を選択</h3>
-        <div class="quest-diff-row">
-          <div class="quest-detail-panel" id="questDetailPanel"></div>
-          <div class="quest-diff-rows" id="questDiffRows"></div>
-        </div>
-      </section>
+      <!-- Phase 1D-16: PC では 2 と 3 を 1 行で表示 (横幅活用) / モバイル時は縦並び -->
+      <div class="quest-pick-row">
+        <!-- 2. 難易度を選択 (左: 詳細プレビュー / 右: 3 段難易度) -->
+        <section class="quest-section">
+          <h3 class="quest-section__title" data-i18n="quest.section.diff">2. 難易度を選択</h3>
+          <div class="quest-diff-row">
+            <div class="quest-detail-panel" id="questDetailPanel"></div>
+            <div class="quest-diff-rows" id="questDiffRows"></div>
+          </div>
+        </section>
 
-      <!-- 3. ヒーローを編成 (横並び: Quest Party + Select Hero) -->
-      <section class="quest-section">
-        <h3 class="quest-section__title" data-i18n="quest.section.team">3. ヒーローを編成</h3>
-        <div class="quest-edit-row">
-          <section class="quest-section quest-section--team">
-            <h4 class="quest-subsection__title" data-i18n="quest.team.label">Quest Party</h4>
-            <div class="quest-team-slots" id="questTeamSlots"></div>
-          </section>
-          <section class="quest-section quest-section--pick">
-            <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
-            <div class="quest-hero-pick" id="questHeroPick"></div>
-          </section>
-        </div>
-      </section>
+        <!-- 3. ヒーローを編成 (横並び: Quest Party + Select Hero) -->
+        <section class="quest-section">
+          <h3 class="quest-section__title" data-i18n="quest.section.team">3. ヒーローを編成</h3>
+          <div class="quest-edit-row">
+            <section class="quest-section quest-section--team">
+              <h4 class="quest-subsection__title" data-i18n="quest.team.label">Quest Party</h4>
+              <div class="quest-team-slots" id="questTeamSlots"></div>
+            </section>
+            <section class="quest-section quest-section--pick">
+              <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
+              <div class="quest-hero-pick" id="questHeroPick"></div>
+            </section>
+          </div>
+        </section>
+      </div>
 
       <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
     </div>
