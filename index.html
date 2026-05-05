@@ -587,6 +587,20 @@
       object-fit: cover;
       display: block;
     }
+    /* Phase 1D-31: 工房レベルに応じた設備 GIF (背景の前面 / ヒーローの背面)。
+     *   - 通常時 (Lv1) は非表示
+     *   - Lv2 / Lv3 / Lv4+ で各 GIF を切り替え
+     *   - inset:0 + object-fit:contain で workshop の真ん中に配置 (アスペクト維持) */
+    .workshop__facility {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      image-rendering: pixelated;
+      z-index: 1;
+    }
+    .workshop__facility.hidden { display: none !important; }
     .workshop__heroes {
       position: absolute; inset: 0;
       pointer-events: none;
@@ -4812,6 +4826,8 @@
       <!-- Workshop view -->
       <div class="workshop" id="workshopView">
         <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
+        <!-- Phase 1D-31: 工房レベルに応じた設備 GIF (Lv2 / Lv3 / Lv4+)。背景の前 / ヒーローの後 -->
+        <img class="workshop__facility hidden" id="workshopFacility" alt="" />
         <!-- Phase 1D-25: 上部スタック: 目標 → クエスト → 雇用 → 出品 (= 進行系の常駐情報) -->
         <div class="workshop__overlays workshop__overlays--top">
           <div class="home-goal-banner hidden" id="homeGoalBanner">

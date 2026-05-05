@@ -1185,7 +1185,8 @@ function runCraftEventAnimation() {
   playSe("craftBuff");
   // 意気込み — 工房のフレーバーバブルと同じ見た目でヒーローアイコンに被せて表示
   const intro = (lang === "en" ? CRAFT_EVENT_INTRO_LINES_EN : CRAFT_EVENT_INTRO_LINES_JA);
-  showCraftEventBubble(`${tHero(hero.heroId, hero.nameJa)}：「${intro[Math.floor(Math.random() * intro.length)]}」`);
+  // Phase 1D-31: 工房と同じ吹き出しなので「ヒーロー名:「」」装飾は不要 (= セリフのみ)
+  showCraftEventBubble(intro[Math.floor(Math.random() * intro.length)]);
   // 累計表示
   let total = 0;
   $("craftEventAnimTotal").textContent = `${total}`;
@@ -1274,7 +1275,8 @@ function showCraftEventBubble(text) {
 
 function finishCraftEventAnim(hero, elKey, total, lang) {
   const outro = (lang === "en" ? CRAFT_EVENT_OUTRO_LINES_EN : CRAFT_EVENT_OUTRO_LINES_JA);
-  showCraftEventBubble(`${tHero(hero.heroId, hero.nameJa)}：「${outro[Math.floor(Math.random() * outro.length)]}」`);
+  // Phase 1D-31: 工房と同じ吹き出しなので「ヒーロー名:「」」装飾は不要 (= セリフのみ)
+  showCraftEventBubble(outro[Math.floor(Math.random() * outro.length)]);
   // 1.2 秒後に閉じてホーム再開
   setTimeout(() => {
     $("craftEventAnim")?.classList.add("hidden");
@@ -3251,6 +3253,27 @@ function formatGameDate(d) {
  *  +グレーアウト等を出し分け。クラフト中は +N 浮上 + bounce アニメ。
  *  クエスト中はグレーアウト + 「クエスト中」アイコン。 */
 function renderWorkshop() {
+  // Phase 1D-31: 工房レベルに応じた設備 GIF を切替表示。
+  //   Lv1: 非表示 / Lv2: lv2-facility.gif / Lv3: lv3-facility.gif / Lv4+: lv4-facility.gif
+  //   src を毎回触らないよう data-cur で前回値を保持。
+  const facilityEl = $("workshopFacility");
+  if (facilityEl) {
+    const lv = state.factoryLevel || 1;
+    let src = "";
+    if (lv === 2)      src = "./Image/Factory/lv2-facility.gif";
+    else if (lv === 3) src = "./Image/Factory/lv3-facility.gif";
+    else if (lv >= 4)  src = "./Image/Factory/lv4-facility.gif";
+    if (src) {
+      if (facilityEl.getAttribute("data-cur") !== src) {
+        facilityEl.src = src;
+        facilityEl.setAttribute("data-cur", src);
+      }
+      facilityEl.classList.remove("hidden");
+    } else {
+      facilityEl.classList.add("hidden");
+      facilityEl.removeAttribute("data-cur");
+    }
+  }
   const host = $("workshopHeroes");
   if (!host) return;
   const heroes = state.ownedHeroes;
@@ -3797,9 +3820,14 @@ function renderHeroDetailPopup() {
   } else {
     pBlock.classList.add("hidden");
   }
-  // Phase 1D-29: クイックアクションボタンの enable/disable
-  //   Idle (= 他作業に占有されていない & state IDLE) のみ全有効。それ以外はグレー。
-  const isIdle = hero.state === HERO_STATE.IDLE && !isHeroLocked(hero.heroId);
+  // Phase 1D-29 → 1D-31: クイックアクションボタンの enable/disable
+  //   「Idle 以外」 = 実際にクラフト/クエスト/休憩 中、または activeSale の seller /
+  //   activeHire の recruiter として実働中のヒーロー。
+  //   craftTeam / questTeam に編成されているだけ (= 配属一覧に載っている) では
+  //   disable しない (= 1D-29 で先送りした 1 回目のタップで pre-add したヒーローを、
+  //   2 回目以降のタップで再度操作できなくなるバグの修正)。
+  const isIdle = hero.state === HERO_STATE.IDLE
+    && !isHeroLocked(hero.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true });
   const actionsHost = $("heroDetailActions");
   if (actionsHost) {
     actionsHost.querySelectorAll(".hero-detail__action").forEach(btn => {
@@ -3864,11 +3892,13 @@ function handleHeroQuickAction(hero, action) {
     }
     case "trade": {
       // 出品 (extension 売却) は本来「extension を選んで → seller を選ぶ」フロー。
-      // ここでは market の出品タブを直接開いて、ユーザー操作に任せる。
+      // ここでは market の出品タブ (= "sell") を直接開いて、ユーザー操作に任せる。
+      // (1D-29 で誤って "warehouse" に飛ばしていた → 倉庫タブで extension を
+      //  「選べない」というユーザー報告に対応)
       closeHeroDetailPopup();
-      state.marketTab = "warehouse";
+      state.marketTab = "sell";
       openMarketView();
-      setMarketTab("warehouse");
+      setMarketTab("sell");
       break;
     }
   }
