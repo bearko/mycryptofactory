@@ -170,6 +170,8 @@ const state = {
   craftTeam: /** @type {Array<number|null>} */ (new Array(TEAM_SIZE).fill(null)),
   // Hero list UI
   heroSort: "cl-desc",
+  /** Phase 1D-27: ヒーロー一覧のレアリティフィルタ ("all" | "common" | ...) */
+  heroFilterRarity: "all",
   /** Where the hero view should return to when the player taps ←戻る.
    *  "home"  — close hero view and resume on the workshop
    *  "craft" — close hero view and re-open the craft confirmation screen
@@ -885,12 +887,197 @@ function tickActiveCraft() {
     // クラフトLv ボーナス: 1000 で +50% 上限
     const lvBonus    = Math.min(0.5, totalCraftLv / 2000);
     const factor     = 1 + heroBonus + lvBonus;
-    ac.timeProgress  = Math.min(1, (ac.timeProgress || 0) + baseDelta * factor);
+    const before = ac.timeProgress || 0;
+    ac.timeProgress = Math.min(1, before + baseDelta * factor);
+    // Phase 1D-27: 進捗 40% / 80% でクラフト中の介入イベント (魂注入 / オーラ付与) を起動
+    if (!ac.event40Done && before < 0.40 && ac.timeProgress >= 0.40) {
+      ac.event40Done = true;
+      pauseTime();
+      setTimeout(() => triggerCraftEvent("soul"), 200);
+    }
+    if (!ac.event80Done && before < 0.80 && ac.timeProgress >= 0.80) {
+      ac.event80Done = true;
+      pauseTime();
+      setTimeout(() => triggerCraftEvent("aura"), 200);
+    }
   }
   // 5. 完了判定 (時間進捗 100%)
   if ((ac.timeProgress || 0) >= 1) {
     triggerCraftCompletion(ac);
   }
+}
+
+/** ─── Phase 1D-27: クラフト中ユーザー介入イベント ─────────────── */
+
+/** type = "soul" (40%) | "aura" (80%) */
+function triggerCraftEvent(type) {
+  state.craftEventType = type;
+  state.craftEventPickedElement = null;
+  state.craftEventPickedHeroId = null;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const lines = type === "soul"
+    ? (lang === "en"
+        ? ["The blank extension is ready!", "Now let's inject the soul. Who will lead this?"]
+        : ["エクステンションの素体ができたようです！", "続いて、ソウルを注入しましょう。誰に頼みますか？"])
+    : (lang === "en"
+        ? ["Time for the final touch!", "Let's bestow an aura on the extension. Who will lead this?"]
+        : ["最後の仕上げです！", "エクステンションにオーラを付与しましょう。誰に頼みますか？"]);
+  maiSaysSequence(lines, { onClose: () => openCraftEventPicker(type) });
+}
+
+function openCraftEventPicker(type) {
+  const view = $("craftEventPicker");
+  if (!view) {
+    // フォールバック: 自動で適当な要素 + チームの先頭で実行
+    const ac = state.activeCraft;
+    if (!ac) { resumeTime(); return; }
+    const heroId = ac.team.find(id => id != null);
+    state.craftEventPickedElement = ELEMENTS[0];
+    state.craftEventPickedHeroId = heroId;
+    runCraftEventAnimation();
+    return;
+  }
+  view.classList.remove("hidden");
+  view.setAttribute("data-event-type", type);
+  renderCraftEventPicker();
+}
+
+function closeCraftEventPicker() {
+  $("craftEventPicker")?.classList.add("hidden");
+}
+
+function renderCraftEventPicker() {
+  const ac = state.activeCraft;
+  if (!ac) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const type = state.craftEventType;
+  $("craftEventTitle").textContent = type === "soul"
+    ? (lang === "en" ? "Soul Injection" : "ソウル注入")
+    : (lang === "en" ? "Aura Bestowal" : "オーラ付与");
+
+  // 1. 要素選択 (4 種)
+  $("craftEventElements").innerHTML = ELEMENTS.map(k => {
+    const sel = k === state.craftEventPickedElement ? " craft-event__el--sel" : "";
+    return `<button type="button" class="craft-event__el${sel}" data-event-element="${k}">
+      <img src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" />
+      <span>${escapeHtml(elementLabel(k))}</span>
+    </button>`;
+  }).join("");
+
+  // 2. クラフト編成ヒーローの中から担当を選ぶ
+  const teamHeroes = (ac.team || []).filter(id => id != null).map(id => findHero(id)).filter(Boolean);
+  $("craftEventHeroes").innerHTML = teamHeroes.length === 0
+    ? `<p class="craft-event__empty">${escapeHtml(lang === "en" ? "No team heroes available." : "編成中のヒーローが居ません。")}</p>`
+    : teamHeroes.map(h => {
+        const sel = h.heroId === state.craftEventPickedHeroId ? " craft-event__hero--sel" : "";
+        const cl = craftLevel(h);
+        return `<button type="button" class="craft-event__hero${sel}" data-event-hero="${h.heroId}">
+          <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+          <span class="craft-event__hero-name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+          <span class="craft-event__hero-cl">CL ${cl}</span>
+          ${h.passiveName ? `<span class="craft-event__hero-passive">${escapeHtml(h.passiveName)}</span>` : ""}
+        </button>`;
+      }).join("");
+
+  // 3. 「注入開始」ボタン (両方選択時のみ有効)
+  const startBtn = $("craftEventStart");
+  if (startBtn) {
+    startBtn.disabled = !(state.craftEventPickedElement && state.craftEventPickedHeroId);
+    startBtn.textContent = type === "soul"
+      ? (lang === "en" ? "Start injection" : "注入開始")
+      : (lang === "en" ? "Bestow aura" : "付与開始");
+  }
+}
+
+/** ヒーローの enthusiasm セリフプール */
+const CRAFT_EVENT_INTRO_LINES_JA = ["私にまかせろ！", "ついにこの時が！", "腕が鳴るぜ", "ドンと来い！", "全力でやる！"];
+const CRAFT_EVENT_INTRO_LINES_EN = ["Leave it to me!", "Finally, my time!", "Itching to start!", "Bring it on!", "Full power!"];
+const CRAFT_EVENT_OUTRO_LINES_JA = ["これでどうだ！", "終わった", "いっちょう上がり！", "いかがでしょう", "ふぅ…完璧だ"];
+const CRAFT_EVENT_OUTRO_LINES_EN = ["How's that!", "Done.", "All finished!", "How is it?", "Whew, perfect."];
+
+/** 注入開始 → アニメーション → 完了 */
+function runCraftEventAnimation() {
+  closeCraftEventPicker();
+  const ac = state.activeCraft;
+  const elKey = state.craftEventPickedElement;
+  const heroId = state.craftEventPickedHeroId;
+  const hero = findHero(heroId);
+  if (!ac || !elKey || !hero) {
+    resumeTime();
+    return;
+  }
+  const lang = getLang() === "en" ? "en" : "ja";
+  // 演出時間 + アイコン数: rarity + rank に比例
+  const RARITY_BOOST = { common: 1, uncommon: 1.3, rare: 1.6, epic: 2, legendary: 2.5 };
+  const rMult = 1 + 0.4 * (hero.rank || 0);
+  const rarMult = RARITY_BOOST[hero.rarity] || 1;
+  const iconCount = Math.round(8 + 12 * (rMult * rarMult - 1) / 5);  // ~8-20+
+  // 1 アイコン あたりの増分: ヒーローの当該要素値 × 0.1〜
+  const elemVal = elementValueForCraft(hero, elKey);
+  const perIconGain = Math.max(2, Math.round(elemVal * 0.12));
+
+  // 演出 view を開く
+  const animView = $("craftEventAnim");
+  if (animView) animView.classList.remove("hidden");
+  $("craftEventAnimTitle").textContent = state.craftEventType === "soul"
+    ? (lang === "en" ? "Injecting soul…" : "ソウル注入中…")
+    : (lang === "en" ? "Bestowing aura…" : "オーラ付与中…");
+  $("craftEventAnimHero").src = hero.img();
+  $("craftEventAnimHero").className = `craft-event__anim-hero craft-event__anim-hero--shaking`;
+  $("craftEventAnimExt").src = extIconUrl(ac.extId);
+  $("craftEventAnimEl").innerHTML = `<img src="${elementIconUrl(elKey)}" alt="" /> <span>${escapeHtml(elementLabel(elKey))}</span>`;
+  // 意気込み
+  const intro = (lang === "en" ? CRAFT_EVENT_INTRO_LINES_EN : CRAFT_EVENT_INTRO_LINES_JA);
+  $("craftEventAnimQuote").textContent = `${tHero(hero.heroId, hero.nameJa)}：「${intro[Math.floor(Math.random() * intro.length)]}」`;
+  // 累計表示
+  let total = 0;
+  $("craftEventAnimTotal").textContent = `${total}`;
+
+  // アイコン射出 (一定間隔で iconCount 回)
+  const stage = $("craftEventAnimStage");
+  if (stage) stage.innerHTML = "";
+  const intervalMs = 220 + Math.random() * 80;
+  let fired = 0;
+  const fireOne = () => {
+    if (fired >= iconCount) {
+      // 終了演出
+      finishCraftEventAnim(hero, elKey, total, lang);
+      return;
+    }
+    fired++;
+    // 飛ぶアイコンを spawn
+    if (stage) {
+      const ic = document.createElement("img");
+      ic.src = elementIconUrl(elKey);
+      ic.className = `craft-event__fly craft-event__fly--${elKey}`;
+      stage.appendChild(ic);
+      setTimeout(() => ic.remove(), 800);
+    }
+    // 0.5 秒後に着弾 → progress 加算
+    setTimeout(() => {
+      ac.progress[elKey] = (ac.progress[elKey] || 0) + perIconGain;
+      total += perIconGain;
+      $("craftEventAnimTotal").textContent = `${total}`;
+      playSe("craftGain");
+    }, 500);
+    setTimeout(fireOne, intervalMs);
+  };
+  fireOne();
+}
+
+function finishCraftEventAnim(hero, elKey, total, lang) {
+  const outro = (lang === "en" ? CRAFT_EVENT_OUTRO_LINES_EN : CRAFT_EVENT_OUTRO_LINES_JA);
+  $("craftEventAnimQuote").textContent = `${tHero(hero.heroId, hero.nameJa)}：「${outro[Math.floor(Math.random() * outro.length)]}」`;
+  // 1.2 秒後に閉じてホーム再開
+  setTimeout(() => {
+    $("craftEventAnim")?.classList.add("hidden");
+    state.craftEventType = null;
+    state.craftEventPickedElement = null;
+    state.craftEventPickedHeroId = null;
+    resumeTime();
+    renderOrderPanel();
+    renderWorkshop();
+  }, 1200);
 }
 
 /** 完成判定発火 ─ activeCraft を pendingCompletion に移し、
@@ -1678,20 +1865,42 @@ function isHeroLocked(heroId, opts = {}) {
   return false;
 }
 
+/** Phase 1D-27: factory-weighted な要素値で sort (= 表示と同じ尺度) */
+function _elemDescSort(key) {
+  return (a, b) => elementValueForCraft(b, key) - elementValueForCraft(a, key);
+}
+
+/** Phase 1D-27: 体力満タン想定のクエストレベル (= heroQuestLevelBreakdown.ql の HP=100% 相当) */
+function _heroQuestLvFullHp(hero) {
+  if (!hero || !hero.element) return 0;
+  const e = hero.element;
+  const sum = (e.garuda || 0) * GARUDA_WEIGHT_FOR_SORT + (e.ifrit || 0) + (e.leviathan || 0) + (e.tiamat || 0);
+  const noBoost = Array.isArray(hero.attributes) && hero.attributes.includes("no") ? 1.5 : 1.0;
+  const rMult = 1 + 0.4 * Math.max(0, Math.min(5, hero.rank || 0));
+  return Math.round(sum * noBoost * rMult);
+}
+const GARUDA_WEIGHT_FOR_SORT = 1 / 6;
+
 function sortedHeroesForList() {
   const arr = state.ownedHeroes.slice();
+  // Phase 1D-27: rarity フィルタ
+  let filtered = arr;
+  if (state.heroFilterRarity && state.heroFilterRarity !== "all") {
+    filtered = arr.filter(h => (h.rarity || "common") === state.heroFilterRarity);
+  }
   switch (state.heroSort) {
-    case "garuda":    return arr.sort((a, b) => b.element.garuda - a.element.garuda);
-    case "ifrit":     return arr.sort((a, b) => b.element.ifrit - a.element.ifrit);
-    case "leviathan": return arr.sort((a, b) => b.element.leviathan - a.element.leviathan);
-    case "tiamat":    return arr.sort((a, b) => b.element.tiamat - a.element.tiamat);
+    case "garuda":    return filtered.slice().sort(_elemDescSort("garuda"));
+    case "ifrit":     return filtered.slice().sort(_elemDescSort("ifrit"));
+    case "leviathan": return filtered.slice().sort(_elemDescSort("leviathan"));
+    case "tiamat":    return filtered.slice().sort(_elemDescSort("tiamat"));
+    case "ql-desc":   return filtered.slice().sort((a, b) => _heroQuestLvFullHp(b) - _heroQuestLvFullHp(a));
     case "rarity": {
       const rk = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1, normal: 0 };
-      return arr.sort((a, b) => (rk[b.rarity] ?? 0) - (rk[a.rarity] ?? 0));
+      return filtered.slice().sort((a, b) => (rk[b.rarity] ?? 0) - (rk[a.rarity] ?? 0));
     }
     case "cl-desc":
     default:
-      return arr.sort((a, b) => craftLevel(b) - craftLevel(a));
+      return filtered.slice().sort((a, b) => craftLevel(b) - craftLevel(a));
   }
 }
 
@@ -1831,6 +2040,25 @@ function passiveDescriptionsHtml(hero, lang) {
   return `<ul class="passive-lines">${lines.map(l => `<li>${l}</li>`).join("")}</ul>`;
 }
 
+/** Phase 1D-27: モード別フィルタ付きの passive 描画。
+ *  mode = "craft" → クラフト共通行 (= 先頭) のみ
+ *  mode = "quest" → 農属性行 (= "クエストで…が掘りやすい") のみ
+ *  mode = "market" → 商属性行
+ *  mode = "duel" → 士属性行
+ *  mode = "all" or undef → 全部 */
+function passiveDescriptionsHtmlByMode(hero, lang, mode) {
+  const lines = passiveDescriptionLinesFor(hero, lang);
+  if (lines.length === 0) return "";
+  let filtered;
+  if (mode === "craft")  filtered = lines.filter(l => /クラフト時|Craft:/.test(l));
+  else if (mode === "quest")  filtered = lines.filter(l => /クエストで|Quest:/.test(l));
+  else if (mode === "market") filtered = lines.filter(l => /マーケット|Market:/.test(l));
+  else if (mode === "duel")   filtered = lines.filter(l => /デュエル|Duel:/.test(l));
+  else filtered = lines;
+  if (filtered.length === 0) return "";
+  return `<ul class="passive-lines">${filtered.map(l => `<li>${l}</li>`).join("")}</ul>`;
+}
+
 // 旧 passiveDescriptionFor の attribute 別分岐は廃止 (上の lines 版に統合)。
 // 互換用のスタブとして primary 取得関数だけ残す。
 function _passiveDescriptionForLegacyDeleted_(hero, lang) {
@@ -1901,6 +2129,8 @@ function renderHeroTeamSummary() {
 }
 
 function renderHeroList() {
+  // Phase 1D-27: レアリティフィルタ chips を都度更新
+  renderHeroRarityFilter();
   const host = $("heroList");
   if (!host) return;
   const heroes = sortedHeroesForList();
@@ -1938,8 +2168,9 @@ function renderHeroList() {
     const restBtn = canRest
       ? `<button type="button" class="hero-card__rest-btn" data-rest-hero="${hero.heroId}" data-i18n="hero.actions.rest">休憩</button>`
       : "";
-    // Phase 1D-14 → Phase 1D-25: 士/農/工/商 別 + クラフト共通の複数行パッシブ
-    const passiveLinesHtml = passiveDescriptionsHtml(hero, getLang() === "en" ? "en" : "ja");
+    // Phase 1D-14 → Phase 1D-27: タブに応じてパッシブをフィルタ
+    const tabMode = state.heroTeamTab === "quest" ? "quest" : "craft";
+    const passiveLinesHtml = passiveDescriptionsHtmlByMode(hero, getLang() === "en" ? "en" : "ja", tabMode);
     const passiveBadge = hero.passiveName
       ? `<span class="hero-card__passive-name">${escapeHtml(hero.passiveName)}</span>`
       : "";
@@ -1948,6 +2179,10 @@ function renderHeroList() {
       : "";
     // Phase 1D-20: ランク表示 (☆/★)
     const rankHtml = renderRankStars(hero.rank || 0);
+    // Phase 1D-27: タブに応じて表示する Lv (Craft Lv ↔ Quest Lv) を切替
+    const showQuestLv = state.heroTeamTab === "quest";
+    const lvLabel = showQuestLv ? ti18n("quest.detail.questLv", "Quest Lv") : ti18n("hero.craftLevel");
+    const lvVal   = showQuestLv ? _heroQuestLvFullHp(hero) : cl;
     return `<div class="${cardCls}" data-hero-id="${hero.heroId}" data-rarity="${hero.rarity}" data-assigned="${assigned ? "1" : "0"}">
       <div class="hero-card__head">
         <img class="hero-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
@@ -1965,7 +2200,7 @@ function renderHeroList() {
       <div class="hero-card__stamina" title="${escapeHtml(ti18n("hero.stamina"))}: ${hero.stamina.current}/${hero.stamina.max}">
         <div class="hero-card__stamina-fill" style="width:${stamPct.toFixed(1)}%"></div>
       </div>
-      <div class="hero-card__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></div>
+      <div class="hero-card__cl">${escapeHtml(lvLabel)}: <strong>${lvVal.toLocaleString()}</strong></div>
       ${passiveLine}
     </div>`;
   }).join("");
@@ -2128,7 +2363,74 @@ function setHeroTeamTab(tab) {
   document.querySelectorAll("[data-team-body]").forEach(el => {
     el.classList.toggle("hidden", el.getAttribute("data-team-body") !== tab);
   });
+  // Phase 1D-27: タブ切替時にデフォルト sort を切替
+  //   craft → クラフトLv (高い順) / quest → クエストLv (高い順)
+  if (tab === "quest") {
+    state.heroSort = "ql-desc";
+  } else {
+    if (state.heroSort === "ql-desc") state.heroSort = "cl-desc";
+  }
+  // sort セレクトの選択状態と表示項目を切替
+  refreshHeroSortSelect();
   renderHeroList();
+}
+
+/** Phase 1D-27: レアリティフィルタ chips (All / Common / ... / Legendary) を描画。
+ *  各 chip にレアリティ別の所持人数を表示。クリックで filter を切替。 */
+function renderHeroRarityFilter() {
+  const host = $("heroRarityFilter");
+  if (!host) return;
+  const counts = { all: 0, common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+  for (const h of state.ownedHeroes || []) {
+    counts.all++;
+    counts[h.rarity || "common"] = (counts[h.rarity || "common"] || 0) + 1;
+  }
+  const cur = state.heroFilterRarity || "all";
+  const lang = getLang() === "en" ? "en" : "ja";
+  const allLabel = lang === "en" ? "All" : "全部";
+  const chips = [
+    { key: "all",       label: allLabel },
+    { key: "common",    label: ti18n("rarity.common") },
+    { key: "uncommon",  label: ti18n("rarity.uncommon") },
+    { key: "rare",      label: ti18n("rarity.rare") },
+    { key: "epic",      label: ti18n("rarity.epic") },
+    { key: "legendary", label: ti18n("rarity.legendary") },
+  ];
+  host.innerHTML = chips.map(c => {
+    const sel = c.key === cur ? " hero-filter__chip--active" : "";
+    const dim = (c.key !== "all" && counts[c.key] === 0) ? " hero-filter__chip--zero" : "";
+    return `<button type="button" class="hero-filter__chip${sel}${dim}" data-rarity-filter="${c.key}" data-rarity="${c.key}">
+      <span class="hero-filter__chip-label">${escapeHtml(c.label)}</span>
+      <span class="hero-filter__chip-count">${counts[c.key] || 0}</span>
+    </button>`;
+  }).join("");
+}
+
+/** Phase 1D-27: ソート select のオプションを現タブに応じて更新 */
+function refreshHeroSortSelect() {
+  const sel = $("heroSortSel");
+  if (!sel) return;
+  const tab = state.heroTeamTab || "craft";
+  const lang = getLang() === "en" ? "en" : "ja";
+  // Craft タブ: cl-desc / garuda / ifrit / leviathan / tiamat / rarity
+  // Quest タブ: ql-desc / rarity (シンプルに)
+  const optsCraft = [
+    { value: "cl-desc",   label: ti18n("hero.sort.clDesc", "クラフトLv (高い順)") },
+    { value: "ql-desc",   label: ti18n("hero.sort.qlDesc", "クエストLv (高い順)") },
+    { value: "garuda",    label: ti18n("hero.sort.garuda") },
+    { value: "ifrit",     label: ti18n("hero.sort.ifrit") },
+    { value: "leviathan", label: ti18n("hero.sort.leviathan") },
+    { value: "tiamat",    label: ti18n("hero.sort.tiamat") },
+    { value: "rarity",    label: ti18n("hero.sort.rarity") },
+  ];
+  const optsQuest = [
+    { value: "ql-desc",   label: ti18n("hero.sort.qlDesc", "クエストLv (高い順)") },
+    { value: "cl-desc",   label: ti18n("hero.sort.clDesc", "クラフトLv (高い順)") },
+    { value: "rarity",    label: ti18n("hero.sort.rarity") },
+  ];
+  const opts = tab === "quest" ? optsQuest : optsCraft;
+  sel.innerHTML = opts.map(o => `<option value="${o.value}">${escapeHtml(o.label)}</option>`).join("");
+  sel.value = state.heroSort;
 }
 /**
  * Hero view を閉じる。
@@ -2734,10 +3036,11 @@ function renderWorkshop() {
     host.dataset.fingerprint = fingerprint;
     host.innerHTML = heroes.map((hero, idx) => {
       const pos = workshopSlotPosFor(idx, heroes.length);
-      // Phase 1D-25: 画面下のヒーロー (y% が大きい) ほど前面に。
-      //   z-index は 0..200 を割り当て (y% を 2 倍してオフセット用に余裕)
+      // Phase 1D-25 → 1D-27: 画面下のヒーロー (y% が大きい) ほど前面に。
+      //   ただし z-index を 1〜10 の範囲に絞って、ポップアップ/モーダル
+      //   (z-index 100+) より絶対に下になるよう抑制する。
       const yNum = parseFloat(pos.y) || 0;
-      const z = Math.round(yNum * 2);  // y=78% → z=156, y=33% → z=66
+      const z = Math.max(1, Math.round(yNum / 10));  // y=78% → z=8, y=33% → z=3
       return `<div class="workshop-hero" data-hero-id="${hero.heroId}"
         style="left:${pos.x}; top:${pos.y}; z-index:${z};"
         title="${escapeHtml(tHero(hero.heroId, hero.nameJa))}">
@@ -3941,6 +4244,9 @@ function renderMarketHire() {
   // プラン一覧
   // Phase 1D-24: GUM 不足 / 採用担当者要件未達 / (※定員一杯は許可) — 不可理由を赤字で表示
   // Phase 1D-25: 工房レベルでもプランをゲート (rarity rank ≤ factoryLevel)
+  // Phase 1D-27: 前回の hire 後、recruiterPicker が hirePlanList に hidden を付けていた
+  //   ため 2 回目の plan 表示が出ない不具合 → ここで明示的に hidden を解除する。
+  $("hirePlanList")?.classList.remove("hidden");
   const PLAN_REQUIRED_LV = { novice: 1, draeg: 2, babydra: 3, buldra: 4, reddra: 5 };
   $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
     const lang = getLang() === "en" ? "en" : "ja";
@@ -5189,6 +5495,33 @@ async function init() {
   $("heroSortSel")?.addEventListener("change", (ev) => {
     state.heroSort = ev.target.value;
     renderHeroList();
+  });
+  // Phase 1D-27: レアリティフィルタ chips のクリック
+  $("heroRarityFilter")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-rarity-filter]");
+    if (!btn) return;
+    state.heroFilterRarity = btn.getAttribute("data-rarity-filter") || "all";
+    renderHeroList();
+  });
+  // Phase 1D-27: クラフト中介入イベント picker
+  $("craftEventElements")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-event-element]");
+    if (!btn) return;
+    state.craftEventPickedElement = btn.getAttribute("data-event-element");
+    renderCraftEventPicker();
+  });
+  $("craftEventHeroes")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-event-hero]");
+    if (!btn) return;
+    const id = parseInt(btn.getAttribute("data-event-hero"), 10);
+    if (Number.isFinite(id)) {
+      state.craftEventPickedHeroId = id;
+      renderCraftEventPicker();
+    }
+  });
+  $("craftEventStart")?.addEventListener("click", () => {
+    if (!state.craftEventPickedElement || !state.craftEventPickedHeroId) return;
+    runCraftEventAnimation();
   });
   $("heroList")?.addEventListener("click", (ev) => {
     // 「休憩」ボタン: クリック伝播を止めてカード本体への反応を抑止
