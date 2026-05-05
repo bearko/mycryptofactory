@@ -3497,6 +3497,32 @@
       border: 2px solid var(--accent);
       filter: drop-shadow(0 0 12px rgba(196,163,90,0.55));
     }
+    /* Phase 1D-33: 採用!モーダルの portrait の左上に被せる吹き出し
+     *   (= 工房 / ソウル注入 と同じデザイン言語のフレーバーバブル) */
+    .hire-success__portrait-wrap {
+      position: relative;
+      align-self: center;
+    }
+    .hire-success__bubble {
+      position: absolute;
+      left: -28px; top: -14px;
+      max-width: 220px;
+      background: rgba(245, 240, 230, 0.96);
+      color: #1a1420;
+      border: 1.5px solid #4a3f33;
+      border-radius: 10px 10px 10px 2px;
+      padding: 0.32rem 0.55rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.3;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+      z-index: 2;
+      pointer-events: none;
+      word-break: break-word;
+      animation: hero-flavor-fade 2.4s ease-out;
+    }
+    .hire-success__bubble.hidden { display: none !important; }
     .hire-success__head-info {
       display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
     }
@@ -5078,7 +5104,11 @@
   <div class="hire-success hidden" id="hireSuccessModal" role="dialog" aria-modal="true">
     <div class="hire-success__card">
       <h2 class="hire-success__title" data-i18n="hire.successTitle">採用！</h2>
-      <img class="hire-success__portrait" id="hireSuccessPortrait" alt="" onerror="this.style.opacity='0.2'" />
+      <!-- Phase 1D-33: portrait 上に被せるフレーバーバブル (= ヒーロー名/「」装飾なし) -->
+      <div class="hire-success__portrait-wrap">
+        <span class="hire-success__bubble hidden" id="hireSuccessBubble"></span>
+        <img class="hire-success__portrait" id="hireSuccessPortrait" alt="" onerror="this.style.opacity='0.2'" />
+      </div>
       <div class="hire-success__head-info">
         <span class="hire-success__name" id="hireSuccessName">—</span>
         <span class="hire-success__rarity" id="hireSuccessRarity" data-rarity="common">—</span>
