@@ -91,6 +91,9 @@ import {
   preloadAllSe,
 } from "./factory-audio.js";
 import {
+  pickHeroFlavor,
+} from "./factory-hero-flavors.js";
+import {
   HIRE_PLANS,
   PLAN_BY_ID,
   canBeRecruiter,
@@ -170,6 +173,12 @@ const state = {
    *  各要素: { id: number, slotIdx: number, element: string, value: number,
    *          createdTick: number } */
   spriteFloats: /** @type {Array<object>} */ ([]),
+  /** Phase 1D-19: ヒーロー sprite 左上に出すフレーバーセリフキュー。
+   *  各要素: { id, heroId, text, createdTick } */
+  heroFlavors: /** @type {Array<object>} */ ([]),
+  /** Phase 1D-19: idle ヒーローが「ヒマだな」発言済みの最後の week カウンタ。
+   *  heroId → state.weekCount を入れて、同じ week で 2 回以上発話しない。 */
+  heroIdleSpokeAt: /** @type {Record<number, number>} */ ({}),
   /** モノトニック tick カウンタ (notifications/spriteFloats の time-based GC 用) */
   tickCount: 0,
   /** 直近にタップされた工房ヒーロー (詳細ポップアップ表示用) */
@@ -343,6 +352,8 @@ function tickActiveCraft() {
       adjustStamina(hero, -staminaDecayPerTick(hero));
       if (isExhausted(hero)) {
         hero.state = HERO_STATE.RESTING;
+        // Phase 1D-19: クラフト中に体力ゼロ → 「疲れた…」セリフ
+        pushHeroFlavor(hero.heroId, "restingZero");
         continue;
       }
     }
@@ -460,8 +471,30 @@ function tickPassiveRestRecovery() {
       // Phase 1D-12: idle 中も緩やかに体力減少 (1 tick あたり 1)。
       // ゼロになったら自動で休憩状態へ。
       adjustStamina(hero, -1);
-      if (isExhausted(hero)) hero.state = HERO_STATE.RESTING;
+      if (isExhausted(hero)) {
+        hero.state = HERO_STATE.RESTING;
+        // Phase 1D-19: idle で体力ゼロ → 「疲れた…」セリフ
+        pushHeroFlavor(hero.heroId, "restingZero");
+      } else {
+        // Phase 1D-19: 完全 idle なヒーローが 1 週間経過したら「ヒマだな…」
+        // (週進行はランダム発火 + 同じ週で重複しない仕組み)
+        maybeIdleSpeak(hero);
+      }
     }
+  }
+}
+
+/** Phase 1D-19: idle ヒーローが「ヒマだな…」と発言する判定。
+ *  週単位で 1 ヒーローにつき高々 1 回。各 tick で軽い確率で発火。
+ */
+function maybeIdleSpeak(hero) {
+  if (!hero || hero.state !== HERO_STATE.IDLE) return;
+  const wkKey = (state.year * 1000) + (state.month * 50) + state.week;
+  if (state.heroIdleSpokeAt[hero.heroId] === wkKey) return;  // 今週もう発言済み
+  // 平均 5〜6 週に 1 回ペースで発言する程度の確率 (= 0.03 / tick × 7 tick/週 ≈ 0.21)
+  if (Math.random() < 0.03) {
+    state.heroIdleSpokeAt[hero.heroId] = wkKey;
+    pushHeroFlavor(hero.heroId, "idleBored");
   }
 }
 
@@ -878,6 +911,10 @@ function startActiveQuest() {
     durationWeeks: QUEST_DURATION_WEEKS[diff],
     progress: 0,
   };
+  // Phase 1D-19: クエスト出発のセリフ ("いってくる！" 等)
+  team.filter(id => id != null).forEach((id, i) => {
+    setTimeout(() => pushHeroFlavor(id, "questStart"), 200 + i * 220);
+  });
   closeQuestView();
   renderQuestOverlay();
 }
@@ -981,6 +1018,23 @@ function pushSpriteFloat(heroId, element, value) {
 }
 let _floatId = 0;
 
+/** Phase 1D-19: ヒーローのフレーバーセリフを sprite 左上に表示する。
+ *  シーンキー (= craftStart / questStart / saleStart / restingZero / idleBored
+ *   / passive) からランダム抽選し、~2 秒で fade out する一時バブル。
+ *
+ *  @param {number} heroId
+ *  @param {string} sceneKey  factory-hero-flavors.js の HERO_FLAVOR_LINES key
+ *  @param {{ name?: string }} [extra]  passive 用の skill 名注入など
+ */
+function pushHeroFlavor(heroId, sceneKey, extra = {}) {
+  const lang = getLang() === "en" ? "en" : "ja";
+  const text = pickHeroFlavor(sceneKey, lang, extra);
+  if (!text) return;
+  const id = ++_flavorId;
+  state.heroFlavors.push({ id, heroId, text, createdTick: state.tickCount });
+}
+let _flavorId = 0;
+
 /** パッシブ発動の通知バナー追加 */
 function pushPassiveNotification(hero, passive) {
   const id = ++_notifId;
@@ -997,6 +1051,8 @@ function pushPassiveNotification(hero, passive) {
   });
   // Phase 1D-14: パッシブ発動 SE
   playSe("passiveTrigger");
+  // Phase 1D-19: ヒーロー sprite 左上に「[スキル名]！」セリフ
+  pushHeroFlavor(hero.heroId, "passive", { name: passive.passiveName });
 }
 let _notifId = 0;
 
@@ -1005,6 +1061,9 @@ function pruneEphemerals() {
   const cutoff = state.tickCount - NOTIFICATION_TTL_TICKS;
   state.notifications = state.notifications.filter(n => n.createdTick > cutoff);
   state.spriteFloats  = state.spriteFloats.filter(f => f.createdTick > cutoff);
+  // Phase 1D-19: フレーバーセリフは ~2.5 秒で消えるので寿命短め
+  const flavorCutoff = state.tickCount - 3;
+  state.heroFlavors = state.heroFlavors.filter(f => f.createdTick > flavorCutoff);
 }
 
 function advanceWeek() {
@@ -1709,6 +1768,10 @@ function startActiveCraft() {
     const h = findHero(id);
     if (h) h.state = HERO_STATE.CRAFTING;
   }
+  // Phase 1D-19: クラフト編成ヒーロー全員に「やるぞー！」系セリフを少し時差で
+  team.filter(id => id != null).forEach((id, i) => {
+    setTimeout(() => pushHeroFlavor(id, "craftStart"), 200 + i * 220);
+  });
   closeCraftView();
   renderOrderPanel();
   renderWorkshop();
@@ -1849,6 +1912,7 @@ function renderWorkshop() {
         <img class="workshop-hero__img" src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
         <div class="workshop-hero__stam"><div class="workshop-hero__stam-fill"></div></div>
         <div class="workshop-hero__floats"></div>
+        <div class="workshop-hero__flavors"></div>
       </div>`;
     }).join("");
   }
@@ -1887,6 +1951,21 @@ function renderWorkshop() {
     floatHost.appendChild(span);
     setTimeout(() => span.remove(), 1100);
     bouncedHeroIds.add(f.heroId);
+  }
+  // ── Phase 1D-19: フレーバーセリフを sprite 左上に append ──
+  const liveFlavors = state.heroFlavors.filter(f => f.createdTick === state.tickCount);
+  for (const f of liveFlavors) {
+    const sprite = host.querySelector(`.workshop-hero[data-hero-id="${f.heroId}"]`);
+    if (!sprite) continue;
+    const flavorHost = sprite.querySelector(".workshop-hero__flavors");
+    if (!flavorHost) continue;
+    if (flavorHost.querySelector(`[data-flavor-id="${f.id}"]`)) continue;
+    const span = document.createElement("span");
+    span.className = "workshop-hero__flavor";
+    span.setAttribute("data-flavor-id", String(f.id));
+    span.textContent = f.text;
+    flavorHost.appendChild(span);
+    setTimeout(() => span.remove(), 2400);
   }
   for (const hid of bouncedHeroIds) {
     const sprite = host.querySelector(`.workshop-hero[data-hero-id="${hid}"]`);
@@ -2458,6 +2537,42 @@ function closeMaiHelp() {
   resumeTime();
 }
 
+/** Phase 1D-19: Mai セリフを「ゲーム用語に <span class="term"> を自動付与」して
+ *  HTML として安全にセットする。チュートリアル文言は既に <span class="term">..</span>
+ *  を含むのでそのまま innerHTML、それ以外 (短い mai.* キー) は escapeHtml + auto-enrich。 */
+const MAI_TERMS_JA = [
+  "クラフトレベル", "クラフトLv", "クラフトパワー", "クラフトチーム", "クエストチーム",
+  "ガルーダ", "イフリート", "リヴァイアサン", "ティアマト",
+  "エクステンション", "クエストレベル", "ランドセクタの通行証",
+  "ランドセクター通行証", "ホームランド", "工房レベル", "高品質",
+];
+const MAI_TERMS_EN = [
+  "Craft Level", "Craft Power", "Craft Team", "Quest Team",
+  "Garuda", "Ifrit", "Leviathan", "Tiamat",
+  "Extension", "Quest Level", "Land Sector Pass", "Home Land",
+  "Workshop Level", "high-quality", "higher-quality",
+];
+function setMaiBody(text) {
+  const body = $("maiModalBody");
+  if (!body) return;
+  // 入力が既に HTML タグを含むか? (チュートリアルのケース)
+  const hasTag = /<\/?[a-z][\s\S]*?>/i.test(text);
+  if (hasTag) {
+    // 信頼ソース (factory-tutorial.js) なのでそのまま innerHTML
+    body.innerHTML = text;
+    return;
+  }
+  // それ以外: escape して、用語を auto-enrich
+  let html = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const terms = getLang() === "en" ? MAI_TERMS_EN : MAI_TERMS_JA;
+  for (const t of terms) {
+    const re = new RegExp(t.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&"), "g");
+    html = html.replace(re, `<span class="term">${t}</span>`);
+  }
+  body.innerHTML = html;
+}
+
 /** Mai のセリフを表示する汎用モーダル。
  *  - messageKey: i18n キー (e.g. "mai.craftBusy")
  *  - options.onClose: モーダルを閉じたあとに呼ばれる callback。
@@ -2469,7 +2584,7 @@ function maiSays(messageKey, options = {}) {
   const modal = $("maiModal");
   const body  = $("maiModalBody");
   if (!modal || !body) return;
-  body.textContent = ti18n(messageKey);
+  setMaiBody(ti18n(messageKey));
   modal.classList.remove("hidden");
   pauseTime();
   _maiNextAction = options.onClose || null;
@@ -2480,9 +2595,8 @@ function closeMaiModal() {
   if (_maiSeqQueue.length > 0) {
     _maiSeqIdx++;
     if (_maiSeqIdx < _maiSeqQueue.length) {
-      const body = $("maiModalBody");
       const btn  = $("maiModalClose");
-      if (body) body.textContent = _maiSeqQueue[_maiSeqIdx];
+      setMaiBody(_maiSeqQueue[_maiSeqIdx]);
       if (btn)  btn.textContent  = _maiSeqIdx < _maiSeqQueue.length - 1
         ? ti18n("mai.next") : ti18n("btn.close");
       return;  // モーダルは閉じない、次セリフだけ表示
@@ -2544,7 +2658,7 @@ function maiSaysSequence(messages, options = {}) {
   if (!modal || !body || !btn) return;
   // 1 行目を表示。「次へ」 ↔ 「閉じる」 のラベル切替は closeMaiModal 側 (= ボタン
   // クリックハンドラ) が次行進行のたびに実施する。
-  body.textContent = _maiSeqQueue[_maiSeqIdx];
+  setMaiBody(_maiSeqQueue[_maiSeqIdx]);
   btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
   pauseTime();
@@ -2829,6 +2943,8 @@ function startSale() {
     expectedPrice: expected,
     status: "listed",
   });
+  // Phase 1D-19: 出品担当ヒーローの「いってくる！」「稼ぐぞー」系セリフ
+  setTimeout(() => pushHeroFlavor(seller.heroId, "saleStart"), 250);
   closeSellModal();
   // Phase 1D-10: 出品確定後はホームに戻る (時間進めるため、雇用フローと同じ)
   closeMarketView();
