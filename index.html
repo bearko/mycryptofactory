@@ -4004,6 +4004,24 @@
       flex-wrap: wrap;
       margin-bottom: 0.4rem;
     }
+    /* Phase 1D-35: おまかせ編成ボタン (各タブの head に同居) */
+    .hero-team__auto-btn {
+      appearance: none;
+      background: linear-gradient(135deg, #c4a35a 0%, #e0c178 100%);
+      color: #1a1420;
+      border: 1.5px solid #1a1420;
+      border-radius: 999px;
+      padding: 0.32rem 0.8rem;
+      font-size: 0.74rem; font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+      flex-shrink: 0;
+    }
+    .hero-team__auto-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #d6b873 0%, #ecd197 100%);
+    }
+    .hero-team__auto-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .hero-team__summary {
       display: flex; align-items: center; gap: 0.7rem;
       flex-wrap: wrap;
@@ -5290,6 +5308,8 @@
           <div class="quest-edit-row">
             <section class="quest-section quest-section--team">
               <h4 class="quest-subsection__title" data-i18n="quest.team.label">Quest Party</h4>
+              <!-- Phase 1D-35: おまかせ編成 (= QL 高い 3 名を自動配属) -->
+              <button type="button" class="hero-team__auto-btn" id="questViewAutoFormBtn" data-i18n="formation.auto">おまかせ編成</button>
               <div class="quest-team-slots" id="questTeamSlots"></div>
             </section>
             <section class="quest-section quest-section--pick">
@@ -5404,6 +5424,8 @@
             <span class="hero-team__total" id="heroTeamTotal"></span>
             <span class="hero-team__elements" id="heroTeamElements"></span>
           </div>
+          <!-- Phase 1D-35: おまかせ編成 (= 4 色 target に強い 5 名を自動配属) -->
+          <button type="button" class="hero-team__auto-btn" id="craftAutoFormBtn" data-i18n="formation.auto">おまかせ編成</button>
         </div>
         <div class="hero-team__slots" id="heroTeamSlots">
           <!-- Filled by JS: 5 slots, each shows assigned hero or "+" placeholder -->
@@ -5417,6 +5439,8 @@
           <div class="hero-team__summary" id="heroQuestTeamSummary">
             <span class="hero-team__total" id="heroQuestTeamTotal"></span>
           </div>
+          <!-- Phase 1D-35: おまかせ編成 (= QL 高い 3 名を自動配属) -->
+          <button type="button" class="hero-team__auto-btn" id="questAutoFormBtn" data-i18n="formation.auto">おまかせ編成</button>
         </div>
         <div class="hero-team__slots hero-team__slots--3" id="heroQuestTeamSlots">
           <!-- Filled by JS: 3 slots -->
@@ -5635,6 +5659,8 @@
               </div>
               <div class="craft-confirm__team-row">
                 <div class="craft-confirm__team-slots" id="confirmTeamSlots"></div>
+                <!-- Phase 1D-35: クラフト確認画面でのおまかせ編成 (target に強い 5 名) -->
+                <button type="button" class="hero-team__auto-btn" id="confirmAutoFormBtn" data-i18n="formation.auto">おまかせ編成</button>
                 <button type="button" class="craft-confirm__change-btn" id="confirmChangeTeamBtn" data-i18n="craft.changeTeam">変更</button>
               </div>
             </div>
