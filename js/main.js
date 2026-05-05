@@ -257,6 +257,10 @@ const state = {
   unlockedSeries: /** @type {Set<string>} */ (new Set(INITIAL_UNLOCKED_SERIES)),
   /** Phase 1D-24: 解雇確認 popup で「対象 hero」を一時保持 */
   firePendingId: /** @type {number | null} */ (null),
+  /** Phase 1D-25: 前回の出品担当 (default 選択用) */
+  lastSaleSellerId: /** @type {number | null} */ (null),
+  /** Phase 1D-25: 工房レベルアップを Mai が既に提案した target レベル群 */
+  factoryLvPrompted: /** @type {Set<number>} */ (new Set()),
   /** Phase 1D-22: クエスト結果画面が閉じた後に発火する recipe drop の理由 i18n キー
    *  (success 時に確率で設定、closeQuestResultScreen で消化) */
   pendingRecipeReason: /** @type {string | null} */ (null),
@@ -376,20 +380,64 @@ function factoryLvUpUnlocks(targetLv) {
   if (targetLv === 2) return [
     "Uncommon エクステンションのレシピが解放対象に",
     "ヒーロー上限 7 → 9 名",
+    "中級クエスト解禁",
+    "ドラエグプラン (Uncommon〜Rare 雇用) 解禁",
   ];
   if (targetLv === 3) return [
     "Rare エクステンションのレシピが解放対象に",
     "ヒーロー上限 9 → 11 名",
+    "上級クエスト解禁",
+    "ベビドラプラン (Rare〜Epic 雇用) 解禁",
   ];
   if (targetLv === 4) return [
     "Epic エクステンションのレシピが解放対象に",
     "ヒーロー上限 11 → 12 名",
+    "ブルドラプラン (Epic〜Legendary 雇用) 解禁",
+    "デュエルモード解禁 (将来実装)",
   ];
   if (targetLv === 5) return [
     "Legendary エクステンションのレシピが解放対象に",
     "ヒーロー上限 12 → 15 名",
+    "レッドラプラン (Legendary 雇用) 解禁",
   ];
   return [];
+}
+
+/** Phase 1D-25: Lv N → N+1 で増設される設備の名前 + アイコン URL */
+const FACTORY_LV_EQUIPMENT = {
+  2: { nameJa: "魔法の壺",   nameEn: "Magic Cauldron",  iconUrl: "https://www.mycryptoheroes.net/_nuxt/img/magic.2660aed.webp",      bgUrl: "https://www.mycryptoheroes.net/_nuxt/img/201.c7d01d6.gif" },
+  3: { nameJa: "搬送レーン", nameEn: "Transport Lane",  iconUrl: "https://www.mycryptoheroes.net/_nuxt/img/transport.c803000.webp",  bgUrl: "https://www.mycryptoheroes.net/_nuxt/img/202.50fc514.gif" },
+  4: { nameJa: "具現カプセル", nameEn: "Embodiment Capsule", iconUrl: "https://www.mycryptoheroes.net/_nuxt/img/embodiment.ef33f6e.webp", bgUrl: "https://www.mycryptoheroes.net/_nuxt/img/203.5269736.gif" },
+};
+
+/** Phase 1D-25: 工房レベルアップを推奨するマイのお伺い popup を 1 度だけ出す。
+ *  GUM が必要額を満たした + 条件をすべて達成 + まだ Mai に促されていない とき。
+ */
+function maybeWorkshopLvPrompt() {
+  const cur = state.factoryLevel || 1;
+  if (cur >= 5) return;
+  const target = cur + 1;
+  state.factoryLvPrompted = state.factoryLvPrompted || new Set();
+  if (state.factoryLvPrompted.has(target)) return;
+  const check = canFactoryLvUp(target);
+  if (!check.ok) return;
+  state.factoryLvPrompted.add(target);
+  const equip = FACTORY_LV_EQUIPMENT[target];
+  const lang = getLang() === "en" ? "en" : "ja";
+  const equipName = equip ? (lang === "en" ? equip.nameEn : equip.nameJa) : "";
+  const lines = lang === "en"
+    ? [
+        "Your workshop is bustling! How about leveling it up to expand?",
+        equip ? `New equipment ready: ${equipName}!` : "",
+        `Workshop Lv ${cur} → ${target}: ${factoryLvUpCost(cur).toLocaleString()} GUM`,
+      ].filter(Boolean)
+    : [
+        "工房が活気に溢れてきましたね！そろそろ工房をレベルアップするのはいかがでしょう？",
+        equip ? `工房を拡張するための設備をご用意しました！(${equipName})` : "",
+        `工房 Lv ${cur} → ${target}: ${factoryLvUpCost(cur).toLocaleString()} GUM`,
+      ].filter(Boolean);
+  // Mai シーケンス → 閉じたら工房レベルアップ画面を開く
+  maiSaysSequence(lines, { onClose: () => openFactoryLvUpView() });
 }
 
 /** 全条件 + GUM 充足判定 */
@@ -448,11 +496,25 @@ function renderFactoryLvUpView() {
     } else {
       actionHtml = `<div class="flv__action-locked">前のレベルを先に達成</div>`;
     }
+    // Phase 1D-25: 設備アイコン (Lv2-4)
+    const equip = FACTORY_LV_EQUIPMENT[t];
+    const lang = getLang() === "en" ? "en" : "ja";
+    const equipName = equip ? (lang === "en" ? equip.nameEn : equip.nameJa) : "";
+    const equipHtml = equip
+      ? `<div class="flv__equipment">
+          <img class="flv__equip-icon" src="${equip.iconUrl}" alt="${escapeHtml(equipName)}" onerror="this.style.opacity='0.2'" />
+          <div class="flv__equip-text">
+            <span class="flv__equip-label">${escapeHtml(ti18n("factoryLvUp.newEquipment", "増設される設備"))}</span>
+            <strong class="flv__equip-name">${escapeHtml(equipName)}</strong>
+          </div>
+        </div>`
+      : "";
     return `<section class="flv__row" data-target="${t}" data-state="${isReached ? "done" : isCurrentTarget ? "current" : "future"}">
       <header class="flv__head">
         <span class="flv__lv-label">Lv ${t - 1} → Lv ${t}</span>
         <span class="flv__cost">${cost.toLocaleString()} GUM</span>
       </header>
+      ${equipHtml}
       <ul class="flv__conds">${condsHtml}</ul>
       <p class="flv__unlocks-label">解放されること:</p>
       <ul class="flv__unlocks">${unlocksHtml}</ul>
@@ -960,11 +1022,16 @@ function renderQuestView() {
   ` : `<p class="quest-detail-panel__empty">${escapeHtml(ti18n("quest.detail.empty"))}</p>`;
 
   // 2-B. 難易度行 (右)
+  // Phase 1D-25: 工房レベルで難易度をゲート
+  //   easy: Lv 1〜 / normal: Lv 2〜 / hard: Lv 3〜
+  const DIFF_REQUIRED_LV = { easy: 1, normal: 2, hard: 3 };
   $("questDiffRows").innerHTML = ["easy", "normal", "hard"].map(d => {
     const sel = d === state.questPickedDifficulty ? " quest-diff-row__btn--sel" : "";
     const label = QUEST_DIFFICULTY_LABEL[d][lang];
     const baseLvD = QUEST_BASE_LEVEL[d];
     const weeksD  = QUEST_DURATION_WEEKS[d];
+    const reqLv   = DIFF_REQUIRED_LV[d];
+    const lvOk    = (state.factoryLevel || 1) >= reqLv;
     // 当該難易度で取れる素材
     const matsForD = [];
     if (node) {
@@ -975,12 +1042,16 @@ function renderQuestView() {
       }
     }
     const matsHtml = matsForD.slice(0, 6).map(m => `<img class="${m.rare ? "quest-diff-row__mat--rare" : ""}" src="${materialIcon(m.id)}" alt="${escapeHtml(materialName(m.id, lang))}" title="${escapeHtml(materialName(m.id, lang))}" onerror="this.style.opacity='0.2'" />`).join("");
-    return `<div class="quest-diff-row__btn${sel}">
+    const lockHtml = lvOk ? "" :
+      `<span class="quest-diff-row__lock">${escapeHtml(ti18n("quest.lock.factoryLv").replace("{n}", reqLv))}</span>`;
+    const disabledCls = lvOk ? "" : " quest-diff-row__btn--locked";
+    return `<div class="quest-diff-row__btn${sel}${disabledCls}">
       <span class="quest-diff-row__diff-name">${escapeHtml(label)}</span>
       <span class="quest-diff-row__field"><span class="quest-diff-row__field-label">Quest Lv.</span><span class="quest-diff-row__field-val">${baseLvD.toLocaleString()}</span></span>
       <span class="quest-diff-row__field"><span class="quest-diff-row__field-label">Week</span><span class="quest-diff-row__field-val">${weeksD}週</span></span>
       <span class="quest-diff-row__mats">${matsHtml}</span>
-      <button type="button" class="quest-diff-row__sel-btn" data-diff="${d}">${escapeHtml(ti18n("quest.pickBtn"))}</button>
+      ${lockHtml}
+      <button type="button" class="quest-diff-row__sel-btn" data-diff="${d}" ${lvOk ? "" : "disabled"}>${escapeHtml(ti18n("quest.pickBtn"))}</button>
     </div>`;
   }).join("");
 
@@ -1449,57 +1520,97 @@ function primaryAttrOf(hero) {
     : null;
 }
 
-/** ヒーロー固有のパッシブ説明文を返す。
+/** Phase 1D-25: ヒーロー固有のパッシブ説明を「複数行 (HTML)」で返す。
+ *  ・全ヒーロー共通: クラフト時の最強要素 +N (= rollPassiveTrigger 相当)
+ *  ・属性別: 工/農/商/士 の追加効果
+ *  各行は HTML を含む (ガルーダ等の元素名を span.term-elem で色付け)。
+ *
  *  @param {object} hero
  *  @param {"ja"|"en"} lang
- *  @returns {string} 1 行の人間可読テキスト (空なら "")
+ *  @returns {string[]} HTML 文字列の配列 (各要素 = 1 行)
  */
-function passiveDescriptionFor(hero, lang) {
-  const primary = primaryAttrOf(hero);
-  if (!primary) return "";
+function passiveDescriptionLinesFor(hero, lang) {
+  const lines = [];
   const isEn = lang === "en";
-  const bonus = PASSIVE_BONUS_BY_RARITY[hero.rarity] || 3;
-
-  if (primary === "ko") {
-    // 4 元素のうち最も factory-weighted な要素を選ぶ
+  const bonus = PASSIVE_BONUS_BY_RARITY[hero?.rarity] || 3;
+  // 1. クラフト共通: 最強要素 +N
+  if (hero) {
     const sorted = ELEMENTS.map(k => ({ key: k, val: elementValueForCraft(hero, k) }))
       .sort((a, b) => b.val - a.val);
     const top = sorted[0];
-    if (!top || top.val <= 0) {
-      return isEn ? `Boosts craft power by +${bonus}` : `クラフト時にクラフトパワーを +${bonus}`;
+    if (top && top.val > 0) {
+      const elHtml = colorTermElement(top.key, lang);
+      lines.push(isEn
+        ? `Craft: <strong>${elHtml}</strong> +${bonus}`
+        : `クラフト時に${elHtml} <strong>+${bonus}</strong>`);
     }
-    const elName = elementLabel(top.key);
-    return isEn
-      ? `Boosts ${elName} by +${bonus} on craft trigger`
-      : `クラフト時に${elName}を +${bonus}`;
   }
-
-  if (primary === "no") {
-    // heroId から決定論的に素材を 1 つ選ぶ
-    const id = (typeof hero.heroId === "number" ? hero.heroId : 0) | 0;
-    const matId = FARM_MATERIAL_POOL[Math.abs(id) % FARM_MATERIAL_POOL.length];
-    const matName = materialName(matId, lang);
-    return isEn
-      ? `${matName} drops more often on quests`
-      : `クエストで${matName}が掘りやすい`;
-  }
-
-  if (primary === "sho") {
-    const id = (typeof hero.heroId === "number" ? hero.heroId : 0) | 0;
-    const key = MERCHANT_BONUS_KEYS[Math.abs(id) % MERCHANT_BONUS_KEYS.length];
-    if (key === "periodShort") {
-      return isEn ? "Sales conclude faster on the market" : "マーケットでの成約までの期間が短くなる";
+  // 2. 属性別 追加効果
+  for (const attr of (hero?.attributes || [])) {
+    if (attr === "ko") continue;  // 工 = クラフト系 (上の craft 共通で代替)
+    if (attr === "no") {
+      const id = (typeof hero.heroId === "number" ? hero.heroId : 0) | 0;
+      const matId = FARM_MATERIAL_POOL[Math.abs(id) % FARM_MATERIAL_POOL.length];
+      const matName = materialName(matId, lang);
+      lines.push(isEn
+        ? `Quest: <strong>${escapeHtml(matName)}</strong> drops more often`
+        : `クエストで<strong>${escapeHtml(matName)}</strong>が掘りやすい`);
+    } else if (attr === "sho") {
+      const id = (typeof hero.heroId === "number" ? hero.heroId : 0) | 0;
+      const key = MERCHANT_BONUS_KEYS[Math.abs(id) % MERCHANT_BONUS_KEYS.length];
+      if (key === "periodShort") {
+        lines.push(isEn ? "Market: faster sales" : "マーケットで成約までの期間が短くなる");
+      } else if (key === "priceUp") {
+        lines.push(isEn ? "Market: higher sale prices" : "マーケットで成約金額が上がる");
+      } else {
+        lines.push(isEn ? "Market: low-tier still fetches good prices" : "査定が低いエクステンションも高めに売れる");
+      }
+    } else if (attr === "shi") {
+      lines.push(isEn ? "Duel: built for combat (TBA)" : "デュエルで活躍 (将来実装予定)");
     }
-    if (key === "priceUp") {
-      return isEn ? "Higher market sale prices" : "マーケットでの成約金額が上がる";
-    }
-    // lowTierBoost
-    return isEn ? "Even low-tier extensions fetch good prices" : "査定が低いエクステンションも高めに売れる";
   }
+  return lines;
+}
 
-  if (primary === "shi") {
-    return isEn ? "Built for duels (coming in a future update)" : "デュエルで活躍 (将来実装予定)";
+/** Phase 1D-25: 元素名 (ガルーダ/イフリート/リヴァイアサン/ティアマト) を
+ *  対応する色 + 太字の HTML span に変換 */
+function colorTermElement(elKey, lang) {
+  const name = elementLabel(elKey);
+  return `<span class="term-elem term-elem--${elKey}">${escapeHtml(name)}</span>`;
+}
+
+/** 後方互換: 単一行版 (legacy 呼び出し)。最初の 1 行を text として返す。 */
+function passiveDescriptionFor(hero, lang) {
+  const lines = passiveDescriptionLinesFor(hero, lang);
+  if (lines.length === 0) return "";
+  // HTML タグを除去した plain text を返す (legacy textContent 用途のため)
+  return lines[0].replace(/<[^>]+>/g, "");
+}
+
+/** Phase 1D-25: パッシブ説明 (HTML 配列) → <ul> HTML 文字列 */
+function passiveDescriptionsHtml(hero, lang) {
+  const lines = passiveDescriptionLinesFor(hero, lang);
+  if (lines.length === 0) return "";
+  return `<ul class="passive-lines">${lines.map(l => `<li>${l}</li>`).join("")}</ul>`;
+}
+
+// 旧 passiveDescriptionFor の attribute 別分岐は廃止 (上の lines 版に統合)。
+// 互換用のスタブとして primary 取得関数だけ残す。
+function _passiveDescriptionForLegacyDeleted_(hero, lang) {
+  return ""; // 削除済み
+  /*
+  const isEn = lang === "en";
+  const primary = primaryAttrOf(hero);
+  if (!primary) return "";
+  const bonus = PASSIVE_BONUS_BY_RARITY[hero.rarity] || 3;
+
+  if (primary === "ko") {
+    const sorted = ELEMENTS.map(k => ({ key: k, val: elementValueForCraft(hero, k) })).sort((a, b) => b.val - a.val);
+    const top = sorted[0];
+    if (!top || top.val <= 0) return isEn ? `Boosts craft power by +${bonus}` : `クラフト時にクラフトパワーを +${bonus}`;
+    return isEn ? `Boosts ${elementLabel(top.key)} by +${bonus}` : `クラフト時に${elementLabel(top.key)}を +${bonus}`;
   }
+  */
 
   return "";
 }
@@ -1590,13 +1701,13 @@ function renderHeroList() {
     const restBtn = canRest
       ? `<button type="button" class="hero-card__rest-btn" data-rest-hero="${hero.heroId}" data-i18n="hero.actions.rest">休憩</button>`
       : "";
-    // Phase 1D-14: 士/農/工/商 適性別パッシブテキスト (1 行)
-    const passiveDesc = passiveDescriptionFor(hero, getLang() === "en" ? "en" : "ja");
+    // Phase 1D-14 → Phase 1D-25: 士/農/工/商 別 + クラフト共通の複数行パッシブ
+    const passiveLinesHtml = passiveDescriptionsHtml(hero, getLang() === "en" ? "en" : "ja");
     const passiveBadge = hero.passiveName
       ? `<span class="hero-card__passive-name">${escapeHtml(hero.passiveName)}</span>`
       : "";
-    const passiveLine = (passiveBadge || passiveDesc)
-      ? `<div class="hero-card__passive">${passiveBadge}<span class="hero-card__passive-text">${escapeHtml(passiveDesc)}</span></div>`
+    const passiveLine = (passiveBadge || passiveLinesHtml)
+      ? `<div class="hero-card__passive">${passiveBadge}${passiveLinesHtml}</div>`
       : "";
     // Phase 1D-20: ランク表示 (☆/★)
     const rankHtml = renderRankStars(hero.rank || 0);
@@ -2386,8 +2497,12 @@ function renderWorkshop() {
     host.dataset.fingerprint = fingerprint;
     host.innerHTML = heroes.map((hero, idx) => {
       const pos = workshopSlotPosFor(idx, heroes.length);
+      // Phase 1D-25: 画面下のヒーロー (y% が大きい) ほど前面に。
+      //   z-index は 0..200 を割り当て (y% を 2 倍してオフセット用に余裕)
+      const yNum = parseFloat(pos.y) || 0;
+      const z = Math.round(yNum * 2);  // y=78% → z=156, y=33% → z=66
       return `<div class="workshop-hero" data-hero-id="${hero.heroId}"
-        style="left:${pos.x}; top:${pos.y};"
+        style="left:${pos.x}; top:${pos.y}; z-index:${z};"
         title="${escapeHtml(tHero(hero.heroId, hero.nameJa))}">
         <span class="workshop-hero__state-icon workshop-hero__state-icon--rest hidden" title="${escapeHtml(ti18n("hero.state.resting"))}">💤</span>
         <span class="workshop-hero__state-icon workshop-hero__state-icon--craft hidden" title="${escapeHtml(ti18n("hero.state.crafting"))}">⚒</span>
@@ -2891,18 +3006,15 @@ function renderHeroDetailPopup() {
       <strong class="hero-detail__el-val">${v}</strong>
     </div>`;
   }).join("");
-  // パッシブ + Phase 1D-14: 士/農/工/商 適性別 description
+  // パッシブ + Phase 1D-14 → Phase 1D-25: 複数行 + 色付き要素名
   const pBlock = $("heroDetailPassive");
-  const passiveDesc = passiveDescriptionFor(hero, getLang() === "en" ? "en" : "ja");
-  if (hero.passiveName || passiveDesc) {
+  const linesHtml = passiveDescriptionsHtml(hero, getLang() === "en" ? "en" : "ja");
+  if (hero.passiveName || linesHtml) {
     const nameLine = hero.passiveName
       ? `<span class="hero-detail__passive-label">${escapeHtml(ti18n("hero.passive"))}:</span>
          <strong>${escapeHtml(hero.passiveName)}</strong>`
       : "";
-    const descLine = passiveDesc
-      ? `<p class="hero-detail__passive-desc">${escapeHtml(passiveDesc)}</p>`
-      : "";
-    pBlock.innerHTML = nameLine + descLine;
+    pBlock.innerHTML = nameLine + linesHtml;
     pBlock.classList.remove("hidden");
   } else {
     pBlock.classList.add("hidden");
@@ -3328,12 +3440,42 @@ function renderMarketSell() {
       }).join("");
 }
 
+/** Phase 1D-25: ヒーローが当該 ext の販売員になれるかと、不可なら理由を返す。
+ *  craftTeam 編成だけ (= 実クラフト中ではない) は許容 (= eligible)、選択時に
+ *  craftTeam から自動で外す (commitSellerSelection で処理)。 */
+function sellerEligibility(hero, ext) {
+  if (!hero) return { eligible: false, reason: "" };
+  // 既に別 sale の seller になっている?
+  if (state.activeSales?.some(s => s.sellerId === hero.heroId)) {
+    return { eligible: false, reason: ti18n("sell.busy.otherSale", "他の出品を担当中") };
+  }
+  // 採用担当者として配属中?
+  if (state.activeHire?.recruiterId === hero.heroId) {
+    return { eligible: false, reason: ti18n("sell.busy.hireRecruiter", "雇用の採用担当中") };
+  }
+  // 実クラフト中? (activeCraft.team 内)
+  const inCraftActive = state.activeCraft?.team?.includes(hero.heroId);
+  if (inCraftActive || hero.state === HERO_STATE.CRAFTING) {
+    return { eligible: false, reason: ti18n("sell.busy.crafting", "クラフト中") };
+  }
+  // 実クエスト中?
+  const inQuestActive = state.activeQuest?.team?.includes(hero.heroId);
+  if (inQuestActive || hero.state === HERO_STATE.QUESTING) {
+    return { eligible: false, reason: ti18n("sell.busy.questing", "クエスト遠征中") };
+  }
+  // rarity / 属性要件
+  if (!canSellExt(hero, ext)) {
+    return { eligible: false, reason: ti18n("sell.busy.rarity", "レアリティ不足") };
+  }
+  return { eligible: true, reason: "" };
+}
+
 /** 出品 modal を開く */
 function openSellModal(warehouseIdx) {
   state.sellPickedIdx = warehouseIdx;
   $("sellModal")?.classList.remove("hidden");
   pauseTime();
-  // デフォルト 速度 = standard、seller = 未選択
+  // デフォルト 速度 = standard、seller = 未選択 (renderSellModal が default を解決)
   if (!_sellPickedSpeedId) _sellPickedSpeedId = "standard";
   _sellPickedSellerId = null;
   renderSellModal();
@@ -3373,25 +3515,48 @@ function renderSellModal() {
     </button>`;
   }).join("");
 
-  // 担当者候補 (rarity match or 商 attribute)
-  // Phase 1D-24: 他作業 (craft team / quest team / 別 sale / hire recruiter) 占有を除外
-  const eligible = state.ownedHeroes.filter(h => {
-    if (!canSellExt(h, ext)) return false;
-    if (h.state === HERO_STATE.CRAFTING) return false;
-    if (h.state === HERO_STATE.QUESTING) return false;
-    if (isHeroLocked(h.heroId)) return false;
-    return true;
+  // Phase 1D-25: 全所有ヒーローを表示し、配属不可なものはグレーアウト + 理由付き。
+  //   eligible = canSellExt + 実際にクラフトもクエストも進行中でない
+  //   craftTeam に編成されているだけ (= 実 activeCraft 中ではない) は eligible とし、
+  //   選択されたら自動で craftTeam から外す方針。
+  //   前回の sellerId (state.lastSaleSellerId) があれば初回 default として選択。
+  if (_sellPickedSellerId == null && state.lastSaleSellerId != null) {
+    const last = findHero(state.lastSaleSellerId);
+    if (last && state.activeSales?.every(s => s.sellerId !== last.heroId)
+        && last.state !== HERO_STATE.CRAFTING
+        && last.state !== HERO_STATE.QUESTING
+        && canSellExt(last, ext)) {
+      _sellPickedSellerId = state.lastSaleSellerId;
+    }
+  }
+  const allHeroes = (state.ownedHeroes || []).slice();
+  // 並び替え: eligible 優先 → 商属性持ち → rarity 高い順
+  allHeroes.sort((a, b) => {
+    const ea = sellerEligibility(a, ext);
+    const eb = sellerEligibility(b, ext);
+    if (ea.eligible !== eb.eligible) return ea.eligible ? -1 : 1;
+    const sa = (a.attributes || []).includes("sho") ? 0 : 1;
+    const sb = (b.attributes || []).includes("sho") ? 0 : 1;
+    if (sa !== sb) return sa - sb;
+    const RANK = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+    return (RANK[b.rarity] || 0) - (RANK[a.rarity] || 0);
   });
-  $("sellSellerList").innerHTML = eligible.length === 0
-    ? `<p class="sell-seller__empty">${escapeHtml(ti18n("sell.noSeller"))}</p>`
-    : eligible.map(h => {
-        const sel = h.heroId === _sellPickedSellerId ? " sell-seller--sel" : "";
+  $("sellSellerList").innerHTML = allHeroes.length === 0
+    ? `<p class="sell-seller__empty">${escapeHtml(ti18n("sell.noSellerOwned"))}</p>`
+    : allHeroes.map(h => {
+        const elig = sellerEligibility(h, ext);
+        const sel = (h.heroId === _sellPickedSellerId && elig.eligible) ? " sell-seller--sel" : "";
+        const dis = elig.eligible ? "" : " sell-seller--disabled";
         const sho = Array.isArray(h.attributes) && h.attributes.includes("sho");
-        return `<button type="button" class="sell-seller${sel}" data-seller="${h.heroId}">
+        const reasonHtml = elig.eligible
+          ? ""
+          : `<span class="sell-seller__reason">${escapeHtml(elig.reason)}</span>`;
+        return `<button type="button" class="sell-seller${sel}${dis}" data-seller="${h.heroId}" ${elig.eligible ? "" : "disabled"}>
           <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
           <span class="sell-seller__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
           <span class="sell-seller__rarity" data-rarity="${h.rarity}">${escapeHtml(ti18n("rarity." + h.rarity))}</span>
           ${sho ? `<span class="attr-badge attr-badge--sho" title="商">商</span>` : ""}
+          ${reasonHtml}
         </button>`;
       }).join("");
 
@@ -3426,6 +3591,12 @@ function startSale() {
   const ext = EXTENSION_BY_ID[String(w.extId)];
   const seller = findHero(_sellPickedSellerId);
   if (!seller) return;
+  // Phase 1D-25: seller が craftTeam に編成中なら自動で外す
+  //   (実クラフト中は sellerEligibility で弾いているのでここは確実に「編成のみ」)
+  const ctIdx = state.craftTeam.indexOf(seller.heroId);
+  if (ctIdx >= 0) state.craftTeam[ctIdx] = null;
+  // Phase 1D-25: 前回の seller を記録 → 次回 modal 起動時に default 選択
+  state.lastSaleSellerId = seller.heroId;
   const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
   const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
   state.activeSales.push({
@@ -3532,6 +3703,8 @@ function renderMarketHire() {
 
   // プラン一覧
   // Phase 1D-24: GUM 不足 / 採用担当者要件未達 / (※定員一杯は許可) — 不可理由を赤字で表示
+  // Phase 1D-25: 工房レベルでもプランをゲート (rarity rank ≤ factoryLevel)
+  const PLAN_REQUIRED_LV = { novice: 1, draeg: 2, babydra: 3, buldra: 4, reddra: 5 };
   $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
     const lang = getLang() === "en" ? "en" : "ja";
     // 採用担当者として就任可能なヒーローが居るか?
@@ -3543,7 +3716,10 @@ function renderMarketHire() {
       return true;
     });
     let blockReason = null;
-    if (state.gum < p.cost) {
+    const reqLv = PLAN_REQUIRED_LV[p.id] || 1;
+    if ((state.factoryLevel || 1) < reqLv) {
+      blockReason = ti18n("hire.block.factoryLv").replace("{n}", reqLv);
+    } else if (state.gum < p.cost) {
       blockReason = ti18n("hire.block.gum")
         .replace("{cost}", p.cost.toLocaleString())
         .replace("{cur}", state.gum.toLocaleString());
@@ -3680,9 +3856,9 @@ function renderActiveHire() {
           // Phase 1D-24: 編成画面同等の表示 (パッシブ名 + description + craft Lv)
           const cl    = tmp ? craftLevel(tmp) : 0;
           const passiveName = tmp?.passiveName ? `<span class="hire-cand-card__passive-name">${escapeHtml(tmp.passiveName)}</span>` : "";
-          const passiveDesc = tmp ? passiveDescriptionFor(tmp, getLang() === "en" ? "en" : "ja") : "";
-          const passiveLine = (passiveName || passiveDesc)
-            ? `<div class="hire-cand-card__passive">${passiveName}<span class="hire-cand-card__passive-text">${escapeHtml(passiveDesc)}</span></div>`
+          const passiveLinesHtml = tmp ? passiveDescriptionsHtml(tmp, getLang() === "en" ? "en" : "ja") : "";
+          const passiveLine = (passiveName || passiveLinesHtml)
+            ? `<div class="hire-cand-card__passive">${passiveName}${passiveLinesHtml}</div>`
             : "";
           return `<div class="hire-cand-card" data-rarity="${c.rarity}">
             <div class="hire-cand-card__head">
@@ -3891,11 +4067,11 @@ function renderFireModal() {
       return `<span title="${escapeHtml(elementLabel(k))}: ${v}"><img src="${elementIconUrl(k)}" alt="" /><strong>${v}</strong></span>`;
     }).join("");
     const attrsHtml = renderHeroAttrBadges(hero);
-    const passiveDesc = passiveDescriptionFor(hero, lang);
-    const passiveHtml = (hero.passiveName || passiveDesc)
+    const passiveLinesHtml = passiveDescriptionsHtml(hero, lang);
+    const passiveHtml = (hero.passiveName || passiveLinesHtml)
       ? `<div class="fire-cand__passive">
-          ${hero.passiveName ? `<span class="fire-cand__passive-name">${escapeHtml(hero.passiveName)}</span> ` : ""}
-          <span>${escapeHtml(passiveDesc)}</span>
+          ${hero.passiveName ? `<span class="fire-cand__passive-name">${escapeHtml(hero.passiveName)}</span>` : ""}
+          ${passiveLinesHtml}
         </div>`
       : "";
     return `<button type="button" class="${cls}" data-fire="${hero.heroId}" ${fireable ? "" : "disabled"}>
@@ -4248,6 +4424,8 @@ function finalizeCraftCleanup() {
   resumeTime();
   renderWorkshop();
   renderOrderPanel();
+  // Phase 1D-25: 条件達成チェック → マイのレベルアップ案内
+  setTimeout(maybeWorkshopLvPrompt, 600);
 }
 
 /** ─── Help overlay ──────────────────────────────────────────────── */
@@ -4591,7 +4769,7 @@ async function init() {
   });
   $("sellSellerList")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-seller]");
-    if (!btn) return;
+    if (!btn || btn.disabled) return;
     const id = parseInt(btn.getAttribute("data-seller"), 10);
     if (Number.isFinite(id)) {
       _sellPickedSellerId = id;
