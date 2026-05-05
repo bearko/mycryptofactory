@@ -105,6 +105,67 @@ export const DEFAULT_DURATION_WEEKS = {
   legendary: 48,
 };
 
+/** Phase 1D-22: 工房レベルごとに作れる最大 rarity (= レアリティゲート)
+ *  Lv 1 → Common のみ
+ *  Lv 2 → + Uncommon
+ *  Lv 3 → + Rare
+ *  Lv 4 → + Epic
+ *  Lv 5 → + Legendary
+ */
+const RARITY_RANK_FOR_GATE = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+export function maxRarityForFactoryLevel(factoryLevel) {
+  if (factoryLevel >= 5) return "legendary";
+  if (factoryLevel >= 4) return "epic";
+  if (factoryLevel >= 3) return "rare";
+  if (factoryLevel >= 2) return "uncommon";
+  return "common";
+}
+export function rarityAllowedAtFactoryLevel(rarity, factoryLevel) {
+  const max = maxRarityForFactoryLevel(factoryLevel);
+  return (RARITY_RANK_FOR_GATE[(rarity || "").toLowerCase()] || 1)
+       <= (RARITY_RANK_FOR_GATE[max] || 1);
+}
+
+/** 全エクステからシリーズ名 → ext[] のマップを構築する。
+ *  EXTENSIONS が load 済みなら呼び出すたびに最新になる。 */
+export function extsBySeries() {
+  const map = {};
+  for (const e of EXTENSIONS) {
+    const s = e.series || "";
+    if (!map[s]) map[s] = [];
+    map[s].push(e);
+  }
+  return map;
+}
+
+/** Phase 1D-22: 「シリーズが解放済み + 工房 Lv で許可された rarity」かを返す。
+ *  クラフト選択画面はこの関数で対象 ext をフィルタする。
+ *
+ *  @param {object} ext
+ *  @param {Set<string>} unlockedSeries
+ *  @param {number} factoryLevel
+ *  @returns {boolean}
+ */
+export function isExtUnlocked(ext, unlockedSeries, factoryLevel) {
+  if (!ext) return false;
+  if (!(unlockedSeries instanceof Set)) return false;
+  if (!unlockedSeries.has(ext.series)) return false;
+  return rarityAllowedAtFactoryLevel(ext.rarity, factoryLevel || 1);
+}
+
+/** 「未取得シリーズ」のリスト (= レシピドロップの抽選母集団) を返す。 */
+export function lockedSeriesList(unlockedSeries) {
+  const seen = new Set();
+  const out = [];
+  for (const e of EXTENSIONS) {
+    const s = e.series || "";
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    if (!(unlockedSeries instanceof Set) || !unlockedSeries.has(s)) out.push(s);
+  }
+  return out;
+}
+
 /**
  * 所要時間 (週) を rarity + チームのクラフトレベル合計から計算。
  * クラフトレベルが高いほど短縮。最大 50% 短縮まで。

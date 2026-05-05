@@ -37,6 +37,8 @@ const SE_FILES = {
   passiveTrigger: "insp.mp3",
   /** Phase 1D-15: クエスト成功時 (失敗時は SE なし)。MCH 公式 CDN を直接参照。 */
   questSuccess: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/token_drop.mp3",
+  /** Phase 1D-22: シリーズレシピ獲得時の宝箱 SE */
+  recipeAcquire: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/open_treasure.mp3",
 };
 
 /** デフォルト音量 (0..1)。BGM は控えめ、SE は中ぐらい。 */
@@ -57,6 +59,7 @@ const SE_THROTTLE_MS = {
   // パッシブ発動: 同じ tick で連続 trigger することはほぼ無いが念のため軽く
   passiveTrigger: 200,
   questSuccess: 500,
+  recipeAcquire: 500,
 };
 
 let _bgmEl = null;
