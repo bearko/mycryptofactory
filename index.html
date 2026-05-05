@@ -2642,6 +2642,134 @@
       font-size: 1.5rem; color: var(--accent); font-variant-numeric: tabular-nums;
     }
 
+    /* Phase 1D-34: ショップ view (= マーケット > ショップ) */
+    .shop-view {
+      position: fixed; inset: 0; z-index: 296;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .shop-view.hidden { display: none !important; }
+    .shop-view__card {
+      max-width: 640px; width: 100%;
+      max-height: 92vh;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.1rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      overflow: hidden;
+    }
+    .shop-view__head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.5rem;
+    }
+    .shop-view__title {
+      margin: 0; font-size: 1.15rem;
+      color: var(--accent); letter-spacing: 0.05em;
+    }
+    .shop-view__back {
+      appearance: none;
+      background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .shop-tabs {
+      display: flex; gap: 0.32rem; flex-wrap: wrap;
+    }
+    .shop-tab {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.78rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .shop-tab:hover { border-color: var(--accent); }
+    .shop-tab--sel {
+      background: linear-gradient(135deg, #2f2740, #3a2f4a);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .shop-list {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      overflow-y: auto;
+      padding-right: 4px;
+      min-height: 0;
+      flex: 1;
+    }
+    .shop-list::-webkit-scrollbar { width: 6px; }
+    .shop-list::-webkit-scrollbar-thumb { background: rgba(196,163,90,0.35); border-radius: 3px; }
+    .shop-empty {
+      text-align: center; color: var(--muted);
+      padding: 2rem; font-size: 0.85rem;
+    }
+    .shop-item {
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem;
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 0.55rem;
+      align-items: center;
+    }
+    .shop-item--disabled {
+      opacity: 0.55;
+    }
+    .shop-item__icon {
+      width: 64px; height: 64px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+    }
+    .shop-item__info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    .shop-item__head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.5rem;
+    }
+    .shop-item__name {
+      font-weight: 800; font-size: 0.92rem;
+      color: var(--text);
+    }
+    .shop-item__stock {
+      font-size: 0.7rem; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .shop-item__desc {
+      margin: 0; font-size: 0.74rem;
+      color: var(--muted); line-height: 1.35;
+    }
+    .shop-item__reason {
+      margin: 0; font-size: 0.7rem;
+      color: var(--ifrit); font-weight: 700;
+    }
+    .shop-item__buy-col {
+      display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end;
+    }
+    .shop-item__price {
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .shop-item__btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.4rem 0.85rem;
+      font-weight: 800; font-size: 0.8rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .shop-item__btn:hover:not(:disabled) { background: #d6b873; }
+    .shop-item__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
     /* Phase 1D-22: シリーズレシピ獲得ポップアップ */
     /* Phase 1D-32: 受注クラフト picker view */
     .commission-view {
@@ -5051,6 +5179,8 @@
     <div class="menu-card hidden" id="marketSubmenu" aria-label="Market submenu">
       <button type="button" class="menu-item" data-market-tab-direct="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
       <button type="button" class="menu-item" data-market-tab-direct="sell" data-i18n="market.tab.sell">出品</button>
+      <!-- Phase 1D-34: ショップ (= GUM 使い道拡張) -->
+      <button type="button" class="menu-item" data-market-action="shop" data-i18n="menu.market.shop">ショップ</button>
     </div>
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
       <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
@@ -5534,6 +5664,18 @@
       <p class="commission-view__intro" data-i18n="commission.intro">素材なしで請けられますが、報酬は通常の 6 割。期限までに基準値を満たす必要があります。</p>
       <div class="commission-view__list" id="commissionList"></div>
       <button type="button" class="commission-view__close" id="commissionViewClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Phase 1D-34: ショップ view (= マーケット > ショップ) -->
+  <div class="shop-view hidden" id="shopView" role="dialog" aria-modal="true" aria-labelledby="shopViewTitle">
+    <div class="shop-view__card">
+      <header class="shop-view__head">
+        <h2 class="shop-view__title" id="shopViewTitle" data-i18n="shop.title">ショップ</h2>
+        <button type="button" class="shop-view__back" id="shopViewClose" data-i18n="btn.close">閉じる</button>
+      </header>
+      <div class="shop-tabs" id="shopTabs"></div>
+      <div class="shop-list" id="shopList"></div>
     </div>
   </div>
 
