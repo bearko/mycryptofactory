@@ -303,7 +303,7 @@ function onTick() {
   renderHeader();
   renderWorkshop();
   renderNotifications();
-  renderOrderPanel();
+  renderProgressCards();
   renderQuestOverlay();
 }
 
@@ -793,11 +793,15 @@ function startActiveQuest() {
 /** ─── Quest progress overlay (top of workshop) ───────────────────── */
 function renderQuestOverlay() {
   const host = $("questOverlay");
-  if (!host) return;
+  if (!host) {
+    if (typeof renderQuestCard === "function") renderQuestCard();
+    return;
+  }
   const aq = state.activeQuest;
   if (!aq) {
     host.classList.add("hidden");
     host.innerHTML = "";
+    if (typeof renderQuestCard === "function") renderQuestCard();
     return;
   }
   host.classList.remove("hidden");
@@ -816,6 +820,7 @@ function renderQuestOverlay() {
     </div>
     <div class="quest-overlay__bar"><div class="quest-overlay__bar-fill" style="width:${pctVal}%"></div></div>
   `;
+  if (typeof renderQuestCard === "function") renderQuestCard();
 }
 
 /** ─── Quest result screen (Phase 1C-1) ────────────────────────────── */
@@ -1541,8 +1546,24 @@ function renderOrderPanel() {
     fill.style.width = "0%";
     pct.textContent = "";
     icon.innerHTML = "";
+    // Phase 1D-13: 「クラフトする」遷移ボタンを表示
+    const ah = $("orderActionHost");
+    if (ah) {
+      ah.innerHTML = `
+        <div class="progress-card__actions">
+          <div class="progress-card__action-row">
+            <button type="button" class="progress-card__action-btn" data-craft-go="new">
+              ${escapeHtml(ti18n("progress.craft.actionStart"))}
+            </button>
+          </div>
+        </div>
+      `;
+    }
     return;
   }
+  // 稼働中: アクションボタンは隠す
+  const ah = $("orderActionHost");
+  if (ah) ah.innerHTML = "";
   // 進行中 (or 完成 Mai 通知 → 完成画面の間も表示維持)
   const ac = state.activeCraft || state.pendingCompletion;
   const ext = EXTENSION_BY_ID[String(ac.extId)];
@@ -1684,18 +1705,355 @@ function renderWorkshop() {
   }
 }
 
-/** Phase 1D-12: ヒーロー数に応じて workshop 内の配置座標を計算。
- *  最大 cap (15 名) まで対応するように 5 列 × 3 行のグリッドで配置。 */
+/** Phase 1D-13: 工房内の 12 固定配置座標 (workshop 領域の % 座標)。
+ *
+ *   上段 (2F バルコニー): 9, 10, 11, 12
+ *   中段 (1F 工作スペース): 3, 5, 6
+ *   下段 (1F 床面)        : 1, 2, 4, 7, 8
+ *
+ *   ヒーローが床の上に立っているように見える位置を狙ったが、設備拡張時に
+ *   壁/装置を貫通しない範囲で近似している。配属順 (slotIdx) と画面上の番号
+ *   が一致するように並べる。 */
+const WORKSHOP_SLOT_POS = [
+  { x: "23%", y: "78%" },   // 1: 床下段 左
+  { x: "44%", y: "80%" },   // 2: 床下段 中
+  { x: "63%", y: "70%" },   // 3: 中段右
+  { x: "85%", y: "62%" },   // 4: 床下段 右端
+  { x: "60%", y: "55%" },   // 5: 中段中央
+  { x: "33%", y: "57%" },   // 6: 中段左寄り
+  { x: "10%", y: "63%" },   // 7: 床下段 最左
+  { x: "70%", y: "82%" },   // 8: 床下段 右
+  { x: "18%", y: "33%" },   // 9: 2F バルコニー左
+  { x: "44%", y: "30%" },   // 10: 2F バルコニー中央
+  { x: "60%", y: "30%" },   // 11: 2F バルコニー中央右
+  { x: "82%", y: "17%" },   // 12: 2F バルコニー右上
+];
+
+/** Phase 1D-12 → Phase 1D-13: ヒーロー数に応じた workshop 配置座標。
+ *  もともと 5 列 × 3 行のグリッドだったが、ユーザー仕様の 12 固定スロットに
+ *  差し替え。13 名以上 (= cap 拡張) になった場合は modulo でラップする。 */
 function workshopSlotPosFor(idx, total) {
-  const cols = 5;
-  const col = idx % cols;
-  const row = Math.floor(idx / cols);  // 0, 1, 2
-  // 横方向: 12% から 88% に等間隔 (5 ヒーロー均等)
-  const x = 12 + (col / (cols - 1)) * 76;
-  // 縦方向: 0行=55%, 1行=72%, 2行=88%
-  const yByRow = [55, 72, 88];
-  const y = yByRow[Math.min(row, yByRow.length - 1)] || 55;
-  return { x: x.toFixed(0) + "%", y: y + "%" };
+  return WORKSHOP_SLOT_POS[idx % WORKSHOP_SLOT_POS.length] || WORKSHOP_SLOT_POS[0];
+}
+
+/** ─── Phase 1D-13: Progress cards (Craft / Quest / Market) ─────────
+ *  ホーム画面の右ペイン (PC) / 下部カルーセル (モバイル) に表示する
+ *  3 枚のカード。Craft カードは既存 order-panel をそのまま再利用するため
+ *  ここでは Quest / Market のみ実装する。 */
+
+/** Quest progress card 描画 */
+function renderQuestCard() {
+  const host = $("questCard");
+  if (!host) return;
+  const aq = state.activeQuest;
+  if (!aq) {
+    // 未稼働: 空メッセージ + 通常 / ランド ボタン
+    const heroAvail = countQuestEligibleHeroes();
+    const noHero = heroAvail === 0;
+    const noteHtml = noHero ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.quest.noHero"))}</p>` : "";
+    host.innerHTML = `
+      <div class="progress-card__empty">${escapeHtml(ti18n("progress.quest.empty"))}</div>
+      <div class="progress-card__actions">
+        <div class="progress-card__action-row">
+          <button type="button" class="progress-card__action-btn" data-quest-go="normal" ${noHero ? "disabled" : ""}>
+            ${escapeHtml(ti18n("progress.quest.actionNormal"))}
+          </button>
+          ${noHero ? noteHtml : ""}
+        </div>
+        <div class="progress-card__action-row">
+          <button type="button" class="progress-card__action-btn" data-quest-go="land" ${noHero ? "disabled" : ""}>
+            ${escapeHtml(ti18n("progress.quest.actionLand"))}
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  const node = NODE_BY_ID[aq.nodeId];
+  const lang = getLang() === "en" ? "en" : "ja";
+  const nodeName = node ? (lang === "en" ? (node.nameEn || node.nameJa) : node.nameJa) : aq.nodeId;
+  const pctVal = Math.floor((aq.progress || 0) * 100);
+  const heroesHtml = aq.team.filter(id => id != null).slice(0, 3).map(id => {
+    const h = findHero(id);
+    if (!h) return "";
+    return `<img class="quest-card-row__hero" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />`;
+  }).join("");
+  const statusLbl = ti18n("progress.quest.statusInProgress");
+  host.innerHTML = `
+    <div class="quest-card-row">
+      <div class="quest-card-row__heroes">${heroesHtml}</div>
+      <div class="quest-card-row__node">
+        <span class="quest-card-row__node-name">${escapeHtml(ti18n("quest.nodeLabel"))}: ${escapeHtml(nodeName)}</span>
+        <span class="quest-card-row__node-status">${escapeHtml(statusLbl)}</span>
+      </div>
+    </div>
+    <div class="quest-card__bar">
+      <div class="quest-card__bar-fill" style="width:${pctVal}%"></div>
+      <span class="quest-card__pct">${pctVal}%</span>
+    </div>
+  `;
+}
+
+/** クエストに行ける(IDLE な)ヒーロー人数を返す */
+function countQuestEligibleHeroes() {
+  if (!Array.isArray(state.ownedHeroes)) return 0;
+  return state.ownedHeroes.filter(h => h.state === HERO_STATE.IDLE).length;
+}
+
+/** Trade を担当できる(IDLE な)ヒーロー人数を返す */
+function countTradeEligibleHeroes() {
+  if (!Array.isArray(state.ownedHeroes)) return 0;
+  return state.ownedHeroes.filter(h => h.state === HERO_STATE.IDLE).length;
+}
+
+/** Phase 1D-13: オークション出品料 (placeholder)。実装時に factory-market に移管予定。 */
+const AUCTION_LISTING_FEE = 100;
+
+/** Market progress card 描画 (Trade + Auction の 2 サブカード)
+ *
+ *  各サブカードは未稼働 (active sale なし) のとき遷移ボタンを表示する。
+ *  ボタンの disable 優先度 (ユーザー仕様):
+ *    1. エクステンション不足 (warehouse 空)
+ *    2. GUM 不足 (auction のみ)
+ *    3. ヒーロー不足 (trade を担当できる IDLE ヒーローなし)
+ */
+function renderMarketCard() {
+  const host = $("marketCard");
+  if (!host) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+
+  const hasExt = Array.isArray(state.warehouse) && state.warehouse.length > 0;
+  const hasHero = countTradeEligibleHeroes() > 0;
+  const hasGum  = (state.gum ?? 0) >= AUCTION_LISTING_FEE;
+
+  // Trade サブカード
+  let tradeBody;
+  if (state.activeSales && state.activeSales.length > 0) {
+    const s = state.activeSales[0];
+    const w = state.warehouse[s.warehouseIdx];
+    const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
+    const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
+    const iconUrl = ext ? extIconUrl(ext.extId) : "";
+    const elapsed = state.tickCount - s.listedAtTick;
+    const totalTicks = s.weeks * SECONDS_PER_WEEK;
+    const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
+    const speedDef = SALE_SPEED_BY_ID?.[s.speedId];
+    const speedLbl = speedDef ? (lang === "en" ? speedDef.nameEn : speedDef.nameJa) : (s.speedId || "");
+    const askGum = typeof s.expectedPrice === "number" ? s.expectedPrice : 0;
+    tradeBody = `
+      <div class="market-sub__row">
+        <img class="market-sub__icon" src="${iconUrl}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="market-sub__main">
+          <span class="market-sub__name">${escapeHtml(extName)}</span>
+          <div class="market-sub__meta">
+            <span>${escapeHtml(speedLbl)}</span>
+            <span class="market-sub__meta--gum">G ${askGum}</span>
+          </div>
+        </div>
+      </div>
+      <div class="market-sub__bar">
+        <div class="market-sub__bar-fill" style="width:${pct}%"></div>
+        <span class="market-sub__bar-pct">${pct}%</span>
+      </div>
+    `;
+  } else {
+    // 出品なし → 遷移ボタン (disable 優先度: ext > hero) ※ trade は GUM 不要
+    let disableReason = null;
+    if (!hasExt)       disableReason = "noExt";
+    else if (!hasHero) disableReason = "noHero";
+    const disabled = disableReason !== null;
+    const note = disabled ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.market." + disableReason))}</p>` : "";
+    tradeBody = `
+      <div class="market-sub__empty">${escapeHtml(ti18n("progress.market.tradeEmpty"))}</div>
+      <div class="progress-card__action-row">
+        <button type="button" class="progress-card__action-btn" data-market-go="trade" ${disabled ? "disabled" : ""}>
+          ${escapeHtml(ti18n("progress.market.actionTrade"))}
+        </button>
+        ${note}
+      </div>
+    `;
+  }
+
+  // Auction サブカード (placeholder: いつでも開催待ち = 出品ボタンを表示)
+  const remainW = computeAuctionWeeksRemaining();
+  const auctionLbl = ti18n("progress.market.auctionWait").replace("{n}", remainW);
+  // disable 優先度: ext > GUM > hero
+  let auctionDisableReason = null;
+  if (!hasExt)            auctionDisableReason = "noExt";
+  else if (!hasGum)       auctionDisableReason = "noGum";
+  else if (!hasHero)      auctionDisableReason = "noHero";
+  const auctionDisabled = auctionDisableReason !== null;
+  const auctionNote = auctionDisabled
+    ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.market." + auctionDisableReason))}</p>`
+    : "";
+  const auctionBody = `
+    <div class="market-sub__row">
+      <div class="market-sub__icon"></div>
+      <div class="market-sub__main">
+        <span class="market-sub__name">${escapeHtml(auctionLbl)}</span>
+        <div class="market-sub__meta">
+          <span>${escapeHtml(ti18n("progress.market.auctionAttention"))}: —</span>
+          <span>${escapeHtml(ti18n("progress.market.auctionPopularity"))}: —</span>
+        </div>
+      </div>
+    </div>
+    <div class="progress-card__action-row">
+      <button type="button" class="progress-card__action-btn" data-market-go="auction" ${auctionDisabled ? "disabled" : ""}>
+        ${escapeHtml(ti18n("progress.market.actionAuction"))}
+      </button>
+      ${auctionNote}
+    </div>
+  `;
+
+  host.innerHTML = `
+    <div class="market-card">
+      <div class="market-sub">
+        <span class="market-sub__title">${escapeHtml(ti18n("progress.market.trade"))}</span>
+        ${tradeBody}
+      </div>
+      <div class="market-sub">
+        <span class="market-sub__title">${escapeHtml(ti18n("progress.market.auction"))}</span>
+        ${auctionBody}
+      </div>
+    </div>
+  `;
+}
+
+/** 月次 (4 game-week) サイクルで開催される auction 仮設の残週数を返す。
+ *  実 auction 機能未実装の placeholder。 */
+function computeAuctionWeeksRemaining() {
+  const y = state.year ?? 2018;
+  const m = state.month ?? 12;
+  const w = state.week ?? 1;
+  // (year * 12 + month) * 4 + week → 通算ゲーム週
+  const totalW = (y * 12 + (m - 1)) * 4 + (w - 1);
+  const cycle = 4;
+  const r = cycle - (totalW % cycle);
+  return r === 0 ? cycle : r;
+}
+
+/** Progress Card 全体の再描画 (Craft + Quest + Market) */
+function renderProgressCards() {
+  renderOrderPanel();
+  renderQuestCard();
+  renderMarketCard();
+  updateProgressCarouselIndicators();
+}
+
+/** ─── Phase 1D-13: Progress carousel navigation (mobile) ──────── */
+let _progressCardIdx = 0;
+const PROGRESS_CARD_COUNT = 3;
+
+function _isProgressCarouselMode() {
+  return window.matchMedia("(max-width: 879px)").matches;
+}
+
+function navigateProgressCard(delta) {
+  if (!_isProgressCarouselMode()) return;
+  const next = Math.max(0, Math.min(PROGRESS_CARD_COUNT - 1, _progressCardIdx + delta));
+  if (next === _progressCardIdx) return;
+  _progressCardIdx = next;
+  scrollProgressToCurrent();
+  updateProgressCarouselIndicators();
+}
+
+function scrollProgressToCurrent() {
+  const sc = $("progressScroller");
+  if (!sc) return;
+  const cards = sc.querySelectorAll(".progress-card");
+  const target = cards[_progressCardIdx];
+  if (target) {
+    sc.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+  }
+}
+
+function updateProgressCarouselIndicators() {
+  const dots = $("progressDots");
+  if (dots) {
+    dots.innerHTML = "";
+    for (let i = 0; i < PROGRESS_CARD_COUNT; i++) {
+      const d = document.createElement("span");
+      d.className = "progress-area__dot" + (i === _progressCardIdx ? " progress-area__dot--active" : "");
+      dots.appendChild(d);
+    }
+  }
+  const prevBtn = document.querySelector('[data-progress-nav="prev"]');
+  const nextBtn = document.querySelector('[data-progress-nav="next"]');
+  if (prevBtn) prevBtn.disabled = (_progressCardIdx === 0);
+  if (nextBtn) nextBtn.disabled = (_progressCardIdx === PROGRESS_CARD_COUNT - 1);
+}
+
+/** scroller を監視してユーザーが直接スワイプした際に _progressCardIdx を更新 */
+function _initProgressCarousel() {
+  const sc = $("progressScroller");
+  if (!sc || sc.dataset.progressInit === "1") return;
+  sc.dataset.progressInit = "1";
+  let scrollTimer;
+  sc.addEventListener("scroll", () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      if (!_isProgressCarouselMode()) return;
+      const cards = sc.querySelectorAll(".progress-card");
+      let nearestIdx = 0;
+      let nearestDist = Infinity;
+      cards.forEach((c, i) => {
+        const d = Math.abs(c.offsetLeft - sc.scrollLeft);
+        if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+      });
+      if (nearestIdx !== _progressCardIdx) {
+        _progressCardIdx = nearestIdx;
+        updateProgressCarouselIndicators();
+      }
+    }, 80);
+  });
+  // 矢印ボタン
+  document.querySelectorAll('[data-progress-nav]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      const dir = btn.getAttribute("data-progress-nav");
+      navigateProgressCard(dir === "prev" ? -1 : 1);
+    });
+  });
+  // 初期 dots
+  updateProgressCarouselIndicators();
+  // ビューポート切替時に PC モードならスクロール位置をリセット
+  window.addEventListener("resize", () => {
+    if (!_isProgressCarouselMode()) {
+      sc.scrollTo({ left: 0 });
+    } else {
+      scrollProgressToCurrent();
+    }
+  });
+  // ── Phase 1D-13: アクションボタン (Craft/Quest/Market) のクリック委任 ──
+  // カードは renderXxxCard() で innerHTML 再生成されるので、毎回 listener を
+  // attach するのは無駄。scroller 上で 1 度だけ delegate する。
+  sc.addEventListener("click", (ev) => {
+    const target = ev.target.closest("[data-craft-go],[data-quest-go],[data-market-go]");
+    if (!target || target.disabled) return;
+    if (target.hasAttribute("data-craft-go")) {
+      // Craft → 新規開発
+      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      openCraftView();
+      return;
+    }
+    if (target.hasAttribute("data-quest-go")) {
+      const filter = target.getAttribute("data-quest-go");
+      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      state.questNodeType = (filter === "land") ? "land" : "normal";
+      openQuestView();
+      return;
+    }
+    if (target.hasAttribute("data-market-go")) {
+      const kind = target.getAttribute("data-market-go");
+      if (kind === "trade") {
+        state.marketTab = "sell";
+        openMarketView();
+        if (typeof setMarketTab === "function") setMarketTab("sell");
+      } else if (kind === "auction") {
+        // オークション機能は未実装 (placeholder) → Mai 通知
+        maiSays("menu.auction.todo");
+      }
+    }
+  });
 }
 
 /** ─── Passive notification banner ────────────────────────────────── */
@@ -2730,6 +3088,8 @@ function renderHireOverlay() {
  *  各 active sale を 1 行ずつ列挙: ext / 担当 / 残り週数 / 進捗バー。 */
 function renderSaleOverlay() {
   const host = $("saleOverlay");
+  // Phase 1D-13: Market progress card は overlay とは別に常時更新
+  if (typeof renderMarketCard === "function") renderMarketCard();
   if (!host) return;
   if (!state.activeSales || state.activeSales.length === 0) {
     host.classList.add("hidden");
@@ -2853,6 +3213,14 @@ function scheduleAppraisalReveal() {
       return;
     }
     pa.revealCount += 1;
+    // Phase 1D-13: 直前に reveal された判定員のスコアに応じて SE
+    const just = pa.judges[pa.revealCount - 1];
+    if (just) {
+      const sc = just.score || 0;
+      if      (sc >= 8) playSe("appraisalHigh");
+      else if (sc >= 5) playSe("appraisalMid");
+      else              playSe("appraisalLow");
+    }
     renderAppraisalScreen();
   }, 700);
 }
@@ -2993,7 +3361,7 @@ async function init() {
 
   // Initial render
   renderHeader();
-  renderOrderPanel();
+  renderProgressCards();   // Craft / Quest / Market 3 カード初期描画 (Phase 1D-13)
   renderHeroTeam();
   renderHeroList();
   renderWorkshop();
@@ -3001,6 +3369,8 @@ async function init() {
   renderQuestOverlay();
   renderHireOverlay();
   renderSaleOverlay();
+  // Phase 1D-13: 進捗カードカルーセルの矢印 / dots / scroll listener を一度だけ初期化
+  _initProgressCarousel();
 
   // ── Title screen → tap to start ──
   const titleEl = $("titleView");
