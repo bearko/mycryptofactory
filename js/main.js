@@ -863,6 +863,14 @@ function triggerSpontaneousHire(rarity, source) {
   if (!rarity) return;
   // 既に保留中があれば 1 件ずつ処理 (重ねない)
   if (state.pendingSpontaneousRarity) return;
+  // Phase α 修正: 他のモーダルが開いている (= pauseFlags > 0) ときに maiSays を
+  //   重ねると body / _maiNextAction が上書きされ pauseFlags の累積取りこぼしで
+  //   フリーズする (= 2,000 GUM 到達と他完了報告の同時発火バグ)。pauseFlags が
+  //   0 に戻った tick で onTick の retry 経路が再試行する。
+  if (state.pauseFlags > 0) {
+    state.pendingSpontaneousRarity = rarity;
+    return;
+  }
   // キャップ満員 → 保留
   const cap = heroCapAtFactoryLevel(state.factoryLevel);
   if ((state.ownedHeroes || []).length >= cap) {

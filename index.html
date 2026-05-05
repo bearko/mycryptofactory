@@ -43,7 +43,8 @@
       margin: 0;
       min-height: 100vh;
       font-family: "Segoe UI", "Hiragino Sans", sans-serif;
-      background: radial-gradient(ellipse at top, #1f1a2e 0%, var(--bg) 55%);
+      /* Phase α: ロゴに合わせて白背景 (= タイトル / ホームの余白部分も白) */
+      background: #ffffff;
       color: var(--text);
       display: flex;
       flex-direction: column;
@@ -52,28 +53,56 @@
     }
     .hidden { display: none !important; }
 
-    /* ── Title screen (legacy, kept for first-launch flow) ───────── */
+    /* ── Title screen (Phase α: 白背景 + α 版バナー) ───────── */
     .title-screen {
       position: fixed; inset: 0; z-index: 1000;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      background: #080611;
+      background: #ffffff;
       cursor: pointer; user-select: none;
-      gap: 2.8rem;
+      gap: 2.4rem;
     }
     .title-screen.hidden { display: none !important; }
     .title-screen.title-out { animation: title-fade-out 0.38s ease forwards; }
     @keyframes title-fade-out { to { opacity: 0; } }
     .title-logo { max-width: min(420px, 88vw); border-radius: 12px; }
     .title-press {
-      font-size: 1.05rem; color: #bba8d8; letter-spacing: 0.2em;
+      font-size: 1.05rem; color: #6c5e8a; letter-spacing: 0.2em;
       text-transform: uppercase; animation: title-blink 1.3s ease-in-out infinite;
+      font-weight: 700;
     }
-    @keyframes title-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+    @keyframes title-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    /* Phase α: α 版バナー (タイトル画面 + ホームヘッダーで使い回す) */
+    .alpha-badge {
+      display: inline-block;
+      padding: 0.28rem 0.85rem;
+      background: linear-gradient(135deg, #c4a35a 0%, #e0c178 100%);
+      color: #1a1420;
+      border: 2px solid #1a1420;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.18);
+    }
+    .title-alpha-stack {
+      display: flex; flex-direction: column; align-items: center; gap: 0.45rem;
+    }
+    .title-alpha-note {
+      margin: 0; font-size: 0.72rem; color: #6c5e8a;
+      letter-spacing: 0.08em; text-align: center;
+      max-width: 80vw;
+    }
     .title-version {
       position: fixed; bottom: 0.55rem; left: 50%;
       transform: translateX(-50%); margin: 0;
-      font-size: 0.7rem; color: #6c5e8a; letter-spacing: 0.16em;
+      font-size: 0.68rem; color: #8c7fb0; letter-spacing: 0.16em;
+      pointer-events: none;
+    }
+    /* Phase α: ホームヘッダーに表示する α バッジ (常時表示) */
+    .home-alpha-badge {
+      position: fixed; top: 0.5rem; left: 0.5rem;
+      z-index: 110;
       pointer-events: none;
     }
     .lang-toggle {
@@ -82,17 +111,17 @@
       display: flex; flex-direction: column; align-items: center; gap: 0.55rem;
       cursor: default;
     }
-    .lang-toggle-label { font-size: 0.72rem; color: #8c7fb0; letter-spacing: 0.14em; text-transform: uppercase; }
+    .lang-toggle-label { font-size: 0.72rem; color: #6c5e8a; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
     .lang-toggle .lang-btn {
-      appearance: none; background: rgba(255,255,255,0.04);
-      color: #d6cdec; border: 1px solid #5b4d8a;
+      appearance: none; background: #ffffff;
+      color: #4a3f6e; border: 1.5px solid #b8a8d8;
       border-radius: 8px; padding: 0.5rem 1.1rem;
       font-size: 0.85rem; cursor: pointer;
       transition: background 0.18s, border-color 0.18s, color 0.18s;
     }
     .lang-toggle .lang-btn + .lang-btn { margin-left: 0.4rem; }
-    .lang-toggle .lang-btn:hover { background: rgba(155,127,210,0.18); border-color: #9b7fd2; }
-    .lang-toggle .lang-btn--active { background: #9b7fd2; border-color: #c8b6e6; color: #fff; font-weight: 700; }
+    .lang-toggle .lang-btn:hover { background: rgba(155,127,210,0.12); border-color: #9b7fd2; }
+    .lang-toggle .lang-btn--active { background: #9b7fd2; border-color: #5b4d8a; color: #fff; font-weight: 700; }
 
     /* ── Factory shell ─────────────────────────────────────────── */
     .factory-app {
@@ -4741,9 +4770,13 @@
 </head>
 <body>
 
-  <!-- ── Title Screen ── -->
+  <!-- ── Title Screen (Phase α: 白背景 + α 版バナー) ── -->
   <div id="titleView" class="title-screen" role="button" aria-label="Start the game" data-i18n-attr-aria-label="title.aria" tabindex="0">
     <img class="title-logo" src="./Image/Factory/title-logo.jpg" alt="MyCryptoFactory" />
+    <div class="title-alpha-stack">
+      <span class="alpha-badge" data-i18n="alpha.badge">α 版 / ALPHA</span>
+      <p class="title-alpha-note" data-i18n="alpha.note">フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。</p>
+    </div>
     <p class="title-press" data-i18n="title.press">Press to Start</p>
     <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
       <span class="lang-toggle-label" data-i18n="lang.toggle.label">言語 / Language</span>
@@ -4752,8 +4785,11 @@
         <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN：English</button>
       </div>
     </div>
-    <p class="title-version">α version</p>
+    <p class="title-version">© bearko / unofficial fan project</p>
   </div>
+
+  <!-- Phase α: ホーム画面でも α 版であることが分かるよう、左上に常時バッジを出す -->
+  <span class="home-alpha-badge alpha-badge" data-i18n="alpha.badge">α 版 / ALPHA</span>
 
   <!-- ── Factory App ── -->
   <div class="factory-app" id="factoryApp">
@@ -4889,7 +4925,7 @@
     </div>
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
       <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
-      <button type="button" class="menu-item" data-setting-toggle="speed20x" id="settingSpeed20x">時間20倍速 (test): OFF</button>
+      <!-- Phase α: 20倍速モードはテスト/バランス調整用のため main からは外す -->
     </div>
   </div>
 
