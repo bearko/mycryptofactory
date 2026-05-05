@@ -86,8 +86,31 @@ export const NORMAL_NODES = [
   },
 ];
 
+/**
+ * Phase 1D-12: ランドノード定義 (9 種)。各ランドにメインのランド素材 1 種 +
+ * サブの通常素材を持つ。レア素材 (highTier) は出ない設計 (ユーザー仕様)。
+ *
+ * 通行証: state.landPasses Set で管理 (default: 1 番目に選んだランドが
+ *   home land = 無料保有)。それ以外は 500 GUM で購入。
+ */
+export const LAND_NODES = [
+  { id: "ocean",      nameJa: "Ocean",      nameEn: "Ocean",      primaryMat: "aquamarine",     poolNormal: ["aquamarine","aquamarine","aquamarine","iron","copper","zinc"], poolHighTier: [] },
+  { id: "strawberry", nameJa: "Strawberry", nameEn: "Strawberry", primaryMat: "rhodochrosite",  poolNormal: ["rhodochrosite","rhodochrosite","rhodochrosite","iron","copper","zinc"], poolHighTier: [] },
+  { id: "tangerine",  nameJa: "Tangerine",  nameEn: "Tangerine",  primaryMat: "topaz",          poolNormal: ["topaz","topaz","topaz","iron","copper","zinc"], poolHighTier: [] },
+  { id: "lime",       nameJa: "Lime",       nameEn: "Lime",       primaryMat: "peridot",        poolNormal: ["peridot","peridot","peridot","iron","copper","zinc"], poolHighTier: [] },
+  { id: "graphite",   nameJa: "Graphite",   nameEn: "Graphite",   primaryMat: "onyx",           poolNormal: ["onyx","onyx","onyx","iron","copper","zinc"], poolHighTier: [] },
+  { id: "grape",      nameJa: "Grape",      nameEn: "Grape",      primaryMat: "amethyst",       poolNormal: ["amethyst","amethyst","amethyst","iron","copper","zinc"], poolHighTier: [] },
+  { id: "sage",       nameJa: "Sage",       nameEn: "Sage",       primaryMat: "jade",           poolNormal: ["jade","jade","jade","iron","copper","zinc"], poolHighTier: [] },
+  { id: "blueberry",  nameJa: "Blueberry",  nameEn: "Blueberry",  primaryMat: "lapis",          poolNormal: ["lapis","lapis","lapis","iron","copper","zinc"], poolHighTier: [] },
+  { id: "ruby",       nameJa: "Ruby",       nameEn: "Ruby",       primaryMat: "garnet",         poolNormal: ["garnet","garnet","garnet","iron","copper","zinc"], poolHighTier: [] },
+];
+
+/** ランドセクター通行証の 1 枚あたり費用 (GUM) */
+export const LAND_PASS_COST = 500;
+
 export const NODE_BY_ID = {};
 for (const n of NORMAL_NODES) NODE_BY_ID[n.id] = n;
+for (const n of LAND_NODES)   NODE_BY_ID[n.id] = n;
 
 /** チームのクエストレベル合計を計算する。
  *  - 各ヒーローの 4 元素値合計 (craftLevel と同様) を加算
