@@ -511,6 +511,8 @@ function triggerQuestComplete(aq) {
     finishedAt: { year: state.year, month: state.month, week: state.week },
   };
   state.activeQuest = null;
+  // Phase 1D-15: クエスト成功時のみ SE (失敗時は無音)
+  if (success) playSe("questSuccess");
   // Mai ポップアップ → 閉じるとレポート画面
   maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
     onClose: openQuestResultScreen,
@@ -530,6 +532,78 @@ function openQuestView() {
 function closeQuestView() {
   $("questView")?.classList.add("hidden");
   resumeTime();
+}
+
+/** Phase 1D-15: 指定ノード × 難易度で得られる素材の期待ドロップ数 (range)
+ *  を計算する。
+ *
+ *  rollQuestRewards の生成モデル:
+ *    - dropCount = 5 (= 5 戦闘)
+ *    - hard なら 1〜2 個が highTier、それ以外は normal
+ *    - normal slot は qty 1〜2、highTier slot は qty 1
+ *
+ *  各素材について [min, max] のドロップ数 range を返す。
+ *
+ *  @returns {Record<string, { min: number, max: number, rare: boolean }>}
+ */
+function expectedQuestRewardRanges(node, difficulty) {
+  if (!node) return {};
+  const dropCount = 5;
+  const hasHigh = difficulty === "hard" && node.poolHighTier?.length > 0;
+  const minHigh = hasHigh ? 1 : 0;
+  const maxHigh = hasHigh ? 2 : 0;
+  const out = {};
+  // Normal pool 内の素材集合 (重複は 1 つにまとめる)
+  const normalPool = node.poolNormal || [];
+  const uniqueNormals = [...new Set(normalPool)];
+  const normalMaxSlots = dropCount - minHigh;       // 正規スロット最大個数 (= high 最少時)
+  const normalMinSlots = Math.max(0, dropCount - maxHigh); // 正規スロット最少個数 (= high 最多時)
+  for (const mat of uniqueNormals) {
+    const occurrences = normalPool.filter(m => m === mat).length;
+    const probPerSlot = normalPool.length > 0 ? occurrences / normalPool.length : 0;
+    if (uniqueNormals.length === 1) {
+      // pool に 1 種類しか無い場合 → 全 normal slot がこの素材
+      out[mat] = {
+        min: normalMinSlots,             // 全 slot が qty 1
+        max: normalMaxSlots * 2,         // 全 slot が qty 2
+        rare: false,
+      };
+    } else {
+      // 複数種類 → 期待値ベースで ±1 の range を見積もる
+      const expected = (normalMinSlots + normalMaxSlots) / 2 * probPerSlot * 1.5;
+      out[mat] = {
+        min: Math.max(0, Math.floor(expected - 0.5)),
+        max: Math.max(1, Math.ceil(expected + 0.5)),
+        rare: false,
+      };
+    }
+  }
+  if (hasHigh) {
+    const highPool = node.poolHighTier;
+    const uniqueHighs = [...new Set(highPool)];
+    for (const mat of uniqueHighs) {
+      const occurrences = highPool.filter(m => m === mat).length;
+      const probPerSlot = highPool.length > 0 ? occurrences / highPool.length : 0;
+      if (uniqueHighs.length === 1) {
+        out[mat] = { min: minHigh, max: maxHigh, rare: true };
+      } else {
+        const expected = (minHigh + maxHigh) / 2 * probPerSlot * 1;
+        out[mat] = {
+          min: Math.max(0, Math.floor(expected)),
+          max: Math.max(1, Math.ceil(expected)),
+          rare: true,
+        };
+      }
+    }
+  }
+  return out;
+}
+
+/** range を「×N」または「×N〜M」形式に整形 */
+function formatRewardRange(r) {
+  if (!r) return "";
+  if (r.min === r.max) return `×${r.min}`;
+  return `×${r.min}〜${r.max}`;
 }
 
 function renderQuestView() {
@@ -595,28 +669,38 @@ function renderQuestView() {
   const diffLabel = QUEST_DIFFICULTY_LABEL[state.questPickedDifficulty][lang];
   const rateText = rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%");
   const rateAttr  = rate < 0 ? "blocked" : Math.round(rate * 100);
+  // Phase 1D-15: 期待ドロップ数 range を計算 (難易度ごとの reward 見込み)
+  const expectedRanges = node ? expectedQuestRewardRanges(node, state.questPickedDifficulty) : {};
   $("questDetailPanel").innerHTML = node ? `
-    <div class="quest-detail-panel__head">
-      <span class="quest-detail-panel__name">node : ${escapeHtml(lang === "en" ? (node.nameEn || node.nameJa) : node.nameJa)}</span>
-      <span class="quest-detail-panel__diff">${escapeHtml(diffLabel)}</span>
+    <div class="quest-detail-panel__info">
+      <div class="quest-detail-panel__head">
+        <span class="quest-detail-panel__name">node : ${escapeHtml(lang === "en" ? (node.nameEn || node.nameJa) : node.nameJa)}</span>
+        <span class="quest-detail-panel__diff">${escapeHtml(diffLabel)}</span>
+      </div>
+      <div class="quest-detail-panel__mats-label">${escapeHtml(ti18n("quest.detail.mats"))}</div>
+      <div class="quest-detail-panel__mats">
+        ${detailMatIds.map(id => {
+          const isRare = (node.poolHighTier || []).includes(id);
+          const range = expectedRanges[id];
+          const qtyTxt = range ? formatRewardRange(range) : "";
+          return `<div class="quest-detail-panel__mat${isRare ? " quest-detail-panel__mat--rare" : ""}">
+            <img src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />
+            <span class="quest-detail-panel__mat-name">${escapeHtml(materialName(id, lang))}</span>
+            <span class="quest-detail-panel__mat-qty">${escapeHtml(qtyTxt)}</span>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="quest-detail-panel__lv">${escapeHtml(ti18n("quest.detail.questLv"))}: <strong>${teamLv}</strong> / ${baseLv}</div>
+      <div class="quest-detail-panel__rate">${escapeHtml(ti18n("quest.detail.rate"))}: <strong data-rate="${rateAttr}">${escapeHtml(rateText)}</strong></div>
     </div>
-    <div class="quest-detail-panel__mats-label">${escapeHtml(ti18n("quest.detail.mats"))}</div>
-    <div class="quest-detail-panel__mats">
-      ${detailMatIds.map(id => {
-        const isRare = (node.poolHighTier || []).includes(id);
-        return `<div class="quest-detail-panel__mat${isRare ? " quest-detail-panel__mat--rare" : ""}">
-          <img src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />
-          <span>${escapeHtml(materialName(id, lang))}</span>
-        </div>`;
-      }).join("")}
-    </div>
-    <div class="quest-detail-panel__lv">${escapeHtml(ti18n("quest.detail.questLv"))}: <strong>${teamLv}</strong> / ${baseLv}</div>
-    <div class="quest-detail-panel__rate">${escapeHtml(ti18n("quest.detail.rate"))}: <strong data-rate="${rateAttr}">${escapeHtml(rateText)}</strong></div>
     <div class="quest-detail-panel__mai">
-      <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
+      <div class="quest-detail-panel__mai-head">
+        <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
+        <span class="quest-detail-panel__mai-name">${escapeHtml(ti18n("mai.name"))}</span>
+      </div>
       <p>${escapeHtml(ti18n(commentKey))}</p>
     </div>
-  ` : `<p style="color:var(--muted);text-align:center;padding:1rem;">${escapeHtml(ti18n("quest.detail.empty"))}</p>`;
+  ` : `<p class="quest-detail-panel__empty">${escapeHtml(ti18n("quest.detail.empty"))}</p>`;
 
   // 2-B. 難易度行 (右)
   $("questDiffRows").innerHTML = ["easy", "normal", "hard"].map(d => {
