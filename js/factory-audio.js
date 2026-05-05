@@ -33,6 +33,8 @@ const SE_FILES = {
   appraisalMid:  "production.mp3",
   /** Phase 1D-13: 品評会 — 8 点以上 (高スコア) */
   appraisalHigh: "open_treasure.mp3",
+  /** Phase 1D-14: ヒーローのパッシブが発動した瞬間 (通知バナー表示と同時) */
+  passiveTrigger: "insp.mp3",
 };
 
 /** デフォルト音量 (0..1)。BGM は控えめ、SE は中ぐらい。 */
@@ -50,6 +52,8 @@ const SE_THROTTLE_MS = {
   appraisalLow:  150,
   appraisalMid:  150,
   appraisalHigh: 150,
+  // パッシブ発動: 同じ tick で連続 trigger することはほぼ無いが念のため軽く
+  passiveTrigger: 200,
 };
 
 let _bgmEl = null;
