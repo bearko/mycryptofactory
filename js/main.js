@@ -102,6 +102,15 @@ import {
   pickHeroFlavor,
 } from "./factory-hero-flavors.js";
 import {
+  calcFactoryScore,
+  submitFactoryScore,
+  getRankingApiUrl,
+  setRankingApiUrl,
+  getPlayerName,
+  setPlayerName,
+  fetchFactoryRanking,
+} from "./factory-ranking-client.js";
+import {
   HIRE_PLANS,
   PLAN_BY_ID,
   canBeRecruiter,
@@ -261,6 +270,12 @@ const state = {
   lastSaleSellerId: /** @type {number | null} */ (null),
   /** Phase 1D-25: 工房レベルアップを Mai が既に提案した target レベル群 */
   factoryLvPrompted: /** @type {Set<number>} */ (new Set()),
+  /** Phase 1D-26: ランキング集計用統計 (累計) */
+  heroHireCount: /** @type {number} */ (0),
+  /** Phase 1D-26: 10 年エンディング (2028年11月4週) を既に発火したか */
+  endgameTriggered10y: /** @type {boolean} */ (false),
+  /** Phase 1D-26: 50 年エンディング (2068年12月4週) を既に発火したか */
+  endgameTriggered50y: /** @type {boolean} */ (false),
   /** Phase 1D-22: クエスト結果画面が閉じた後に発火する recipe drop の理由 i18n キー
    *  (success 時に確率で設定、closeQuestResultScreen で消化) */
   pendingRecipeReason: /** @type {string | null} */ (null),
@@ -438,6 +453,206 @@ function maybeWorkshopLvPrompt() {
       ].filter(Boolean);
   // Mai シーケンス → 閉じたら工房レベルアップ画面を開く
   maiSaysSequence(lines, { onClose: () => openFactoryLvUpView() });
+}
+
+/** ─── Phase 1D-26: 10 年 / 50 年エンディング ──────────────────── */
+
+/** 現在の活動データ (ランキング送信 + 活動レポート用) */
+function gatherFactoryStats() {
+  return {
+    gum: state.gum || 0,
+    factoryLevel: state.factoryLevel || 1,
+    craftCount: state.craftCompletedCount || 0,
+    hireCount: state.heroHireCount || 0,
+    saleCount: state.saleCompletedCount || 0,
+    appraisalBest: state.appraisalBest || {},
+    ownedHeroCount: (state.ownedHeroes || []).length,
+    seriesCount: (state.unlockedSeries instanceof Set) ? state.unlockedSeries.size : 0,
+    landPassCount: (state.landPasses instanceof Set) ? state.landPasses.size : 0,
+    yearWeek: `${state.year}-${state.month}-${state.week}`,
+  };
+}
+
+/** 10 年エンディング: マイ → スコア結果 → 活動レポート → 続行案内 */
+function triggerEndgame10y() {
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  maiSaysSequence(
+    lang === "en"
+      ? [
+          "10 years have passed! Thank you for the journey.",
+          "Let me tally up your achievements and calculate your score.",
+        ]
+      : [
+          "10 年間お疲れ様でした！",
+          "ここまでの実績を元にスコアを計算しますね。",
+        ],
+    { onClose: () => openRankingScoreView(true) }  // true = 10y mode (ランキング登録可能)
+  );
+}
+
+/** 50 年エンディング: マイ → 完全終局レポート (ランキング登録対象外) */
+function triggerEndgame50y() {
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  maiSaysSequence(
+    lang === "en"
+      ? [
+          "50 years have passed! Thank you so much for playing all this time.",
+          "The game's official play period ends here. Take a look at the final report!",
+        ]
+      : [
+          "50 年間お疲れ様でした！ゲームとしてのプレイ期間はここまでです。",
+          "ここまで遊んでくださり本当にありがとうございます！活動レポートをご覧ください。",
+        ],
+    { onClose: () => openActivityReport(true) }  // true = final 50y report
+  );
+}
+
+/** スコア + ランキング登録 view を開く */
+function openRankingScoreView(isRanking) {
+  const stats = gatherFactoryStats();
+  const result = calcFactoryScore(stats);
+  state.endgameStats = stats;
+  state.endgameScore = result;
+  const view = $("rankingScoreView");
+  if (!view) {
+    // フォールバック: 結果を console
+    console.log("[ranking] score:", result.score, result.breakdown);
+    return;
+  }
+  view.classList.remove("hidden");
+  renderRankingScoreView();
+}
+function closeRankingScoreView() {
+  $("rankingScoreView")?.classList.add("hidden");
+}
+
+function renderRankingScoreView() {
+  const result = state.endgameScore;
+  if (!result) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const { score, breakdown: bd } = result;
+  $("rankingScoreNum").textContent = score.toLocaleString();
+  $("rankingScoreBreakdown").innerHTML = `
+    <li><span>${escapeHtml(lang === "en" ? "GUM (base)" : "保有 GUM (基礎値)")}</span><strong>${bd.gum.toLocaleString()}</strong></li>
+    <li><span>${escapeHtml(lang === "en" ? `Craft × ${bd.craftCount}` : `クラフト数 × ${bd.craftCount}`)}</span><strong>×${bd.craftMult.toFixed(2)}</strong></li>
+    <li><span>${escapeHtml(lang === "en" ? `Hire ${bd.hireCount} (fewer = better)` : `雇用 ${bd.hireCount} 名 (少ないほど高倍率)`)}</span><strong>×${bd.hireMult.toFixed(2)}</strong></li>
+    <li><span>${escapeHtml(lang === "en" ? `Workshop Lv ${bd.factoryLevel}` : `工房 Lv ${bd.factoryLevel}`)}</span><strong>×${bd.factoryMult.toFixed(2)}</strong></li>
+    <li><span>${escapeHtml(lang === "en" ? `Best Common appraisal ${bd.bestCommon}/50` : `Common 最高査定 ${bd.bestCommon}/50`)}</span><strong>×${bd.appraisalMult.toFixed(2)}</strong></li>
+  `;
+  // 既存名を default に
+  const nameInput = $("rankingPlayerName");
+  if (nameInput && !nameInput.value) nameInput.value = getPlayerName();
+  // submit ボタン: ランキング API URL が無ければ無効化
+  const submitBtn = $("rankingSubmitBtn");
+  if (submitBtn) {
+    const apiAvail = !!getRankingApiUrl();
+    submitBtn.disabled = !apiAvail;
+    submitBtn.textContent = apiAvail
+      ? ti18n("ranking.submitBtn", "ランキングに登録")
+      : ti18n("ranking.noApi", "(API 未設定)");
+  }
+  // 状態リセット
+  $("rankingStatus").textContent = "";
+}
+
+async function submitRankingNow() {
+  const result = state.endgameScore;
+  const stats  = state.endgameStats;
+  if (!result || !stats) return;
+  const nameInput = $("rankingPlayerName");
+  const name = (nameInput?.value || "").trim().slice(0, 30);
+  if (!name) {
+    $("rankingStatus").textContent = ti18n("ranking.needName", "名前を入力してください");
+    return;
+  }
+  setPlayerName(name);
+  $("rankingStatus").textContent = ti18n("ranking.submitting", "送信中…");
+  const payload = {
+    playerName: name,
+    score: result.score,
+    gum: stats.gum,
+    factoryLevel: stats.factoryLevel,
+    craftCount: stats.craftCount,
+    hireCount: stats.hireCount,
+    saleCount: stats.saleCount,
+    appraisalBest: stats.appraisalBest?.common || 0,
+    yearWeek: stats.yearWeek,
+    version: "1D-26",
+  };
+  const res = await submitFactoryScore(payload);
+  if (res.ok) {
+    $("rankingStatus").textContent = ti18n("ranking.submitOk", "登録しました！");
+    $("rankingSubmitBtn").disabled = true;
+  } else {
+    $("rankingStatus").textContent = (ti18n("ranking.submitFail", "送信失敗: ") + (res.error || ""));
+  }
+}
+
+/** スコア画面を閉じて活動レポートに進む (10 年エンドの場合 = 引き続きプレイ案内) */
+function proceedToActivityReport() {
+  closeRankingScoreView();
+  openActivityReport(false);
+}
+
+/** 活動レポート view */
+function openActivityReport(isFinal50y) {
+  const stats = gatherFactoryStats();
+  state.endgameStats = stats;
+  const view = $("activityReportView");
+  if (!view) return;
+  view.classList.remove("hidden");
+  view.setAttribute("data-final", isFinal50y ? "1" : "0");
+  renderActivityReport(isFinal50y);
+}
+function closeActivityReport() {
+  const isFinal = $("activityReportView")?.getAttribute("data-final") === "1";
+  $("activityReportView")?.classList.add("hidden");
+  resumeTime();
+  // 10 年エンドの場合のみ、引き続きプレイ可能の Mai 案内
+  if (!isFinal) {
+    const lang = getLang() === "en" ? "en" : "ja";
+    setTimeout(() => maiSaysSequence(
+      lang === "en"
+        ? [
+            "Ranking entries close at this point, but you can keep playing!",
+            "If you want to start over, just reload the browser.",
+          ]
+        : [
+            "ランキングでの集計期間はここまでですが、ゲームは引き続き遊べます！",
+            "最初からやり直したい場合はブラウザリロードをお願いします。",
+          ],
+      { onClose: () => {} }
+    ), 200);
+  }
+}
+
+function renderActivityReport(isFinal50y) {
+  const stats = state.endgameStats || gatherFactoryStats();
+  const lang = getLang() === "en" ? "en" : "ja";
+  const title = isFinal50y
+    ? (lang === "en" ? "50-Year Activity Report" : "50 年間 活動レポート")
+    : (lang === "en" ? "10-Year Activity Report" : "10 年間 活動レポート");
+  $("activityReportTitle").textContent = title;
+  const rows = [
+    [lang === "en" ? "GUM held" : "保有 GUM", stats.gum.toLocaleString()],
+    [lang === "en" ? "Workshop Lv" : "工房レベル", `Lv ${stats.factoryLevel}`],
+    [lang === "en" ? "Hired heroes" : "雇用ヒーロー数", stats.hireCount.toLocaleString()],
+    [lang === "en" ? "Heroes owned" : "現在所持ヒーロー", stats.ownedHeroCount.toLocaleString()],
+    [lang === "en" ? "Crafts completed" : "クラフト完了数", stats.craftCount.toLocaleString()],
+    [lang === "en" ? "Sales completed" : "出品成立数", stats.saleCount.toLocaleString()],
+    [lang === "en" ? "Best Common appraisal" : "Common 最高査定", `${stats.appraisalBest?.common || 0} / 50`],
+    [lang === "en" ? "Best Uncommon appraisal" : "Uncommon 最高査定", `${stats.appraisalBest?.uncommon || 0} / 50`],
+    [lang === "en" ? "Recipes (series)" : "解放シリーズ数", stats.seriesCount.toLocaleString()],
+    [lang === "en" ? "Land passes" : "ランド通行証", stats.landPassCount.toLocaleString()],
+  ];
+  $("activityReportTable").innerHTML = rows.map(([k, v]) => `
+    <tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>
+  `).join("");
+  // 50 年版は close ボタンを「閉じる」固定 (続行案内なし)
+  const btn = $("activityReportClose");
+  if (btn) btn.textContent = ti18n("ranking.report.close", "閉じる");
 }
 
 /** 全条件 + GUM 充足判定 */
@@ -1204,12 +1419,21 @@ function startActiveQuest() {
     durationWeeks: QUEST_DURATION_WEEKS[diff],
     progress: 0,
   };
-  // Phase 1D-19: クエスト出発のセリフ ("いってくる！" 等)
-  team.filter(id => id != null).forEach((id, i) => {
-    setTimeout(() => pushHeroFlavor(id, "questStart"), 200 + i * 220);
-  });
   closeQuestView();
   renderQuestOverlay();
+  // Phase 1D-19 → 1D-26: クエスト出発のセリフ ("いってくる！" 等)
+  //   closeQuestView 後 + workshop 描画後にプッシュしないと sprite が
+  //   存在せず flavor バブルが付かない可能性あり。次フレーム + ホーム遷移
+  //   が確定してから時差で発火する。
+  setTimeout(() => {
+    renderWorkshop();  // 念のため再描画 (sprite 有無を確実にする)
+    team.filter(id => id != null).forEach((id, i) => {
+      setTimeout(() => {
+        pushHeroFlavor(id, "questStart");
+        renderWorkshop();
+      }, i * 280);
+    });
+  }, 250);
 }
 
 /** ─── Quest progress overlay (top of workshop) ───────────────────── */
@@ -1361,7 +1585,8 @@ function pruneEphemerals() {
   state.notifications = state.notifications.filter(n => n.createdTick > cutoff);
   state.spriteFloats  = state.spriteFloats.filter(f => f.createdTick > cutoff);
   // Phase 1D-19: フレーバーセリフは ~2.5 秒で消えるので寿命短め
-  const flavorCutoff = state.tickCount - 3;
+  // Phase 1D-26: 高速モードでも flavor バブルが消えにくいよう TTL を 3 → 6 に延長
+  const flavorCutoff = state.tickCount - 6;
   state.heroFlavors = state.heroFlavors.filter(f => f.createdTick > flavorCutoff);
 }
 
@@ -1376,7 +1601,19 @@ function advanceWeek() {
       state.year += 1;
     }
   }
-  // hook for future: tick orders, decay materials, etc.
+  // Phase 1D-26: 10 年エンディング (2028年11月4週 終了 = 2028/12/1 直前)
+  //   ランキング集計の締切。 集計画面 → 引き続きプレイ可能
+  if (!state.endgameTriggered10y &&
+      state.year === 2028 && state.month === 12 && state.week === 1) {
+    state.endgameTriggered10y = true;
+    setTimeout(triggerEndgame10y, 200);
+  }
+  // Phase 1D-26: 50 年エンディング (2068年12月4週 終了)。完全終局のレポート。
+  if (!state.endgameTriggered50y &&
+      state.year === 2069 && state.month === 1 && state.week === 1) {
+    state.endgameTriggered50y = true;
+    setTimeout(triggerEndgame50y, 200);
+  }
 }
 
 /** ─── Header rendering ──────────────────────────────────────────── */
@@ -3958,6 +4195,8 @@ function finalizeHire(candIdx) {
   if (!def) return;
   const newHero = makeFactoryHero(def);
   state.ownedHeroes.push(newHero);
+  // Phase 1D-26: ランキング統計用に累計雇用数を計上
+  state.heroHireCount = (state.heroHireCount || 0) + 1;
   // 候補リストから除去
   ah.candidates.splice(candIdx, 1);
   // 候補が尽きたら活動終了
@@ -4826,6 +5065,10 @@ async function init() {
   $("recipePopup")?.addEventListener("click", (e) => {
     if (e.target.id === "recipePopup") closeRecipePopup();
   });
+  // Phase 1D-26: ランキング登録 view + 活動レポート view
+  $("rankingSubmitBtn")?.addEventListener("click", submitRankingNow);
+  $("rankingScoreNext")?.addEventListener("click", proceedToActivityReport);
+  $("activityReportClose")?.addEventListener("click", closeActivityReport);
   // Phase 1D-23: 工房レベルアップ view close + アクション delegation
   $("factoryLvUpClose")?.addEventListener("click", closeFactoryLvUpView);
   $("factoryLvUpView")?.addEventListener("click", (e) => {

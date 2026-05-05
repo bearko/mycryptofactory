@@ -2194,6 +2194,122 @@
       font-style: italic;
     }
 
+    /* Phase 1D-26: 10 年エンディング — スコア結果 view */
+    .ranking-score-view, .activity-report-view {
+      position: fixed; inset: 0; z-index: 305;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .ranking-score-view.hidden, .activity-report-view.hidden { display: none !important; }
+    .ranking-score-view__card, .activity-report-view__card {
+      max-width: 520px; width: 100%;
+      max-height: 92vh;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.2rem 1.1rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      box-shadow: 0 0 24px rgba(196,163,90,0.4);
+      overflow-y: auto;
+    }
+    .ranking-score-view__title, .activity-report-view__title {
+      margin: 0; font-size: 1.15rem;
+      color: var(--accent); text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .ranking-score-view__score {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.2rem;
+      padding: 0.8rem 0;
+      border-top: 1px dashed rgba(196,163,90,0.3);
+      border-bottom: 1px dashed rgba(196,163,90,0.3);
+    }
+    .ranking-score-view__score-label {
+      font-size: 0.78rem; color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .ranking-score-view__score-num {
+      font-size: 2.5rem;
+      color: var(--accent); font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 12px rgba(196,163,90,0.55);
+    }
+    .ranking-score-view__breakdown {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.25rem;
+      font-size: 0.85rem;
+    }
+    .ranking-score-view__breakdown li {
+      display: flex; justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.3rem 0.4rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+    }
+    .ranking-score-view__breakdown li strong {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .ranking-score-view__submit {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      padding: 0.6rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .ranking-score-view__name-label {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .ranking-score-view__name-input {
+      appearance: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.95rem;
+    }
+    .ranking-score-view__submit-btn, .ranking-score-view__next-btn,
+    .activity-report-view__close-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.55rem 0.9rem;
+      font-weight: 800; font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .ranking-score-view__submit-btn:hover:not(:disabled),
+    .ranking-score-view__next-btn:hover, .activity-report-view__close-btn:hover {
+      background: #d6b873;
+    }
+    .ranking-score-view__submit-btn:disabled {
+      background: #3a3450; color: var(--muted); cursor: not-allowed;
+    }
+    .ranking-score-view__status {
+      margin: 0; font-size: 0.78rem; color: var(--accent);
+      text-align: center;
+      min-height: 1em;
+    }
+    .activity-report-view__table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .activity-report-view__table th, .activity-report-view__table td {
+      padding: 0.4rem 0.55rem;
+      border-bottom: 1px solid rgba(196,163,90,0.18);
+      text-align: left;
+    }
+    .activity-report-view__table th {
+      color: var(--muted); font-weight: 600; width: 40%;
+    }
+    .activity-report-view__table td {
+      color: var(--accent); font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
     /* Phase 1D-22: シリーズレシピ獲得ポップアップ */
     .recipe-popup {
       position: fixed; inset: 0; z-index: 300;
@@ -4824,6 +4940,40 @@
     <div class="hero-view__body">
       <p class="hero-enhance__intro" data-i18n="enhance.intro">GUM を支払ってヒーローのランクを上げよう (☆☆☆☆☆ → ★★★★★)</p>
       <div class="hero-enhance-list" id="heroEnhanceList"></div>
+    </div>
+  </div>
+
+  <!-- Phase 1D-26: 10 年エンディング — スコア結果 + ランキング登録 view -->
+  <div class="ranking-score-view hidden" id="rankingScoreView" role="dialog" aria-modal="true">
+    <div class="ranking-score-view__card">
+      <header class="ranking-score-view__head">
+        <h2 class="ranking-score-view__title" data-i18n="ranking.score.title">10 年間スコア</h2>
+      </header>
+      <div class="ranking-score-view__score">
+        <span class="ranking-score-view__score-label" data-i18n="ranking.score.total">スコア</span>
+        <strong class="ranking-score-view__score-num" id="rankingScoreNum">—</strong>
+      </div>
+      <ul class="ranking-score-view__breakdown" id="rankingScoreBreakdown"></ul>
+      <div class="ranking-score-view__submit">
+        <label class="ranking-score-view__name-label">
+          <span data-i18n="ranking.playerName">プレイヤー名</span>
+          <input type="text" id="rankingPlayerName" class="ranking-score-view__name-input" maxlength="30" />
+        </label>
+        <button type="button" class="ranking-score-view__submit-btn" id="rankingSubmitBtn" data-i18n="ranking.submitBtn">ランキングに登録</button>
+        <p class="ranking-score-view__status" id="rankingStatus"></p>
+      </div>
+      <button type="button" class="ranking-score-view__next-btn" id="rankingScoreNext" data-i18n="ranking.proceedReport">活動レポートを見る</button>
+    </div>
+  </div>
+
+  <!-- Phase 1D-26: 活動レポート view -->
+  <div class="activity-report-view hidden" id="activityReportView" role="dialog" aria-modal="true">
+    <div class="activity-report-view__card">
+      <header class="activity-report-view__head">
+        <h2 class="activity-report-view__title" id="activityReportTitle">活動レポート</h2>
+      </header>
+      <table class="activity-report-view__table"><tbody id="activityReportTable"></tbody></table>
+      <button type="button" class="activity-report-view__close-btn" id="activityReportClose" data-i18n="ranking.report.close">閉じる</button>
     </div>
   </div>
 
