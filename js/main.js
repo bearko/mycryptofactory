@@ -255,6 +255,8 @@ const state = {
   /** Phase 1D-22: 解放済みシリーズ (= レシピ所持リスト)。クラフト可能 ext は
    *  unlockedSeries × factoryLevel で動的に決定 (= isExtUnlocked)。 */
   unlockedSeries: /** @type {Set<string>} */ (new Set(INITIAL_UNLOCKED_SERIES)),
+  /** Phase 1D-24: 解雇確認 popup で「対象 hero」を一時保持 */
+  firePendingId: /** @type {number | null} */ (null),
   /** Phase 1D-22: クエスト結果画面が閉じた後に発火する recipe drop の理由 i18n キー
    *  (success 時に確率で設定、closeQuestResultScreen で消化) */
   pendingRecipeReason: /** @type {string | null} */ (null),
@@ -1007,7 +1009,10 @@ function renderQuestView() {
     const inTeam = state.questTeam.includes(h.heroId);
     const stamPct = h.stamina.max > 0 ? (h.stamina.current / h.stamina.max * 100) : 0;
     const bd = heroQuestLevelBreakdown(h);
-    return `<button type="button" class="quest-hero-pick${inTeam ? " quest-hero-pick--in" : ""}" data-hero="${h.heroId}" ${h.state === HERO_STATE.CRAFTING ? "disabled" : ""}>
+    // Phase 1D-24: 他作業占有 (sale / hire recruiter / craft) は disabled
+    const lockedByOther = isHeroLocked(h.heroId, { ignoreQuestTeam: true });
+    const disabled = h.state === HERO_STATE.CRAFTING || lockedByOther;
+    return `<button type="button" class="quest-hero-pick${inTeam ? " quest-hero-pick--in" : ""}" data-hero="${h.heroId}" ${disabled ? "disabled" : ""}>
       <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
       <span class="quest-hero-pick__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
       <span class="quest-hero-pick__ql-row">
@@ -1345,6 +1350,24 @@ const ELEMENT_LABEL_KEY = {
 
 function findHero(heroId) {
   return state.ownedHeroes.find(h => h.heroId === heroId) || null;
+}
+
+/** Phase 1D-24: ヒーローが現在「他作業」に占有されているかを判定する。
+ *  クラフトチーム / クエストチーム / アクティブセール の seller / アクティブ
+ *  雇用の recruiter のいずれかに既に割当済みなら true を返す。
+ *
+ *  @param {number} heroId
+ *  @param {{ ignoreCraftTeam?: boolean, ignoreQuestTeam?: boolean,
+ *           ignoreSale?: boolean, ignoreHire?: boolean }} [opts]
+ */
+function isHeroLocked(heroId, opts = {}) {
+  if (heroId == null) return false;
+  if (!opts.ignoreCraftTeam && Array.isArray(state.craftTeam) && state.craftTeam.includes(heroId)) return true;
+  if (!opts.ignoreQuestTeam && Array.isArray(state.questTeam) && state.questTeam.includes(heroId)) return true;
+  if (!opts.ignoreSale && Array.isArray(state.activeSales)
+      && state.activeSales.some(s => s.sellerId === heroId)) return true;
+  if (!opts.ignoreHire && state.activeHire && state.activeHire.recruiterId === heroId) return true;
+  return false;
 }
 
 function sortedHeroesForList() {
@@ -1792,6 +1815,17 @@ function onHeroCardClick(heroId) {
     // 既に居る → 外す
     team[idx] = null;
   } else {
+    // Phase 1D-24: 他作業 (sale 担当 / hire recruiter / クラフト中 / クエスト中)
+    //   占有のヒーローは編成不可 → Mai 通知して中断
+    const hero = findHero(heroId);
+    if (hero && (hero.state === HERO_STATE.CRAFTING || hero.state === HERO_STATE.QUESTING)) {
+      maiSays("hero.lock.busy");
+      return;
+    }
+    if (isHeroLocked(heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true })) {
+      maiSays("hero.lock.busy");
+      return;
+    }
     // mutually exclusive: 反対チームに居れば外しておく
     const otherIdx = otherTeam.indexOf(heroId);
     if (otherIdx >= 0) otherTeam[otherIdx] = null;
@@ -2001,11 +2035,14 @@ function renderExtList() {
     </span>`).join("");
 
     // クラフト可否ラベル (アイコン下)
-    const availLabel = ti18n("craft.avail." + avail.status);
+    // Phase 1D-24: クラフトLv 不足はエラー扱いにせず、素材不足のみ表示
+    //   (Lv 不足は確認画面でマイがアドバイスする方針)
+    const displayStatus = avail.status === "level" ? "ok" : avail.status;
+    const availLabel = ti18n("craft.avail." + displayStatus);
     return `<div class="ext-row" data-ext-id="${ext.extId}">
       <div class="ext-row__icon-col">
         <img class="ext-row__icon" src="${extIconUrl(ext.extId)}" alt="" onerror="this.style.opacity='0.2'" />
-        <span class="ext-row__avail ext-row__avail--${avail.status}" title="${escapeHtml(availLabel)}">${escapeHtml(availLabel)}</span>
+        <span class="ext-row__avail ext-row__avail--${displayStatus}" title="${escapeHtml(availLabel)}">${escapeHtml(availLabel)}</span>
       </div>
       <div class="ext-row__main">
         <div class="ext-row__name-row">
@@ -2104,26 +2141,43 @@ function renderConfirm() {
   }
 
   // Warning + start button enable/disable
-  // 仕様 (Phase 1B): material 不足 / level 不足 のいずれでも開始不可。
-  //  - material 不足: 確認画面で不足分を購入する導線を将来追加予定 (今は警告のみ)
-  //  - level 不足:    編成変更で要件を満たせる可能性があるため、変更ボタンで遷移可能
+  // 仕様 (Phase 1B → Phase 1D-24 改修):
+  //  - material 不足: 開始不可 (赤字警告)
+  //  - level 不足:    開始は許可。マイのアドバイスで品質低下の見込みを案内
+  //  - filled === 0: 開始不可 (チーム編成が必要)
   const filled = state.craftTeam.filter(id => id != null).length;
   const warn = $("confirmWarning");
   const startBtn = $("confirmStartBtn");
   let warnMsg = "";
-  const canStart = filled > 0 && avail.materialOk && avail.levelOk;
+  let warnMode = "error";
+  const canStart = filled > 0 && avail.materialOk;  // Phase 1D-24: Lv 不足は止めない
   if (filled === 0) warnMsg = ti18n("craft.warn.noTeam");
   else if (!avail.materialOk) warnMsg = ti18n("craft.warn.noMaterial");
   else if (!avail.levelOk) {
-    warnMsg = ti18n("craft.warn.lowLevel")
-      .replace("{cur}", teamLv.toLocaleString())
-      .replace("{req}", reqLv.toLocaleString());
+    // Phase 1D-24: Mai のアドバイス文に切替 (赤字エラーではなく warning 風)
+    warnMode = "advice";
+    const ratio = reqLv > 0 ? (teamLv / reqLv) : 1;
+    if (ratio < 0.5) {
+      warnMsg = ti18n("craft.advice.tooLow")
+        .replace("{cur}", teamLv.toLocaleString())
+        .replace("{req}", reqLv.toLocaleString());
+    } else if (ratio < 0.85) {
+      warnMsg = ti18n("craft.advice.low")
+        .replace("{cur}", teamLv.toLocaleString())
+        .replace("{req}", reqLv.toLocaleString());
+    } else {
+      warnMsg = ti18n("craft.advice.borderline")
+        .replace("{cur}", teamLv.toLocaleString())
+        .replace("{req}", reqLv.toLocaleString());
+    }
   }
   if (warnMsg) {
     warn.textContent = warnMsg;
     warn.classList.remove("hidden");
+    warn.setAttribute("data-mode", warnMode);
   } else {
     warn.classList.add("hidden");
+    warn.removeAttribute("data-mode");
   }
   startBtn.disabled = !canStart;
 }
@@ -3192,6 +3246,12 @@ function openMarketView() {
   renderMarketView();
 }
 function closeMarketView() {
+  // Phase 1D-24: 候補画面を閉じたら見送り扱い (= activeHire 破棄)
+  if (state.activeHire?.candidates) {
+    state.activeHire = null;
+    state.lastHiredRarity = null;
+    renderHireOverlay?.();
+  }
   $("marketView")?.classList.add("hidden");
   resumeTime();
 }
@@ -3314,10 +3374,12 @@ function renderSellModal() {
   }).join("");
 
   // 担当者候補 (rarity match or 商 attribute)
+  // Phase 1D-24: 他作業 (craft team / quest team / 別 sale / hire recruiter) 占有を除外
   const eligible = state.ownedHeroes.filter(h => {
     if (!canSellExt(h, ext)) return false;
     if (h.state === HERO_STATE.CRAFTING) return false;
     if (h.state === HERO_STATE.QUESTING) return false;
+    if (isHeroLocked(h.heroId)) return false;
     return true;
   });
   $("sellSellerList").innerHTML = eligible.length === 0
@@ -3469,10 +3531,31 @@ function renderMarketHire() {
   }
 
   // プラン一覧
+  // Phase 1D-24: GUM 不足 / 採用担当者要件未達 / (※定員一杯は許可) — 不可理由を赤字で表示
   $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
     const lang = getLang() === "en" ? "en" : "ja";
-    const candidatesAvailable = state.gum >= p.cost && ownedCount < cap;
-    return `<div class="hire-plan ${!candidatesAvailable ? "hire-plan--disabled" : ""}" data-plan="${p.id}">
+    // 採用担当者として就任可能なヒーローが居るか?
+    const eligibleRecruiters = state.ownedHeroes.filter(h => {
+      if (!canBeRecruiter(h, p)) return false;
+      if (h.state === HERO_STATE.CRAFTING) return false;
+      if (h.state === HERO_STATE.QUESTING) return false;
+      if (isHeroLocked(h.heroId)) return false;
+      return true;
+    });
+    let blockReason = null;
+    if (state.gum < p.cost) {
+      blockReason = ti18n("hire.block.gum")
+        .replace("{cost}", p.cost.toLocaleString())
+        .replace("{cur}", state.gum.toLocaleString());
+    } else if (eligibleRecruiters.length === 0) {
+      blockReason = ti18n("hire.block.recruiter")
+        .replace("{rarity}", ti18n("rarity." + p.recruiterMinRarity));
+    }
+    const disabled = blockReason !== null;
+    const reasonHtml = disabled
+      ? `<p class="hire-plan__reason">${escapeHtml(blockReason)}</p>`
+      : "";
+    return `<div class="hire-plan ${disabled ? "hire-plan--disabled" : ""}" data-plan="${p.id}">
       <div class="hire-plan__head">
         <span class="hire-plan__name">${escapeHtml(lang === "en" ? p.nameEn : p.nameJa)}</span>
         <span class="hire-plan__cost">${p.cost.toLocaleString()} GUM</span>
@@ -3482,7 +3565,8 @@ function renderMarketHire() {
         <span>${escapeHtml(ti18n("hire.candidateCount").replace("{n}", p.candidateCount))}</span>
         <span>${escapeHtml(ti18n("hire.recruiterMin").replace("{rarity}", ti18n("rarity." + p.recruiterMinRarity)))}</span>
       </div>
-      <button type="button" class="hire-plan__btn" data-pick-plan="${p.id}" ${!candidatesAvailable ? "disabled" : ""}>
+      ${reasonHtml}
+      <button type="button" class="hire-plan__btn" data-pick-plan="${p.id}" ${disabled ? "disabled" : ""}>
         ${escapeHtml(ti18n("hire.choose"))}
       </button>
     </div>`;
@@ -3505,10 +3589,12 @@ function renderRecruiterPicker(planId) {
     .replace("{plan}", getLang() === "en" ? plan.nameEn : plan.nameJa);
 
   // 採用担当者として配属可能なヒーロー (rarity 要件 + idle/resting/(crafting? questing? 配属外限定))
+  // Phase 1D-24: トレード/クエスト/クラフト/別雇用 に既に割当済みのヒーローを除外
   const eligible = state.ownedHeroes.filter(h => {
     if (!canBeRecruiter(h, plan)) return false;
     if (h.state === HERO_STATE.CRAFTING) return false;
     if (h.state === HERO_STATE.QUESTING) return false;
+    if (isHeroLocked(h.heroId)) return false;
     return true;
   });
 
@@ -3591,6 +3677,13 @@ function renderActiveHire() {
           }).join("") : "";
           const attrsHtml = tmp ? renderHeroAttrBadges(tmp) : "";
           const portrait = tmp?.img?.() || "";
+          // Phase 1D-24: 編成画面同等の表示 (パッシブ名 + description + craft Lv)
+          const cl    = tmp ? craftLevel(tmp) : 0;
+          const passiveName = tmp?.passiveName ? `<span class="hire-cand-card__passive-name">${escapeHtml(tmp.passiveName)}</span>` : "";
+          const passiveDesc = tmp ? passiveDescriptionFor(tmp, getLang() === "en" ? "en" : "ja") : "";
+          const passiveLine = (passiveName || passiveDesc)
+            ? `<div class="hire-cand-card__passive">${passiveName}<span class="hire-cand-card__passive-text">${escapeHtml(passiveDesc)}</span></div>`
+            : "";
           return `<div class="hire-cand-card" data-rarity="${c.rarity}">
             <div class="hire-cand-card__head">
               <img class="hire-cand-card__portrait" src="${portrait}" alt="" onerror="this.style.opacity='0.2'" />
@@ -3603,6 +3696,8 @@ function renderActiveHire() {
               </div>
             </div>
             <div class="hire-cand-card__elements">${elementsHtml}</div>
+            <div class="hire-cand-card__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></div>
+            ${passiveLine}
             <div class="hire-cand-card__foot">
               <span class="hire-cand-card__cost">${cost.toLocaleString()} GUM</span>
               <button type="button" class="hire-cand-card__hire-btn" data-hire-cand="${c.heroId}" ${canAfford ? "" : "disabled"}>
@@ -3699,6 +3794,8 @@ function finalizeHire(candIdx) {
   renderHireOverlay();
   renderSaleOverlay();
   renderMarketHire();
+  // Phase 1D-24: 雇用成功 SE (mission.mp3) + enthusiasm メッセージ
+  playSe("rankUpDone");  // = mission.mp3
   // Phase 1D-7: 雇用成功通知 (portrait 付き)
   showHireSuccessModal(newHero);
 }
@@ -3718,7 +3815,14 @@ function showHireSuccessModal(hero) {
   $("hireSuccessName").textContent = tHero(hero.heroId, hero.nameJa);
   $("hireSuccessRarity").setAttribute("data-rarity", hero.rarity);
   $("hireSuccessRarity").textContent = ti18n("rarity." + hero.rarity);
-  $("hireSuccessMsg").textContent = ti18n("hire.mai.hired").replace("{name}", tHero(hero.heroId, hero.nameJa));
+  // Phase 1D-24: ヒーローからの意気込みメッセージを併せて表示
+  const enthusiasmPool = (getLang() === "en"
+    ? ["Glad to be here!", "I'll do my best!", "Watch me work!", "Let's make great things!", "Honored to join."]
+    : ["よろしく頼む！", "全力で励みます！", "腕によりをかけて！", "見せ場をつくるぜ", "頑張ります♪"]);
+  const enth = enthusiasmPool[Math.floor(Math.random() * enthusiasmPool.length)];
+  const heroName = tHero(hero.heroId, hero.nameJa);
+  $("hireSuccessMsg").innerHTML =
+    `${escapeHtml(ti18n("hire.mai.hired").replace("{name}", heroName))}<br><span class="hire-success__quote">${escapeHtml(heroName)}：「${escapeHtml(enth)}」</span>`;
   modal.classList.remove("hidden");
   pauseTime();
   // Phase 1D-22: hire success の rarity を保存 → close 時にレシピ抽選
@@ -3777,17 +3881,54 @@ function fireableHeroes() {
 
 function renderFireModal() {
   const list = fireableHeroes();
+  const lang = getLang() === "en" ? "en" : "ja";
   $("fireList").innerHTML = list.map(({ hero, fireable }) => {
     const cl = craftLevel(hero);
     const cls = fireable ? "fire-cand" : "fire-cand fire-cand--disabled";
+    // Phase 1D-24: 編成画面同等の情報 (4 元素 + 適性 + パッシブ)
+    const elementsHtml = ELEMENTS.map(k => {
+      const v = elementValueForCraft(hero, k);
+      return `<span title="${escapeHtml(elementLabel(k))}: ${v}"><img src="${elementIconUrl(k)}" alt="" /><strong>${v}</strong></span>`;
+    }).join("");
+    const attrsHtml = renderHeroAttrBadges(hero);
+    const passiveDesc = passiveDescriptionFor(hero, lang);
+    const passiveHtml = (hero.passiveName || passiveDesc)
+      ? `<div class="fire-cand__passive">
+          ${hero.passiveName ? `<span class="fire-cand__passive-name">${escapeHtml(hero.passiveName)}</span> ` : ""}
+          <span>${escapeHtml(passiveDesc)}</span>
+        </div>`
+      : "";
     return `<button type="button" class="${cls}" data-fire="${hero.heroId}" ${fireable ? "" : "disabled"}>
       <img src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
-      <span class="fire-cand__name">${escapeHtml(tHero(hero.heroId, hero.nameJa))}</span>
+      <span class="fire-cand__name">${escapeHtml(tHero(hero.heroId, hero.nameJa))} ${attrsHtml}</span>
       <span class="fire-cand__rarity" data-rarity="${hero.rarity}">${escapeHtml(ti18n("rarity." + hero.rarity))}</span>
+      <div class="fire-cand__elements">${elementsHtml}</div>
       <span class="fire-cand__cl">${escapeHtml(ti18n("hero.craftLevel"))}: ${cl}</span>
+      ${passiveHtml}
       ${!fireable ? `<span class="fire-cand__lock">${escapeHtml(ti18n("fire.locked"))}</span>` : ""}
     </button>`;
   }).join("");
+}
+
+/** Phase 1D-24: 解雇確認ポップアップ */
+function openFireConfirm(heroId) {
+  const hero = findHero(heroId);
+  if (!hero) return;
+  state.firePendingId = heroId;
+  $("fireConfirmPortrait").src = hero.img();
+  $("fireConfirmTitle").textContent = (ti18n("fire.confirmTitle", "{name} を解雇しますか？") || "{name} を解雇しますか？")
+    .replace("{name}", tHero(hero.heroId, hero.nameJa));
+  $("fireConfirmModal")?.classList.remove("hidden");
+}
+function closeFireConfirm() {
+  state.firePendingId = null;
+  $("fireConfirmModal")?.classList.add("hidden");
+}
+function executeFireConfirmed() {
+  const id = state.firePendingId;
+  state.firePendingId = null;
+  $("fireConfirmModal")?.classList.add("hidden");
+  if (id != null) fireHero(id);
 }
 
 /** 解雇実行: 選択ヒーローを ownedHeroes から除去 + pending hire があれば実行 */
@@ -3795,25 +3936,34 @@ function fireHero(heroId) {
   const idx = state.ownedHeroes.findIndex(h => h.heroId === heroId);
   if (idx < 0) return;
   const fired = state.ownedHeroes[idx];
+  const firedName = tHero(fired.heroId, fired.nameJa);
   state.ownedHeroes.splice(idx, 1);
   // 解雇後の表示更新
   closeFireModal();
   renderHeader();
   renderHeroTeam();
   renderHeroList();
-  // pending hire があれば再試行
-  if (state.pendingHireCandIdx != null) {
-    const candIdx = state.pendingHireCandIdx;
-    state.pendingHireCandIdx = null;
-    // ah.candidates が更新されてる可能性に備えて 1 度確認
-    const ah = state.activeHire;
-    if (ah?.candidates?.[candIdx]) {
-      finalizeHire(candIdx);
-    }
-  }
-  // 解雇通知
-  maiSays("fire.mai.fired", { onClose: () => {} });
-  console.log(`[fire] ${tHero(fired.heroId, fired.nameJa)} fired`);
+  // Phase 1D-24: シーケンスで「解雇しました」+ ヒーローの別れの言葉
+  const partingPool = (getLang() === "en"
+    ? ["Take care!", "Hope we meet again.", "It was an honor.", "Farewell, then.", "Good luck out there."]
+    : ["お世話になりました", "またご縁があれば…", "短い間でしたがありがとう", "お達者で！", "ここでの日々は忘れません"]);
+  const parting = partingPool[Math.floor(Math.random() * partingPool.length)];
+  const firedMsg = (ti18n("fire.mai.firedNamed", "{name} を解雇しました。") || "{name} を解雇しました。")
+    .replace("{name}", firedName);
+  maiSaysSequence([firedMsg, `${firedName}：「${parting}」`], {
+    onClose: () => {
+      // pending hire があれば再試行
+      if (state.pendingHireCandIdx != null) {
+        const candIdx = state.pendingHireCandIdx;
+        state.pendingHireCandIdx = null;
+        const ah = state.activeHire;
+        if (ah?.candidates?.[candIdx]) {
+          finalizeHire(candIdx);
+        }
+      }
+    },
+  });
+  console.log(`[fire] ${firedName} fired`);
 }
 
 function cancelFire() {
@@ -4408,15 +4558,22 @@ async function init() {
     if (e.target.id === "hireSuccessModal") closeHireSuccessModal();
   });
   // Phase 1D-7: 解雇 modal
+  // Phase 1D-24: クリック時に確認ポップアップを挟む
   $("fireList")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-fire]");
     if (!btn || btn.disabled) return;
     const id = parseInt(btn.getAttribute("data-fire"), 10);
-    if (Number.isFinite(id)) fireHero(id);
+    if (Number.isFinite(id)) openFireConfirm(id);
   });
   $("fireCancelBtn")?.addEventListener("click", cancelFire);
   $("fireModal")?.addEventListener("click", (e) => {
     if (e.target.id === "fireModal") cancelFire();
+  });
+  // Phase 1D-24: 解雇確認 modal
+  $("fireConfirmBack")?.addEventListener("click", closeFireConfirm);
+  $("fireConfirmDo")?.addEventListener("click", executeFireConfirmed);
+  $("fireConfirmModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "fireConfirmModal") closeFireConfirm();
   });
 
   // ── Sell tab: 出品候補から ext タップ → 出品 modal ──
