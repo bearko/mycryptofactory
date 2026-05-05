@@ -278,6 +278,11 @@ const state = {
   endgameTriggered10y: /** @type {boolean} */ (false),
   /** Phase 1D-26: 50 年エンディング (2068年12月4週) を既に発火したか */
   endgameTriggered50y: /** @type {boolean} */ (false),
+  /** Phase 1D-30: GUM 閾値到達によるスポット雇用の既発火マーカー (one-shot)。
+   *  値は閾値そのもの (e.g. 2000)。 */
+  spontaneousGumHits: /** @type {Set<number>} */ (new Set()),
+  /** Phase 1D-30: スポット雇用がキャップ満員などで保留された場合の next-target。 */
+  pendingSpontaneousRarity: /** @type {string | null} */ (null),
   /** Phase 1D-22: クエスト結果画面が閉じた後に発火する recipe drop の理由 i18n キー
    *  (success 時に確率で設定、closeQuestResultScreen で消化) */
   pendingRecipeReason: /** @type {string | null} */ (null),
@@ -780,12 +785,128 @@ function tryFactoryLevelUp(targetLv) {
   const unlocks = factoryLvUpUnlocks(state.factoryLevel);
   const congrats = `工房 Lv ${state.factoryLevel} に到達！\n` +
     "解放: " + unlocks.join(" / ");
+  // Phase 1D-30: 工房レベルアップ時の「評判」によるスポット雇用 (1 つ上の rarity)。
+  //   雇用プランの最低 recruiter 要件 (例: Uncommon 雇用には Uncommon 必須) に
+  //   引っかかって詰まないよう、レベルアップを節目に rarity を 1 段引き上げて
+  //   無償で 1 名加入させる。
+  //   レベルアップの Mai シーケンス閉じてから (onClose で) 連鎖的に発火させる
+  //   ことで、modal 重複や maiSays のボディ上書きによるフリーズを防ぐ。
+  const targetRarity = nextRarityAboveOwned();
   maiSaysSequence([
     `工房 Lv ${state.factoryLevel} に到達しました！おめでとうございます♪`,
     "解放: " + unlocks.join(" / "),
-  ], { onClose: () => {} });
+  ], {
+    onClose: () => setTimeout(() => triggerSpontaneousHire(targetRarity, "factoryLv"), 200),
+  });
   // ホーム画面の目標バナーも更新
   renderHomeGoalBanner();
+}
+
+/** ─── Phase 1D-30: スポット雇用 (= 評判によるヒーロー加入) ─── */
+
+const RARITY_ORDER_FOR_SPONT = ["common", "uncommon", "rare", "epic", "legendary"];
+
+/** 所有ヒーローの最高 rarity の 1 段上を返す。
+ *  全員 common なら uncommon。誰も居なければ uncommon。
+ *  既に legendary を持っているなら legendary を返す (頭打ち)。 */
+function nextRarityAboveOwned() {
+  const owned = state.ownedHeroes || [];
+  let maxIdx = -1;
+  for (const h of owned) {
+    const idx = RARITY_ORDER_FOR_SPONT.indexOf(h.rarity || "common");
+    if (idx > maxIdx) maxIdx = idx;
+  }
+  // 誰も居ない (=新規工房) → uncommon から始める
+  if (maxIdx < 0) return "uncommon";
+  return RARITY_ORDER_FOR_SPONT[Math.min(RARITY_ORDER_FOR_SPONT.length - 1, maxIdx + 1)];
+}
+
+/** Phase 1D-30: GUM 閾値到達時のスポット雇用 (one-shot)。
+ *  順序は値が小さい順 — 同 tick で複数閾値を跨いだ場合は最大 rarity 1 名のみ。 */
+const SPONTANEOUS_GUM_THRESHOLDS = [
+  { gum:  2000, rarity: "uncommon" },
+  { gum:  5000, rarity: "rare"     },
+  { gum: 10000, rarity: "epic"     },
+  { gum: 30000, rarity: "legendary" },
+];
+
+/** 所持 GUM が閾値を初めて超えていたらスポット雇用を発火する。
+ *  複数閾値をまたいだ場合は最大の rarity を 1 名だけ加入させ、跨いだ閾値全てを
+ *  既発火マーカーに登録する (= 巻き戻して GUM が減っても再発火しない)。 */
+function checkSpontaneousGumHire() {
+  if (!(state.spontaneousGumHits instanceof Set)) {
+    state.spontaneousGumHits = new Set(state.spontaneousGumHits || []);
+  }
+  const cur = state.gum || 0;
+  let triggered = null; // 一番 rarity 高い閾値を採用
+  for (const t of SPONTANEOUS_GUM_THRESHOLDS) {
+    if (state.spontaneousGumHits.has(t.gum)) continue;
+    if (cur >= t.gum) {
+      state.spontaneousGumHits.add(t.gum);
+      triggered = t; // 後ろの閾値ほど rarity が高い順なので上書きで OK
+    }
+  }
+  if (triggered) {
+    setTimeout(() => triggerSpontaneousHire(triggered.rarity, "gum"), 600);
+  }
+}
+
+/** rarity を指定してスポット雇用を起動する。
+ *  - 候補が居ない / キャップ満員なら保留 (state.pendingSpontaneousRarity)
+ *  - 起動するときは: マイ「工房の評判を聞いて、採用の申込みがありました！」
+ *    → onClose で実際に加入処理 + showHireSuccessModal
+ *
+ *  @param {string} rarity   "common" | "uncommon" | "rare" | "epic" | "legendary"
+ *  @param {string} [source] "factoryLv" | "gum" — ロギング用
+ */
+function triggerSpontaneousHire(rarity, source) {
+  if (!rarity) return;
+  // 既に保留中があれば 1 件ずつ処理 (重ねない)
+  if (state.pendingSpontaneousRarity) return;
+  // キャップ満員 → 保留
+  const cap = heroCapAtFactoryLevel(state.factoryLevel);
+  if ((state.ownedHeroes || []).length >= cap) {
+    state.pendingSpontaneousRarity = rarity;
+    return;
+  }
+  // 該当 rarity で未所有のヒーローを 1 名抽選
+  const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
+  const pool = HERO_ROSTER.filter(h => h.rarity === rarity && !ownedIds.has(h.heroId));
+  // 該当 rarity が払底 → 1 段下にフォールバック
+  let pick = pool[Math.floor(Math.random() * pool.length)];
+  if (!pick) {
+    const idx = RARITY_ORDER_FOR_SPONT.indexOf(rarity);
+    for (let i = idx - 1; i >= 0 && !pick; i--) {
+      const fallback = RARITY_ORDER_FOR_SPONT[i];
+      const altPool = HERO_ROSTER.filter(h => h.rarity === fallback && !ownedIds.has(h.heroId));
+      pick = altPool[Math.floor(Math.random() * altPool.length)];
+    }
+  }
+  if (!pick) return;  // 全 rarity 在庫払底 (理論上ほぼ無い) → 諦め
+  // マイの一言 → 受領 → 成功モーダル
+  state.pendingSpontaneousRarity = rarity;
+  maiSays("mai.spontaneousHire", {
+    onClose: () => {
+      // 再度キャップチェック (保留 → 再開時に既に枠埋まってる可能性に備え)
+      const cap2 = heroCapAtFactoryLevel(state.factoryLevel);
+      if ((state.ownedHeroes || []).length >= cap2) {
+        // 保留継続 (rarity は state.pendingSpontaneousRarity に残す)
+        return;
+      }
+      const def = HERO_ROSTER.find(h => h.heroId === pick.heroId);
+      if (!def) { state.pendingSpontaneousRarity = null; return; }
+      const newHero = makeFactoryHero(def);
+      state.ownedHeroes.push(newHero);
+      state.heroHireCount = (state.heroHireCount || 0) + 1;
+      state.pendingSpontaneousRarity = null;
+      renderHeader();
+      renderHeroTeam?.();
+      renderHeroList?.();
+      renderWorkshop?.();
+      // 既存の雇用成功モーダルを再利用
+      showHireSuccessModal(newHero);
+    },
+  });
 }
 
 function onTick() {
@@ -813,6 +934,17 @@ function onTick() {
   }
   // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
   tickPassiveRestRecovery();
+  // Phase 1D-30: GUM 閾値到達によるスポット雇用チェック (one-shot)
+  //   GUM が変動するパスは多くタイミングが分散するため、毎 tick の集約点として
+  //   ここでチェックするのが最も安全。pauseFlags > 0 のときは onTick 自体が
+  //   早期 return するので modal 重複の心配もない。
+  checkSpontaneousGumHire();
+  // 保留されていたスポット雇用 (キャップ解放時など) を再試行
+  if (state.pendingSpontaneousRarity && (state.ownedHeroes || []).length < heroCapAtFactoryLevel(state.factoryLevel)) {
+    const r = state.pendingSpontaneousRarity;
+    state.pendingSpontaneousRarity = null;
+    setTimeout(() => triggerSpontaneousHire(r, "retry"), 200);
+  }
   // Notifications/floats の TTL GC + 描画更新
   pruneEphemerals();
   renderHeader();

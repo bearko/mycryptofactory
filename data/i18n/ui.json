@@ -262,6 +262,7 @@
   "hero.quick.trade":          { "ja": "取引", "en": "Trade" },
 
   "mai.questBusy":             { "ja": "他のクエストが進行中です。終わるまでお待ちください。", "en": "Another quest is in progress. Please wait until it finishes." },
+  "mai.spontaneousHire":       { "ja": "工房の評判を聞いて、採用の申込みがありました！", "en": "Word of your workshop has spread — a new applicant has stepped forward!" },
 
   "quest.title":               { "ja": "クエスト", "en": "Quest" },
   "quest.node.label":          { "ja": "ノード選択", "en": "Choose a node" },
