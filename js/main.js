@@ -316,7 +316,8 @@ function resumeTime() {
   state.pauseFlags = Math.max(0, state.pauseFlags - 1);
 }
 
-/** Phase 1D-21: 工房レベルアップ */
+/** Phase 1D-21: 工房レベルアップ
+ *  Phase 1D-23: 条件付き + 多段プレビュー対応 */
 const FACTORY_LV_UP_COST_TABLE = {
   1: 1000,    // Lv1→2
   2: 3000,    // Lv2→3
@@ -326,22 +327,184 @@ const FACTORY_LV_UP_COST_TABLE = {
 function factoryLvUpCost(currentLv) {
   return FACTORY_LV_UP_COST_TABLE[currentLv] || Infinity;
 }
-function tryFactoryLevelUp() {
+
+/** 工房レベル N → N+1 の条件 list を返す。
+ *  各条件は { label, met, current, required } の形。 */
+function factoryLvUpConditions(targetLv) {
+  const ownedHeroes = state.ownedHeroes || [];
+  const heroCount = ownedHeroes.length;
+  const maxRank = ownedHeroes.reduce((m, h) => Math.max(m, h.rank || 0), 0);
+  const rank2plus = ownedHeroes.filter(h => (h.rank || 0) >= 2).length;
+  const rank4plus = ownedHeroes.filter(h => (h.rank || 0) >= 4).length;
+  const rank5plus = ownedHeroes.filter(h => (h.rank || 0) >= 5).length;
+  const crafted = state.craftCompletedCount || 0;
+  const sold = state.saleCompletedCount || 0;
+  const bestCommon = (state.appraisalBest?.common) || 0;
+  const bestUncommon = (state.appraisalBest?.uncommon) || 0;
+  const cond = (label, current, required) => ({
+    label, current, required, met: current >= required,
+  });
+  if (targetLv === 2) return [
+    cond("ヒーロー雇用 4 体以上", heroCount, 4),
+    cond("エクステンションを 1 個以上クラフト", crafted, 1),
+    cond("出品成立 1 件以上", sold, 1),
+  ];
+  if (targetLv === 3) return [
+    cond("ヒーロー雇用 6 体以上", heroCount, 6),
+    cond("エクステンションを 5 個以上クラフト", crafted, 5),
+    cond("ランク 2 以上のヒーローを 1 体以上保有", rank2plus, 1),
+  ];
+  if (targetLv === 4) return [
+    cond("ヒーロー雇用 8 体以上", heroCount, 8),
+    cond("エクステンションを 15 個以上クラフト", crafted, 15),
+    cond("Common 査定 25 点以上を達成", bestCommon, 25),
+    cond("ランク 4 以上のヒーローを 1 体以上保有", rank4plus, 1),
+  ];
+  if (targetLv === 5) return [
+    cond("ヒーロー雇用 12 体以上", heroCount, 12),
+    cond("エクステンションを 30 個以上クラフト", crafted, 30),
+    cond("Uncommon 査定 30 点以上を達成", bestUncommon, 30),
+    cond("ランク 5 のヒーローを 2 体以上保有", rank5plus, 2),
+  ];
+  return [];
+}
+
+/** Lv N → N+1 で解放されること */
+function factoryLvUpUnlocks(targetLv) {
+  if (targetLv === 2) return [
+    "Uncommon エクステンションのレシピが解放対象に",
+    "ヒーロー上限 7 → 9 名",
+  ];
+  if (targetLv === 3) return [
+    "Rare エクステンションのレシピが解放対象に",
+    "ヒーロー上限 9 → 11 名",
+  ];
+  if (targetLv === 4) return [
+    "Epic エクステンションのレシピが解放対象に",
+    "ヒーロー上限 11 → 12 名",
+  ];
+  if (targetLv === 5) return [
+    "Legendary エクステンションのレシピが解放対象に",
+    "ヒーロー上限 12 → 15 名",
+  ];
+  return [];
+}
+
+/** 全条件 + GUM 充足判定 */
+function canFactoryLvUp(targetLv) {
+  const conds = factoryLvUpConditions(targetLv);
+  if (conds.length === 0) return { ok: false, reason: "max" };
+  const cost = factoryLvUpCost(targetLv - 1);
+  if ((state.gum || 0) < cost) return { ok: false, reason: "gum", missing: cost - (state.gum || 0) };
+  for (const c of conds) {
+    if (!c.met) return { ok: false, reason: "cond" };
+  }
+  return { ok: true, cost };
+}
+
+/** Phase 1D-23: 工房レベルアップ popup を開く */
+function openFactoryLvUpView() {
+  const view = $("factoryLvUpView");
+  if (!view) return;
+  pauseTime();
+  view.classList.remove("hidden");
+  renderFactoryLvUpView();
+}
+function closeFactoryLvUpView() {
+  $("factoryLvUpView")?.classList.add("hidden");
+  resumeTime();
+}
+
+function renderFactoryLvUpView() {
+  const host = $("factoryLvUpList");
+  if (!host) return;
   const cur = state.factoryLevel || 1;
+  const targets = [2, 3, 4, 5];
+  host.innerHTML = targets.map(t => {
+    const isReached = cur >= t;
+    const isCurrentTarget = !isReached && cur === t - 1;
+    const cost = factoryLvUpCost(t - 1);
+    const conds = factoryLvUpConditions(t);
+    const unlocks = factoryLvUpUnlocks(t);
+    const canCheck = canFactoryLvUp(t);
+    const canDo = isCurrentTarget && canCheck.ok;
+    const condsHtml = conds.map(c => `
+      <li class="flv__cond ${c.met ? "flv__cond--met" : ""}">
+        <span class="flv__cond-mark">${c.met ? "✓" : "・"}</span>
+        <span class="flv__cond-label">${escapeHtml(c.label)}</span>
+        <span class="flv__cond-num">${c.current.toLocaleString()} / ${c.required.toLocaleString()}</span>
+      </li>
+    `).join("");
+    const unlocksHtml = unlocks.map(u => `<li>${escapeHtml(u)}</li>`).join("");
+    let actionHtml;
+    if (isReached) {
+      actionHtml = `<div class="flv__action-done">達成済み</div>`;
+    } else if (isCurrentTarget) {
+      actionHtml = `<button type="button" class="flv__action-btn" data-flv-up="${t}" ${canDo ? "" : "disabled"}>
+        Lv ${t - 1} → ${t} に上げる (${cost.toLocaleString()} GUM)
+      </button>`;
+    } else {
+      actionHtml = `<div class="flv__action-locked">前のレベルを先に達成</div>`;
+    }
+    return `<section class="flv__row" data-target="${t}" data-state="${isReached ? "done" : isCurrentTarget ? "current" : "future"}">
+      <header class="flv__head">
+        <span class="flv__lv-label">Lv ${t - 1} → Lv ${t}</span>
+        <span class="flv__cost">${cost.toLocaleString()} GUM</span>
+      </header>
+      <ul class="flv__conds">${condsHtml}</ul>
+      <p class="flv__unlocks-label">解放されること:</p>
+      <ul class="flv__unlocks">${unlocksHtml}</ul>
+      ${actionHtml}
+    </section>`;
+  }).join("");
+}
+
+/** Phase 1D-23: ホーム画面の「目標」バナーを描画 */
+function renderHomeGoalBanner() {
+  const host = $("homeGoalBanner");
+  const text = $("homeGoalBannerText");
+  if (!host || !text) return;
+  const cur = state.factoryLevel || 1;
+  if (cur >= 5) {
+    text.textContent = ti18n("goal.maxed", "工房は最大 Lv.5 に到達しました！");
+    host.classList.remove("hidden");
+    return;
+  }
+  const tmpl = ti18n("goal.label", "目標：工房を Lv.{n} にしよう！");
+  text.textContent = tmpl.replace("{n}", String(cur + 1));
+  host.classList.remove("hidden");
+}
+
+function tryFactoryLevelUp(targetLv) {
+  const cur = state.factoryLevel || 1;
+  if (targetLv == null) targetLv = cur + 1;
   if (cur >= 5) {
     maiSays("settings.factoryLvMax");
     return;
   }
-  const cost = factoryLvUpCost(cur);
-  if ((state.gum || 0) < cost) {
-    maiSays("settings.factoryLvNotEnoughGum");
+  if (targetLv !== cur + 1) return;
+  const check = canFactoryLvUp(targetLv);
+  if (!check.ok) {
+    if (check.reason === "gum") maiSays("settings.factoryLvNotEnoughGum");
+    else maiSays("settings.factoryLvCondFail");
     return;
   }
-  state.gum -= cost;
+  state.gum -= check.cost;
   state.factoryLevel = cur + 1;
+  // Phase 1D-23: 工房レベルアップ専用 SE (facilities.mp3)
+  playSe("factoryLvDone");
   renderHeader();
-  maiSays("settings.factoryLvUpDone");
-  playSe("appraisalHigh");
+  renderFactoryLvUpView();
+  // 解放内容 + 祝賀コメントをマイから
+  const unlocks = factoryLvUpUnlocks(state.factoryLevel);
+  const congrats = `工房 Lv ${state.factoryLevel} に到達！\n` +
+    "解放: " + unlocks.join(" / ");
+  maiSaysSequence([
+    `工房 Lv ${state.factoryLevel} に到達しました！おめでとうございます♪`,
+    "解放: " + unlocks.join(" / "),
+  ], { onClose: () => {} });
+  // ホーム画面の目標バナーも更新
+  renderHomeGoalBanner();
 }
 
 function onTick() {
@@ -527,18 +690,10 @@ function tickPassiveRestRecovery() {
       adjustStamina(hero, staminaRecoverPerTick(hero));
       if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
     } else if (hero.state === HERO_STATE.IDLE) {
-      // Phase 1D-12: idle 中も緩やかに体力減少 (1 tick あたり 1)。
-      // ゼロになったら自動で休憩状態へ。
-      adjustStamina(hero, -1);
-      if (isExhausted(hero)) {
-        hero.state = HERO_STATE.RESTING;
-        // Phase 1D-19: idle で体力ゼロ → 「疲れた…」セリフ
-        pushHeroFlavor(hero.heroId, "restingZero");
-      } else {
-        // Phase 1D-19: 完全 idle なヒーローが 1 週間経過したら「ヒマだな…」
-        // (週進行はランダム発火 + 同じ週で重複しない仕組み)
-        maybeIdleSpeak(hero);
-      }
+      // Phase 1D-23: Idle 中の体力減少を廃止 (ユーザー仕様)。
+      //   待機中のヒーローは体力を維持し、好きなタイミングで派遣できる。
+      // 完全 idle なヒーローが 1 週間経過したら「ヒマだな…」発言だけ残す
+      maybeIdleSpeak(hero);
     }
   }
 }
@@ -1175,6 +1330,8 @@ function renderHeader() {
   if (lvEl) {
     lvEl.textContent = ti18n("header.factoryLv").replace("{n}", String(state.factoryLevel));
   }
+  // Phase 1D-23: 目標バナー (workshop 上部) も連動更新
+  if (typeof renderHomeGoalBanner === "function") renderHomeGoalBanner();
 }
 
 /** ─── Hero view rendering ──────────────────────────────────────── */
@@ -1465,13 +1622,36 @@ function closeHeroEnhanceView() {
   resumeTime();
 }
 
-/** Phase 1D-20: ヒーロー強化リストを描画 */
+/** Phase 1D-23: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー */
+function _heroFullHpProjected(hero, rankOverride = null) {
+  const rank = rankOverride == null ? (hero.rank || 0) : rankOverride;
+  const rMult = 1 + 0.4 * Math.max(0, Math.min(RANK_MAX, rank));
+  // 4 元素値 (ガルーダ重み込み + ランク倍率)
+  const e = hero.element || {};
+  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * rMult);
+  const ifrit   = Math.round((e.ifrit   || 0) * rMult);
+  const lev     = Math.round((e.leviathan || 0) * rMult);
+  const tia     = Math.round((e.tiamat  || 0) * rMult);
+  const sum = garudaW + ifrit + lev + tia;
+  const hasKo  = Array.isArray(hero.attributes) && hero.attributes.includes("ko");
+  const hasNo  = Array.isArray(hero.attributes) && hero.attributes.includes("no");
+  const hasSho = Array.isArray(hero.attributes) && hero.attributes.includes("sho");
+  return {
+    elements: { garuda: garudaW, ifrit, leviathan: lev, tiamat: tia },
+    sum,
+    craftLv:    Math.round(sum * (hasKo  ? 1.5 : 1.0)),
+    questLv:    Math.round(sum * (hasNo  ? 1.5 : 1.0)),
+    merchantLv: Math.round(sum * (hasSho ? 1.5 : 1.0)),
+  };
+}
+
+/** Phase 1D-20: ヒーロー強化リストを描画
+ *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記 */
 function renderHeroEnhanceList() {
   const host = $("heroEnhanceList");
   if (!host) return;
   const lang = getLang() === "en" ? "en" : "ja";
   const heroes = (state.ownedHeroes || []).slice().sort((a, b) => {
-    // ランクが高いものを上位に → 同じならクラフトレベル降順
     if ((b.rank || 0) !== (a.rank || 0)) return (b.rank || 0) - (a.rank || 0);
     return craftLevel(b) - craftLevel(a);
   });
@@ -1480,9 +1660,32 @@ function renderHeroEnhanceList() {
     const rank = hero.rank || 0;
     const isMax = rank >= RANK_MAX;
     const cost = isMax ? 0 : rankUpCost(hero);
-    const cl = craftLevel(hero);
     const insufficientGum = !isMax && (state.gum || 0) < cost;
     const starsHtml = renderRankStars(rank);
+
+    // 現ランク (Before)
+    const cur = _heroFullHpProjected(hero, rank);
+    // 次ランク (After) — MAX 時は表示なし
+    const nxt = isMax ? null : _heroFullHpProjected(hero, rank + 1);
+
+    /** 値の比較表示: "120 → 150" (緑) */
+    const cmp = (curV, nxtV) => nxt
+      ? `<span class="ench-cmp"><span class="ench-cmp__cur">${curV.toLocaleString()}</span><span class="ench-cmp__arrow">→</span><span class="ench-cmp__nxt">${nxtV.toLocaleString()}</span></span>`
+      : `<span class="ench-cmp"><span class="ench-cmp__cur ench-cmp__cur--max">${curV.toLocaleString()}</span></span>`;
+
+    const elemRows = ELEMENTS.map(k => `
+      <div class="ench-row">
+        <img class="ench-row__icon" src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" />
+        <span class="ench-row__label">${escapeHtml(elementLabel(k))}</span>
+        ${cmp(cur.elements[k], nxt ? nxt.elements[k] : 0)}
+      </div>
+    `).join("");
+    // 適性別 Lv 行
+    const lvRows = `
+      <div class="ench-row ench-row--lv"><span class="ench-row__label" data-i18n="enhance.craftLv">${escapeHtml(ti18n("enhance.craftLv", "クラフトLv"))}</span>${cmp(cur.craftLv, nxt ? nxt.craftLv : 0)}</div>
+      <div class="ench-row ench-row--lv"><span class="ench-row__label" data-i18n="enhance.questLv">${escapeHtml(ti18n("enhance.questLv", "クエストLv"))}</span>${cmp(cur.questLv, nxt ? nxt.questLv : 0)}</div>
+      <div class="ench-row ench-row--lv"><span class="ench-row__label" data-i18n="enhance.merchantLv">${escapeHtml(ti18n("enhance.merchantLv", "マーチャントLv"))}</span>${cmp(cur.merchantLv, nxt ? nxt.merchantLv : 0)}</div>
+    `;
     const btnHtml = isMax
       ? `<div class="hero-enhance-row__max">${escapeHtml(ti18n("enhance.maxRank"))}</div>`
       : `<button type="button" class="hero-enhance-row__btn" data-enhance-hero="${hero.heroId}" ${insufficientGum ? "disabled" : ""}>
@@ -1493,9 +1696,11 @@ function renderHeroEnhanceList() {
       <img class="hero-enhance-row__portrait" src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
       <div class="hero-enhance-row__main">
         <span class="hero-enhance-row__name">${escapeHtml(name)}</span>
-        <div class="hero-enhance-row__rank-line">
-          ${starsHtml}
-          <span class="hero-enhance-row__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></span>
+        <div class="hero-enhance-row__rank-line">${starsHtml}</div>
+        <div class="ench-detail">
+          ${elemRows}
+          <div class="ench-divider"></div>
+          ${lvRows}
         </div>
       </div>
       ${btnHtml}
@@ -1529,8 +1734,8 @@ function rankUpHero(heroId) {
   //   rank 倍率かけるのみ。stamina max は MCH 由来のまま据え置き。
   renderHeader();
   renderHeroEnhanceList();
-  // 成功時のサウンド + Mai 通知
-  playSe("appraisalHigh");
+  // Phase 1D-23: ランクアップ専用 SE (mission.mp3)
+  playSe("rankUpDone");
   pushHeroFlavor(hero.heroId, "passive", { name: `Rank ${hero.rank}` });
   // Phase 1D-22: ランクアップでレシピ獲得チャンス
   //   Rank 3 達成は確定 1 件、Rank 5 達成も確定 1 件、それ以外は 25% で抽選
@@ -3200,6 +3405,8 @@ function tickActiveSales() {
       const finalGross = Math.round(s.expectedPrice * (1 + variance));
       const net = netSaleRevenue(finalGross);
       state.gum += net;
+      // Phase 1D-23: 売却成立数を計上 (工房レベルアップ条件用)
+      state.saleCompletedCount = (state.saleCompletedCount || 0) + 1;
       s.status = "sold";
       s.finalGross = finalGross;
       s.finalNet = net;
@@ -3872,6 +4079,14 @@ function finalizeCraftCleanup() {
           }
         : null,
     });
+    // Phase 1D-23: クラフト完了統計 + 査定スコアの最大値を更新 (工房レベルアップ条件で参照)
+    state.craftCompletedCount = (state.craftCompletedCount || 0) + 1;
+    if (pa && pa.totalScore != null) {
+      const ext = EXTENSION_BY_ID[String(pc.extId)];
+      const r = ext?.rarity || "common";
+      state.appraisalBest = state.appraisalBest || {};
+      state.appraisalBest[r] = Math.max(state.appraisalBest[r] || 0, pa.totalScore);
+    }
     for (const id of pc.team) {
       if (id == null) continue;
       const h = findHero(id);
@@ -3964,6 +4179,19 @@ async function init() {
     setLang(getLang() === "en" ? "ja" : "en");
   });
 
+  // Phase 1D-23: 共通ボタンクリック SE (全 button 要素 + .menu-item)
+  //   - title 画面のスタートタップは除外 (BGM/SE 開始の最初のユーザー操作)
+  //   - disabled 要素は鳴らさない
+  //   - スロットルは playSe 側で 100ms 設定済み
+  document.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("button, .menu-item");
+    if (!btn) return;
+    if (btn.disabled) return;
+    // タイトル画面 (= BGM 起動直前) は鳴らさない
+    if (btn.closest("#titleView")) return;
+    playSe("buttonClick");
+  }, true);  // capture phase で確実にひろう
+
   // ── Help ──
   $("btnHelpOpen")?.addEventListener("click", openHelp);
   $("btnHelpClose")?.addEventListener("click", closeHelp);
@@ -4017,6 +4245,9 @@ async function init() {
       if (action === "new-dev") {
         if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
         openCraftView();
+      } else if (action === "factoryLvUp") {
+        // Phase 1D-23: 工房レベルアップ画面 (Settings → Craft へ移設)
+        openFactoryLvUpView();
       }
     });
   });
@@ -4260,6 +4491,28 @@ async function init() {
   $("recipePopup")?.addEventListener("click", (e) => {
     if (e.target.id === "recipePopup") closeRecipePopup();
   });
+  // Phase 1D-23: 工房レベルアップ view close + アクション delegation
+  $("factoryLvUpClose")?.addEventListener("click", closeFactoryLvUpView);
+  $("factoryLvUpView")?.addEventListener("click", (e) => {
+    if (e.target.id === "factoryLvUpView") closeFactoryLvUpView();
+  });
+  $("factoryLvUpList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-flv-up]");
+    if (!btn || btn.disabled) return;
+    const t = parseInt(btn.getAttribute("data-flv-up"), 10);
+    if (Number.isFinite(t)) tryFactoryLevelUp(t);
+  });
+  // Phase 1D-23: ホーム目標バナーのクリック → 工房レベルアップ画面へ
+  $("homeGoalBannerBtn")?.addEventListener("click", () => {
+    openFactoryLvUpView();
+  });
+  $("homeGoalBanner")?.addEventListener("click", (ev) => {
+    // バナー本体クリックでも遷移 (ボタン以外)
+    if (ev.target.id === "homeGoalBannerBtn") return;  // ボタンクリックは別ハンドラに任せる
+    openFactoryLvUpView();
+  });
+  // 初期描画
+  renderHomeGoalBanner();
   $("questHeroPick")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-hero]");
     if (!btn) return;

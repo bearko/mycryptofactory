@@ -30,11 +30,13 @@ export const QUEST_DURATION_WEEKS = {
 };
 
 /** 難易度ごとの基準 quest level (= パーティ合計値の下限目安)。
- *  team quest level >= base なら成功率 100%、未満なら割合に応じて低下。 */
+ *  team quest level >= base なら成功率 100%、未満なら割合に応じて低下。
+ *  Phase 1D-23: 初期ヒーローの初期ランクでは中級・上級が攻略不可になるよう
+ *  ベース値を引き上げ (initial 4 commons の合計 quest level ~190 程度想定)。 */
 export const QUEST_BASE_LEVEL = {
-  easy:    80,
-  normal: 200,
-  hard:   400,
+  easy:    400,
+  normal:  800,
+  hard:   1200,
 };
 
 /**

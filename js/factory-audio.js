@@ -39,11 +39,23 @@ const SE_FILES = {
   questSuccess: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/token_drop.mp3",
   /** Phase 1D-22: シリーズレシピ獲得時の宝箱 SE */
   recipeAcquire: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/open_treasure.mp3",
+  /** Phase 1D-23: 共通ボタンクリック SE (押下感) — production.mp3 */
+  buttonClick:    "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/production.mp3",
+  /** Phase 1D-23: ヒーローランクアップ達成時 SE */
+  rankUpDone:     "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/mission.mp3",
+  /** Phase 1D-23: 工房レベルアップ達成時 SE */
+  factoryLvDone:  "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/facilities.mp3",
 };
 
 /** デフォルト音量 (0..1)。BGM は控えめ、SE は中ぐらい。 */
 const BGM_VOLUME = 0.32;
 const SE_VOLUME  = 0.55;
+
+/** Phase 1D-23: SE 個別音量オーバーライド (key → 0..1)。指定なければ SE_VOLUME 適用。
+ *  ボタンクリックは連発するので少し控えめに。 */
+const SE_VOLUME_OVERRIDE = {
+  buttonClick: 0.28,
+};
 
 /** SE の連発防止スロットル (ms)。同じ key が間隔以下で発火したら無視。
  *  craftGain は数百ms間隔でも発火しうるので 80ms 程度で間引く。 */
@@ -60,6 +72,10 @@ const SE_THROTTLE_MS = {
   passiveTrigger: 200,
   questSuccess: 500,
   recipeAcquire: 500,
+  // 共通クリック SE は連続押下に強めスロットル
+  buttonClick:    100,
+  rankUpDone:     500,
+  factoryLvDone:  500,
 };
 
 let _bgmEl = null;
@@ -128,7 +144,8 @@ export function playSe(seKey) {
   // Phase 1D-15: 絶対 URL (https://...) はそのまま使う / それ以外は AUDIO_BASE 配下
   const src = /^https?:\/\//.test(file) ? file : AUDIO_BASE + file;
   const a = new Audio(src);
-  a.volume = SE_VOLUME;
+  // Phase 1D-23: per-key volume オーバーライド
+  a.volume = (seKey in SE_VOLUME_OVERRIDE) ? SE_VOLUME_OVERRIDE[seKey] : SE_VOLUME;
   a.play().catch(() => { /* user gesture not yet present, ignore */ });
 }
 
