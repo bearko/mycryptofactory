@@ -286,6 +286,26 @@ const state = {
   /** Phase 1D-22: クエスト結果画面が閉じた後に発火する recipe drop の理由 i18n キー
    *  (success 時に確率で設定、closeQuestResultScreen で消化) */
   pendingRecipeReason: /** @type {string | null} */ (null),
+  /** Phase 1D-32: 赤字 (gum < 0) に陥った最初の tick。回復したら null に戻す。
+   *  6 ヶ月 (= 6 * WEEKS_PER_MONTH * SECONDS_PER_WEEK ticks) 経過後に
+   *  ヒーロー離職の判定に使う。 */
+  deficitStartedAtTick: /** @type {number | null} */ (null),
+  /** Phase 1D-32: 初めて赤字になったときのマイ助言を出したか (one-shot) */
+  deficitAdvised: /** @type {boolean} */ (false),
+  /** Phase 1D-32: 初赤字時のマイ助言を「他のモーダル close 後」に出すための予約フラグ。
+   *  onTick の冒頭 (pauseFlags === 0) で消化される。 */
+  pendingDeficitAdvice: /** @type {boolean} */ (false),
+  /** Phase 1D-32: 最後に「ヒーロー離職」を発火した tick (= 3 ヶ月クールダウン管理) */
+  lastAttritionTick: /** @type {number | null} */ (null),
+  /** Phase 1D-32: ゲームオーバー (= ヒーロー 0 名) を確定したか */
+  gameOverTriggered: /** @type {boolean} */ (false),
+  /** Phase 1D-32: 受注クラフト依頼 (1 ヶ月で再生成、最大 3 件保持)。
+   *  各要素: { id, extId, deadlineTick, rewardGum, generatedAtTick, generatedAt: {year,month,week} } */
+  commissions: /** @type {Array<object>} */ ([]),
+  /** Phase 1D-32: 受注クラフトの最後の生成週カウンタ (= 月次再生成のロック) */
+  lastCommissionGenAtMonth: /** @type {number | null} */ (null),
+  /** Phase 1D-32: 受注クラフト confirm 画面で picker から選択された commission の id */
+  craftPickedCommissionId: /** @type {number | null} */ (null),
 };
 
 const QUEST_TEAM_SIZE = 3;
@@ -769,6 +789,11 @@ function tryFactoryLevelUp(targetLv) {
     return;
   }
   if (targetLv !== cur + 1) return;
+  // Phase 1D-32: 赤字中はレベルアップ不可
+  if ((state.gum || 0) < 0) {
+    maiSays("settings.deficitNoLvUp");
+    return;
+  }
   const check = canFactoryLvUp(targetLv);
   if (!check.ok) {
     if (check.reason === "gum") maiSays("settings.factoryLvNotEnoughGum");
@@ -863,6 +888,14 @@ function triggerSpontaneousHire(rarity, source) {
   if (!rarity) return;
   // 既に保留中があれば 1 件ずつ処理 (重ねない)
   if (state.pendingSpontaneousRarity) return;
+  // Phase α 修正: 他のモーダルが開いている (= pauseFlags > 0) ときに maiSays を
+  //   重ねると body / _maiNextAction が上書きされ pauseFlags の累積取りこぼしで
+  //   フリーズする (= 2,000 GUM 到達と他完了報告の同時発火バグ)。pauseFlags が
+  //   0 に戻った tick で onTick の retry 経路が再試行する。
+  if (state.pauseFlags > 0) {
+    state.pendingSpontaneousRarity = rarity;
+    return;
+  }
   // キャップ満員 → 保留
   const cap = heroCapAtFactoryLevel(state.factoryLevel);
   if ((state.ownedHeroes || []).length >= cap) {
@@ -909,6 +942,244 @@ function triggerSpontaneousHire(rarity, source) {
   });
 }
 
+/** ─── Phase 1D-32: 赤字機能 (deficit) ─── */
+
+/** 赤字発生から離職開始までの猶予 (= 6 ヶ月) */
+const DEFICIT_GRACE_TICKS = 6 * WEEKS_PER_MONTH * SECONDS_PER_WEEK;
+/** 離職クールダウン (= 3 ヶ月ごとに 1 名) */
+const DEFICIT_ATTRITION_INTERVAL_TICKS = 3 * WEEKS_PER_MONTH * SECONDS_PER_WEEK;
+
+/** GUM 変動後に呼ぶ。負債開始 / 解消 / 初回助言フラグの更新を行う。
+ *  - 負 → 正 に戻った: deficitStartedAtTick / lastAttritionTick をクリア
+ *  - 正 → 負 に変化: deficitStartedAtTick = 現 tick
+ *  - 初めて 負 になった: pendingDeficitAdvice = true (= 次の onTick で発火)
+ *
+ *  助言の maiSaysSequence をここで直接呼ばないのは、hire-success モーダル等の
+ *  最中に呼ばれるとマイの吹き出しが裏に隠れてフリーズの原因になるため。
+ *  → onTick の冒頭 (pauseFlags === 0) で消化する。 */
+function checkDeficitTransition() {
+  const isDeficit = (state.gum || 0) < 0;
+  if (isDeficit) {
+    if (state.deficitStartedAtTick == null) {
+      state.deficitStartedAtTick = state.tickCount;
+      state.lastAttritionTick = null;
+    }
+    if (!state.deficitAdvised && !state.pendingDeficitAdvice) {
+      state.pendingDeficitAdvice = true;
+    }
+  } else {
+    // 黒字復帰 → クリア (ただし deficitAdvised は再発動しない: 1 度だけ)
+    state.deficitStartedAtTick = null;
+    state.lastAttritionTick = null;
+  }
+}
+
+/** 毎 tick の離職判定。猶予 6 ヶ月超 + 直近離職から 3 ヶ月経過で 1 名離職。 */
+function tickDeficitAttrition() {
+  if (state.gameOverTriggered) return;
+  if (state.deficitStartedAtTick == null) return;
+  const elapsed = state.tickCount - state.deficitStartedAtTick;
+  if (elapsed < DEFICIT_GRACE_TICKS) return;
+  // 直近離職から 3 ヶ月経過していなければ skip
+  const sinceLast = state.lastAttritionTick == null
+    ? Infinity
+    : state.tickCount - state.lastAttritionTick;
+  if (sinceLast < DEFICIT_ATTRITION_INTERVAL_TICKS) return;
+  // ヒーロー全員から 1 名ランダム選出 (実働中も含む — 「給料未払い」設定なので例外無し)
+  const heroes = state.ownedHeroes || [];
+  if (heroes.length === 0) return;  // 既に空なら gameover trigger に任せる
+  const idx = Math.floor(Math.random() * heroes.length);
+  const leaver = heroes[idx];
+  // 離職処理: ownedHeroes から除去 + craftTeam / questTeam / activeSale / activeHire からも除去
+  heroes.splice(idx, 1);
+  if (Array.isArray(state.craftTeam)) {
+    for (let i = 0; i < state.craftTeam.length; i++) if (state.craftTeam[i] === leaver.heroId) state.craftTeam[i] = null;
+  }
+  if (Array.isArray(state.questTeam)) {
+    for (let i = 0; i < state.questTeam.length; i++) if (state.questTeam[i] === leaver.heroId) state.questTeam[i] = null;
+  }
+  if (state.activeHire && state.activeHire.recruiterId === leaver.heroId) {
+    state.activeHire = null;  // recruiter 居なくなる → 中断
+  }
+  // activeSale の seller として登録されている case はそのまま (seller は内側状態)
+  state.lastAttritionTick = state.tickCount;
+  // 通知
+  const heroName = tHero(leaver.heroId, leaver.nameJa);
+  maiSays("mai.deficitAttrition", { onClose: () => {} });
+  // i18n の {hero} 置換は body 側で再利用 — closure で上書きする手間を避けるため、
+  // ここでは notif にも push して保険をかける
+  state.notifications.push({
+    id: ++_notifId,
+    text: ti18n("mai.deficitAttrition").replace("{hero}", heroName),
+    element: "tiamat",  // 灰色寄りの色を使うため適当な要素に紐付け
+    value: 0,
+    createdTick: state.tickCount,
+  });
+  renderHeader();
+  renderHeroTeam?.();
+  renderHeroList?.();
+  renderWorkshop?.();
+  // 0 名 → ゲームオーバー
+  if ((state.ownedHeroes || []).length === 0) {
+    triggerDeficitGameOver();
+  }
+}
+
+/** ヒーロー 0 名 → ゲームオーバー → ランキング登録画面へ */
+function triggerDeficitGameOver() {
+  if (state.gameOverTriggered) return;
+  state.gameOverTriggered = true;
+  pauseTime();
+  maiSaysSequence([
+    ti18n("mai.deficitGameOver"),
+  ], { onClose: () => openRankingScoreView(true) });  // true = ランキング登録可能
+}
+
+/** ─── Phase 1D-32: 受注クラフト (commission) ─── */
+
+const COMMISSION_REWARD_RATIO = 0.6;     // 通常販売価格の 60%
+const COMMISSION_PER_REGEN    = 3;        // 月次 3 件
+const COMMISSION_DEADLINE_BONUS_WEEKS = 3; // 通常 durationWeeks + 3 週を期限に
+
+let _commissionId = 0;
+
+/** 解放済みエクステンションのプールから rarity 重み付きで 1 つ抽選する */
+function pickRandomUnlockedExt() {
+  const all = Object.values(EXTENSION_BY_ID || {});
+  const unlocked = all.filter(e => isExtUnlocked(e, state.unlockedSeries, state.factoryLevel));
+  if (unlocked.length === 0) return null;
+  // rarity 重み: common 高、legendary 低 (現在解放済の範囲で)
+  const W = { common: 5, uncommon: 3, rare: 2, epic: 1, legendary: 0.4 };
+  const totalW = unlocked.reduce((s, e) => s + (W[e.rarity] || 1), 0);
+  let r = Math.random() * totalW;
+  for (const e of unlocked) {
+    r -= (W[e.rarity] || 1);
+    if (r <= 0) return e;
+  }
+  return unlocked[unlocked.length - 1];
+}
+
+/** 受注の deadline 切れを毎 tick チェック。
+ *  - 期限を過ぎた依頼は state.commissions から除去 (受けていないものは静かに消える)
+ *  - 進行中 (= state.activeCraft.commissionId === c.id) の依頼が deadline を
+ *    超えても直ちには中止しない (= craft 完了時に triggerCommissionResult が
+ *    deadline と quality を判定する。期限超過なら報酬 0 で完了通知)。
+ *    こちらでは依頼一覧からの除去のみ。 */
+function tickCommissionDeadlines() {
+  if (!Array.isArray(state.commissions) || state.commissions.length === 0) return;
+  const acId = state.activeCraft?.commissionId;
+  state.commissions = state.commissions.filter(c => {
+    // 進行中の依頼は active craft 終了後に削除 (= triggerCraftCompletion で消化)
+    if (c.id === acId) return true;
+    return state.tickCount < c.deadlineTick;
+  });
+}
+
+/** 受注の月次再生成 (advanceWeek の節目で呼ぶ)。
+ *  既に該当月で生成済みならスキップ。 */
+function maybeRegenerateCommissions() {
+  const cur = state.month + state.year * 12;
+  if (state.lastCommissionGenAtMonth === cur) return;
+  state.lastCommissionGenAtMonth = cur;
+  const out = [];
+  for (let i = 0; i < COMMISSION_PER_REGEN; i++) {
+    const ext = pickRandomUnlockedExt();
+    if (!ext) break;
+    // 期限: ext の durationWeeks 推定 + 3 週
+    const baseDur = (ext.durationWeeks != null ? ext.durationWeeks : 4);
+    const deadlineTicks = (baseDur + COMMISSION_DEADLINE_BONUS_WEEKS) * SECONDS_PER_WEEK;
+    // 報酬: ext の expectedPrice (= 倉庫からの売却推定) × 60%
+    //   estimateSalePrice は warehouseItem を要求するので簡易計算:
+    //   ext.basePrice + rarity ボーナス (= getExtBasePrice 相当)
+    //   → 既存定数が無ければ rarity から仮算出
+    const rarityFloor = { common: 220, uncommon: 480, rare: 1200, epic: 3500, legendary: 11000 };
+    const baseSell = (typeof estimateExtBasePrice === "function" ? estimateExtBasePrice(ext) : null)
+      ?? (rarityFloor[ext.rarity] || 220);
+    const reward = Math.round(baseSell * COMMISSION_REWARD_RATIO);
+    out.push({
+      id: ++_commissionId,
+      extId: ext.extId,
+      deadlineTick: state.tickCount + deadlineTicks,
+      rewardGum: reward,
+      generatedAtTick: state.tickCount,
+      generatedAt: { year: state.year, month: state.month, week: state.week },
+    });
+  }
+  state.commissions = out;
+}
+
+/** 受注クラフト picker view を開く */
+function openCommissionView() {
+  const view = $("commissionView");
+  if (!view) return;
+  // 初回オープン時に commission がまだ無ければ即生成
+  if (!Array.isArray(state.commissions) || state.commissions.length === 0) {
+    maybeRegenerateCommissions();
+  }
+  pauseTime();
+  view.classList.remove("hidden");
+  renderCommissionView();
+}
+
+function closeCommissionView() {
+  $("commissionView")?.classList.add("hidden");
+  resumeTime();
+}
+
+function renderCommissionView() {
+  const host = $("commissionList");
+  if (!host) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const list = state.commissions || [];
+  if (list.length === 0) {
+    host.innerHTML = `<div class="commission-view__empty">${escapeHtml(ti18n("commission.empty"))}</div>`;
+    return;
+  }
+  // activeCraft が既に動いていれば全 disable
+  const isBusy = !!state.activeCraft;
+  host.innerHTML = list.map(c => {
+    const ext = EXTENSION_BY_ID[String(c.extId)];
+    if (!ext) return "";
+    const extName = lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa;
+    const remainTicks = Math.max(0, c.deadlineTick - state.tickCount);
+    const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK);
+    return `<div class="commission-card">
+      <img class="commission-card__icon" src="${extIconUrl(ext.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="commission-card__info">
+        <span class="commission-card__name">${escapeHtml(extName)}</span>
+        <span class="commission-card__meta">
+          <span class="commission-card__deadline">${escapeHtml(ti18n("commission.deadline"))}: ${remainWeeks}${lang === "en" ? "w" : "週"}</span>
+          <span class="commission-card__reward">${escapeHtml(ti18n("commission.reward"))}: ${c.rewardGum.toLocaleString()} GUM</span>
+        </span>
+      </div>
+      <button type="button" class="commission-card__btn" data-commission-id="${c.id}" ${isBusy ? "disabled" : ""}>
+        ${escapeHtml(ti18n("commission.start"))}
+      </button>
+    </div>`;
+  }).join("");
+}
+
+/** picker で commission を選択 → 既存 craftView の confirm 画面に流し込む。
+ *  craft.commissionId フラグを保持してその後の処理 (材料免除 / 完了処理) で参照。 */
+function pickCommission(commissionId) {
+  if (state.activeCraft) {
+    maiSays("commission.busy");
+    return;
+  }
+  const c = (state.commissions || []).find(x => x.id === commissionId);
+  if (!c) return;
+  state.craftPickedExtId = String(c.extId);
+  state.craftPickedCommissionId = c.id;
+  closeCommissionView();
+  // 既存 craftView を開いて confirm 画面に直行
+  const view = $("craftView");
+  if (!view) return;
+  pauseTime();
+  view.classList.remove("hidden");
+  setCraftScreen("confirm");
+  renderConfirm();
+}
+
 function onTick() {
   if (state.pauseFlags > 0) return;
   state.tickCount += 1;
@@ -934,6 +1205,22 @@ function onTick() {
   }
   // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
   tickPassiveRestRecovery();
+  // Phase 1D-32: 受注クラフトの期限切れ判定 (進行中 commission の deadline 越え)
+  tickCommissionDeadlines();
+  // Phase 1D-32: 赤字 6 ヶ月超 → 3 ヶ月ごとに離職 → 0 名でゲームオーバー
+  tickDeficitAttrition();
+  // Phase 1D-32: 初赤字時のマイ助言を保留消化 (= 他モーダル閉じてから出す)。
+  //   onTick は pauseFlags > 0 で早期 return するので、この時点で modal は無い。
+  if (state.pendingDeficitAdvice) {
+    state.pendingDeficitAdvice = false;
+    state.deficitAdvised = true;
+    maiSaysSequence([
+      ti18n("mai.deficitFirst1"),
+      ti18n("mai.deficitFirst2"),
+      ti18n("mai.deficitCommissionHint"),
+    ]);
+    return;  // 後続の他チェックは次 tick で (= mai 開いたので pauseFlags > 0)
+  }
   // Phase 1D-30: GUM 閾値到達によるスポット雇用チェック (one-shot)
   //   GUM が変動するパスは多くタイミングが分散するため、毎 tick の集約点として
   //   ここでチェックするのが最も安全。pauseFlags > 0 のときは onTick 自体が
@@ -1302,6 +1589,12 @@ function triggerCraftCompletion(ac) {
   const qualityRatio = tgtSum > 0 ? progSum / tgtSum : 1;
   const qualityTier  = pickQualityTier(qualityRatio, allMet);
 
+  // Phase 1D-32: 受注クラフトは別フローで完了処理 (倉庫入り無し / 報酬 GUM)
+  if (ac.commissionId != null) {
+    triggerCommissionResult(ac, allMet, qualityRatio);
+    return;
+  }
+
   state.pendingCompletion = {
     extId: ac.extId,
     team:  ac.team.slice(),
@@ -1326,6 +1619,58 @@ function triggerCraftCompletion(ac) {
 
   // Mai 通知 → 閉じると完成画面へ
   maiSays("comp.maiNotice", { onClose: openCompletionScreen });
+}
+
+/** Phase 1D-32: 受注クラフトの完了処理。
+ *   - 期限超過 OR 基準値未達 → 報酬なし
+ *   - 双方 OK → 報酬 GUM 加算 + 速報タイル通知
+ *   いずれの場合も extension は倉庫に入れない (= 依頼者に納品)。
+ *   配属ヒーロー state は IDLE に戻す。
+ */
+function triggerCommissionResult(ac, allMet, qualityRatio) {
+  const c = (state.commissions || []).find(x => x.id === ac.commissionId);
+  const overDeadline = c ? state.tickCount > c.deadlineTick : false;
+  const success = !!c && !overDeadline && allMet;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const ext = EXTENSION_BY_ID[String(ac.extId)];
+  const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${ac.extId}`;
+  if (success && c) {
+    state.gum += c.rewardGum;
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("commission.success").replace("{reward}", c.rewardGum.toLocaleString()),
+      element: "tiamat",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    playSe("saleSettled");
+    checkDeficitTransition();  // 報酬で黒字復帰したらフラグクリア
+  } else {
+    // 失敗通知
+    const reasonKey = overDeadline ? "commission.fail.deadline" : "commission.fail.target";
+    state.notifications.push({
+      id: ++_notifId,
+      text: `[${extName}] ${ti18n(reasonKey)}`,
+      element: "ifrit",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+  }
+  // 依頼を一覧から除去
+  if (c) state.commissions = (state.commissions || []).filter(x => x.id !== c.id);
+  // 配属ヒーローを IDLE に戻す
+  for (const id of ac.team) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (h && h.state === HERO_STATE.CRAFTING) h.state = HERO_STATE.IDLE;
+  }
+  state.activeCraft = null;
+  state.craftPickedCommissionId = null;
+  // 描画リフレッシュ
+  renderHeader();
+  renderNotifications();
+  renderOrderPanel?.();
+  renderWorkshop();
 }
 
 /** 品質 tier の判定。
@@ -1774,6 +2119,11 @@ function buyLandPass(landId) {
     renderQuestView();
     return;
   }
+  // Phase 1D-32: 赤字中は通行証も買えない
+  if ((state.gum || 0) < 0) {
+    maiSays("quest.land.mai.deficitNoBuy");
+    return;
+  }
   if (state.gum < LAND_PASS_COST) {
     maiSays("quest.land.mai.notEnoughGum");
     return;
@@ -2010,6 +2360,8 @@ function advanceWeek() {
       state.month = 1;
       state.year += 1;
     }
+    // Phase 1D-32: 月初め (week=1 になった瞬間) に受注クラフトを再生成
+    maybeRegenerateCommissions();
   }
   // Phase 1D-26: 10 年エンディング (2028年11月4週 終了 = 2028/12/1 直前)
   //   ランキング集計の締切。 集計画面 → 引き続きプレイ可能
@@ -2040,7 +2392,11 @@ function renderHeader() {
   const dateEl = $("factoryDate");
   if (dateEl) dateEl.textContent = formatDate(getLang());
   const gumEl = $("factoryGum");
-  if (gumEl) gumEl.textContent = state.gum.toLocaleString();
+  if (gumEl) {
+    gumEl.textContent = state.gum.toLocaleString();
+    // Phase 1D-32: 赤字 (gum < 0) は赤字表示クラスをトグル
+    gumEl.classList.toggle("factory-gum--deficit", (state.gum || 0) < 0);
+  }
   const gauge = $("weekGaugeFill");
   if (gauge) {
     const pct = (state.weekProgress / SECONDS_PER_WEEK) * 100;
@@ -2550,6 +2906,11 @@ function rankUpHero(heroId) {
   if (!hero) return;
   const cur = hero.rank || 0;
   if (cur >= RANK_MAX) return;
+  // Phase 1D-32: 赤字中はランクアップ不可
+  if ((state.gum || 0) < 0) {
+    maiSays("enhance.deficitNoRankUp");
+    return;
+  }
   const cost = rankUpCost(hero);
   if ((state.gum || 0) < cost) {
     maiSays("enhance.notEnoughGum");
@@ -2958,21 +3319,43 @@ function renderConfirm() {
   }).join("");
 
   // Materials (赤字 if shortage; 表示形式 = "×4 (在庫:10)")
+  // Phase 1D-32: 受注クラフトは素材不要 → 期限/報酬の表示に差し替え
   const recipe = recipeFor(ext);
   const avail = craftAvailability(ext, team, state.materials);
-  $("confirmMaterials").innerHTML = recipe.map(m => {
-    const have = state.materials[m.id] || 0;
-    const short = avail.shortage[m.id] > 0;
-    const rowCls = short ? "craft-confirm__mat-row craft-confirm__mat-row--short" : "craft-confirm__mat-row";
-    const qtyText = ti18n("craft.material.qtyHave")
-      .replace("{qty}", m.qty)
-      .replace("{have}", have);
-    return `<div class="${rowCls}">
-      <img src="${materialIcon(m.id)}" alt="" onerror="this.style.opacity='0.2'" />
-      <span class="craft-confirm__mat-name">${escapeHtml(materialName(m.id, getLang()))}</span>
-      <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}</span>
-    </div>`;
-  }).join("");
+  if (state.craftPickedCommissionId != null) {
+    const c = (state.commissions || []).find(x => x.id === state.craftPickedCommissionId);
+    if (c) {
+      const remainTicks = Math.max(0, c.deadlineTick - state.tickCount);
+      const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK);
+      const langLocal = getLang() === "en" ? "en" : "ja";
+      $("confirmMaterials").innerHTML = `
+        <div class="craft-confirm__mat-row" style="background: rgba(196,163,90,0.12); border-radius: 4px; padding: 0.5rem;">
+          <strong style="color: var(--accent);">${escapeHtml(ti18n("commission.title"))}</strong>
+        </div>
+        <div class="craft-confirm__mat-row">
+          <span class="craft-confirm__mat-name">${escapeHtml(ti18n("commission.deadline"))}</span>
+          <span class="craft-confirm__mat-qty" style="color: var(--ifrit); font-weight: 800;">${remainWeeks}${langLocal === "en" ? " weeks" : " 週"}</span>
+        </div>
+        <div class="craft-confirm__mat-row">
+          <span class="craft-confirm__mat-name">${escapeHtml(ti18n("commission.reward"))}</span>
+          <span class="craft-confirm__mat-qty" style="color: var(--accent); font-weight: 800;">${c.rewardGum.toLocaleString()} GUM</span>
+        </div>`;
+    }
+  } else {
+    $("confirmMaterials").innerHTML = recipe.map(m => {
+      const have = state.materials[m.id] || 0;
+      const short = avail.shortage[m.id] > 0;
+      const rowCls = short ? "craft-confirm__mat-row craft-confirm__mat-row--short" : "craft-confirm__mat-row";
+      const qtyText = ti18n("craft.material.qtyHave")
+        .replace("{qty}", m.qty)
+        .replace("{have}", have);
+      return `<div class="${rowCls}">
+        <img src="${materialIcon(m.id)}" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="craft-confirm__mat-name">${escapeHtml(materialName(m.id, getLang()))}</span>
+        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}</span>
+      </div>`;
+    }).join("");
+  }
 
   // Team slots (clickable — tap = open hero view, same as 変更 button)
   $("confirmTeamSlots").innerHTML = state.craftTeam.map((heroId, idx) => {
@@ -3018,14 +3401,16 @@ function renderConfirm() {
   //  - material 不足: 開始不可 (赤字警告)
   //  - level 不足:    開始は許可。マイのアドバイスで品質低下の見込みを案内
   //  - filled === 0: 開始不可 (チーム編成が必要)
+  // Phase 1D-32: 受注クラフト (= state.craftPickedCommissionId 設定中) は素材不要
+  const isCommission = state.craftPickedCommissionId != null;
   const filled = state.craftTeam.filter(id => id != null).length;
   const warn = $("confirmWarning");
   const startBtn = $("confirmStartBtn");
   let warnMsg = "";
   let warnMode = "error";
-  const canStart = filled > 0 && avail.materialOk;  // Phase 1D-24: Lv 不足は止めない
+  const canStart = filled > 0 && (isCommission || avail.materialOk);
   if (filled === 0) warnMsg = ti18n("craft.warn.noTeam");
-  else if (!avail.materialOk) warnMsg = ti18n("craft.warn.noMaterial");
+  else if (!isCommission && !avail.materialOk) warnMsg = ti18n("craft.warn.noMaterial");
   else if (!avail.levelOk) {
     // Phase 1D-24: Mai のアドバイス文に切替 (赤字エラーではなく warning 風)
     warnMode = "advice";
@@ -3059,6 +3444,9 @@ function openCraftView() {
   pauseTime();
   state.craftScreen = "select";
   state.craftPickedExtId = null;
+  // Phase 1D-32: 通常 craft view を開いた時点で commission picker を解除する
+  //   (= 受注クラフトはピッカー → 直接 confirm 経路で別途呼ばれる)
+  state.craftPickedCommissionId = null;
   setCraftScreen("select");
   $("craftView")?.classList.remove("hidden");
   // 並び替えセレクトを state に同期 (HTML 上のデフォルト選択と取りこぼしが出ないように)
@@ -3070,6 +3458,8 @@ function openCraftView() {
 }
 function closeCraftView() {
   $("craftView")?.classList.add("hidden");
+  // Phase 1D-32: confirm を閉じた時点で commission 状態もクリア
+  state.craftPickedCommissionId = null;
   resumeTime();
 }
 
@@ -3094,23 +3484,30 @@ function startActiveCraft() {
   const team = state.craftTeam.slice();
   const teamHeroes = currentTeamHeroes();
   // 安全チェック (ボタンが disabled でも念のため)
+  // Phase 1D-32: 受注クラフトは素材不要なので materialOk をスキップ
+  const isCommission = state.craftPickedCommissionId != null;
   const avail = craftAvailability(ext, teamHeroes, state.materials);
-  if (!avail.materialOk) return;
+  if (!isCommission && !avail.materialOk) return;
   // Phase 1D-6: クラフト開始 SE
   playSe("craftStart");
   const targets = extElementTargets(ext);
   const dur = estimateDurationWeeks(ext, teamHeroes);
   const recipe = recipeFor(ext);
 
-  // Deduct materials from inventory.
-  for (const m of recipe) {
-    state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - (m.qty || 0));
+  // 素材消費 (受注クラフトはスキップ)
+  if (!isCommission) {
+    for (const m of recipe) {
+      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - (m.qty || 0));
+    }
   }
 
+  // Phase 1D-32: 受注ID を activeCraft に伝播
+  const commissionId = state.craftPickedCommissionId;
   state.activeCraft = {
     extId: ext.extId,
     team,
     targets,
+    commissionId: commissionId != null ? commissionId : null,
     progress: { garuda: 0, ifrit: 0, leviathan: 0, tiamat: 0 },
     recipe,
     startedAt: { year: state.year, month: state.month, week: state.week },
@@ -4498,12 +4895,9 @@ function closeSellModal() {
 /** 出品 tick: 完了時に GUM 加算 + warehouse から削除 + 通知 */
 function tickActiveSales() {
   if (state.activeSales.length === 0) return;
-  // Phase 1D-29 fix: 既に他のモーダル (例: ソウル注入トリガーの maiSays) が開いて
-  //   pauseFlags > 0 の場合、ここで maiSays を重ねると body / _maiNextAction が
-  //   上書きされ pauseFlags の累積/取りこぼしでフリーズする。
-  //   pauseFlags が 0 に戻る (= 他のモーダルが閉じた) tick まで settlement を遅延。
-  //   売上は state.tickCount 基準なので、待機 tick 中も elapsed 判定は崩れない。
-  if (state.pauseFlags > 0) return;
+  // Phase 1D-32: 取引成立通知をモーダル → 速報タイル (state.notifications) に
+  //   切替済みのため、pauseFlags > 0 で待機する必要は無くなった。
+  //   (= 1D-29 で導入した「他モーダル open 中は settlement を遅延」ガードを撤去)
   const completed = [];
   for (const s of state.activeSales) {
     const elapsed = state.tickCount - s.listedAtTick;
@@ -4534,25 +4928,35 @@ function tickActiveSales() {
         if (s.warehouseIdx > removed) s.warehouseIdx -= 1;
       }
     }
-    // Mai 通知
+    // Phase 1D-32: 取引成立は時間を止めずに、画面上部の速報タイルで通知する
+    //   (= ヒーローのパッシブ発動と同じ仕組みの state.notifications)。
+    //   形式: 「[ext名] が成約！ [GUM] GUM で売却しました」
+    const lang = getLang() === "en" ? "en" : "ja";
     const totalNet = completed.reduce((a, b) => a + b.finalNet, 0);
     // Phase 1D-6: 取引成立 SE
     playSe("saleSettled");
-    maiSays("sell.mai.sold", {
-      onClose: () => {
-        // Phase 1D-22: 売却 1 件あたり 6% で未取得シリーズレシピが手に入る
-        //   (常連客がレシピをくれた風情)
-        for (let k = 0; k < completed.length; k++) {
-          if (Math.random() < 0.06) {
-            setTimeout(() => acquireRandomSeriesRecipe("recipe.from.sale"), 200 + k * 220);
-          }
-        }
-      },
-    });
-    // 通知本文に金額が出るように i18n を上書きするのは複雑なので、
-    // とりあえず固定メッセージ + console
+    for (let k = 0; k < completed.length; k++) {
+      const s = completed[k];
+      const ext = EXTENSION_BY_ID[String(s.extId)];
+      const extName = ext ? (lang === "en" ? ext.nameEn : ext.nameJa) : `ext ${s.extId}`;
+      const text = ti18n("notif.saleSettled")
+        .replace("{ext}", extName)
+        .replace("{gum}", s.finalNet.toLocaleString());
+      state.notifications.push({
+        id: ++_notifId,
+        text,
+        element: "tiamat",  // GUM 系のテーマカラー (= 黄)
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      // 売却 1 件あたり 6% で未取得シリーズレシピ獲得 (元仕様維持)
+      if (Math.random() < 0.06) {
+        setTimeout(() => acquireRandomSeriesRecipe("recipe.from.sale"), 600 + k * 240);
+      }
+    }
     console.log(`[market] ${completed.length} ext sold for total ${totalNet} GUM`);
     renderHeader();
+    renderNotifications();
     renderSaleOverlay();
   }
   // 出品中もしくは tick ごとに進捗バーが進む overlay を更新
@@ -4670,7 +5074,7 @@ function startHirePlan(planId, recruiterId) {
   const plan = PLAN_BY_ID[planId];
   const recruiter = findHero(recruiterId);
   if (!plan || !recruiter) return;
-  if (state.gum < plan.cost) return;
+  // Phase 1D-32: 雇用は赤字 (gum < 0) でも実行可能。前払い → state.gum がマイナスへ。
   state.gum -= plan.cost;
   state.activeHire = {
     planId,
@@ -4679,6 +5083,8 @@ function startHirePlan(planId, recruiterId) {
     candidates: null,
   };
   renderHeader();
+  // 赤字遷移チェック (初赤字でマイ助言 + 状態セット)
+  checkDeficitTransition();
   // Phase 1D-7: 雇用開始 → そのままホームに戻して時間を進める
   closeMarketView();
   renderHireOverlay();
@@ -4803,12 +5209,8 @@ function pickHireCandidate(heroId) {
   if (candIdx < 0) return;
   const cand = ah.candidates[candIdx];
 
-  // Phase 1D-7: per-rarity 契約金チェック
-  const cost = hireCostFor(cand);
-  if (state.gum < cost) {
-    maiSays("hire.mai.notEnoughGum");
-    return;
-  }
+  // Phase 1D-32: 雇用契約は赤字 (gum < 0) でも実行可能なため事前 GUM チェックを撤廃。
+  //   契約後に gum がマイナスへ → checkDeficitTransition でマイの助言が出る。
 
   // 所有上限チェック → 溢れたら fire modal を経由してリトライ
   const cap = heroCapAtFactoryLevel(state.factoryLevel);
@@ -4831,10 +5233,8 @@ function finalizeHire(candIdx) {
   const cand = ah.candidates[candIdx];
   if (!cand) return;
   const cost = hireCostFor(cand);
-  if (state.gum < cost) {
-    maiSays("hire.mai.notEnoughGum");
-    return;
-  }
+  // Phase 1D-32: 赤字 (gum < 0) を許容。事前チェック撤廃 → 契約後に gum がマイナス
+  //   になったら checkDeficitTransition がマイの助言 (one-shot) を出す。
   state.gum -= cost;
   const def = HERO_ROSTER.find(h => h.heroId === cand.heroId);
   if (!def) return;
@@ -4858,6 +5258,11 @@ function finalizeHire(candIdx) {
   playSe("rankUpDone");  // = mission.mp3
   // Phase 1D-7: 雇用成功通知 (portrait 付き)
   showHireSuccessModal(newHero);
+  // Phase 1D-32: 契約金で赤字に陥った場合のマイ助言 (one-shot) — hire-success
+  //   モーダル close 後に出るよう、checkDeficitTransition は after-success で呼ぶ。
+  //   ただし showHireSuccessModal がまだ前面なので、closeHireSuccessModal の中で
+  //   呼ぶのが本来は綺麗。便宜上ここで先に state を更新だけしておく。
+  checkDeficitTransition();
 }
 
 function skipAllHireCandidates() {
@@ -5448,7 +5853,7 @@ async function init() {
     });
   });
 
-  // クラフト submenu: 新規開発
+  // クラフト submenu: 新規開発 / 受注クラフト / 工房レベルアップ
   document.querySelectorAll(".menu-item[data-craft-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const action = btn.getAttribute("data-craft-action");
@@ -5457,11 +5862,27 @@ async function init() {
       if (action === "new-dev") {
         if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
         openCraftView();
+      } else if (action === "commission") {
+        // Phase 1D-32: 受注クラフト
+        if (state.activeCraft) { maiSays("commission.busy"); return; }
+        openCommissionView();
       } else if (action === "factoryLvUp") {
         // Phase 1D-23: 工房レベルアップ画面 (Settings → Craft へ移設)
         openFactoryLvUpView();
       }
     });
+  });
+
+  // Phase 1D-32: 受注クラフトの click hooks
+  $("commissionList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-commission-id]");
+    if (!btn || btn.disabled) return;
+    const id = parseInt(btn.getAttribute("data-commission-id"), 10);
+    if (Number.isFinite(id)) pickCommission(id);
+  });
+  $("commissionViewClose")?.addEventListener("click", closeCommissionView);
+  $("commissionView")?.addEventListener("click", (ev) => {
+    if (ev.target.id === "commissionView") closeCommissionView();
   });
 
   // ヒーロー submenu: クラフトチーム / 雇用 / 強化 (Phase 1D-20)
