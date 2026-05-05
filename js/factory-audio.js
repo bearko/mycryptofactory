@@ -39,8 +39,8 @@ const SE_FILES = {
   questSuccess: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/token_drop.mp3",
   /** Phase 1D-22: シリーズレシピ獲得時の宝箱 SE */
   recipeAcquire: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/open_treasure.mp3",
-  /** Phase 1D-23: 共通ボタンクリック SE (押下感) — production.mp3 */
-  buttonClick:    "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/production.mp3",
+  /** Phase 1D-23 → 1D-26: 共通ボタンクリック SE (ローカルアセットに差し替え) */
+  buttonClick:    "button-click.mp3",
   /** Phase 1D-23: ヒーローランクアップ達成時 SE */
   rankUpDone:     "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/mission.mp3",
   /** Phase 1D-23: 工房レベルアップ達成時 SE */
