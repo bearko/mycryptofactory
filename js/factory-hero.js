@@ -89,10 +89,14 @@ export function rankMultiplier(hero) {
 
 /** ランクアップに必要な GUM コスト。
  *  - 基本: 100 GUM × (現ランク + 1) — Rank0→1=100、Rank4→5=500
- *  - レアリティ倍率: Common 1x / Uncommon 2x / Rare 4x / Epic 8x / Legendary 16x
+ *  - レアリティ倍率: Common 1x / Uncommon 2x / Rare 4x / Epic 8x / Legendary 12x
+ *
+ *  Phase 1D-36: Legendary 倍率を 16x → 12x に緩和。
+ *    旧: Legendary 全段ランクアップ = 100 × 15 × 16 = 24,000 GUM
+ *    新: 100 × 15 × 12 = 18,000 GUM (= Legendary 1 個売却 30,000 で十分回収)
  */
 const RANK_RARITY_MULT = {
-  common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 16,
+  common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 12,
 };
 export function rankUpCost(hero) {
   if (!hero) return Infinity;
