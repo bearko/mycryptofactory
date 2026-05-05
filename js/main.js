@@ -108,6 +108,8 @@ import {
   QUEST_BASE_LEVEL,
   QUEST_DIFFICULTY_LABEL,
   NORMAL_NODES,
+  LAND_NODES,
+  LAND_PASS_COST,
   NODE_BY_ID,
   teamQuestLevel,
   heroQuestLevelBreakdown,
@@ -207,6 +209,15 @@ const state = {
    *     startedAtTick, durationWeeks, progress: 0..1 } */
   questPickedNodeId: null,
   questPickedDifficulty: "easy",
+  /** Phase 1D-12: ヒーロー画面 (= 編成 view) で選択中のタブ */
+  heroTeamTab: "craft",  // "craft" | "quest"
+  /** Phase 1D-12: クエスト画面で表示中のノードタイプ ("normal" / "land") */
+  questNodeType: "normal",
+  /** Phase 1D-12: 所有ランドセクター通行証 (id Set)。
+   *  最初に選んだランドが home land (無料)。それ以外は 500 GUM で購入。 */
+  landPasses: /** @type {Set<string>} */ (new Set()),
+  /** Phase 1D-12: home land = 最初に保有したランド id (= 通行証無料 land) */
+  homeLand: /** @type {string | null} */ (null),
   pendingQuestResult: /** @type {object | null} */ (null),
   /** Phase 1D-5 チュートリアル: 各画面の初回表示フラグ。
    *  trigger 後 true にして再表示しないようにする (将来 localStorage 化予定)。 */
@@ -339,7 +350,7 @@ function tickActiveCraft() {
     const gain = rollCraftGain(hero);
     if (gain) {
       ac.progress[gain.element] = (ac.progress[gain.element] || 0) + gain.value;
-      pushSpriteFloat(slotIdx, gain.element, gain.value);
+      pushSpriteFloat(hero.heroId, gain.element, gain.value);
       // Phase 1D-6: クラフト値獲得 SE (連発防止スロットルあり)
       playSe("craftGain");
     }
@@ -437,10 +448,17 @@ function tickPassiveRestRecovery() {
   for (const id of state.activeQuest?.team || []) if (id != null) skip.add(id);
   for (const hero of state.ownedHeroes) {
     if (!hero) continue;
-    if (hero.state !== HERO_STATE.RESTING) continue;
     if (skip.has(hero.heroId)) continue;
-    adjustStamina(hero, staminaRecoverPerTick(hero));
-    if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
+    if (hero.state === HERO_STATE.RESTING) {
+      // 休憩中: stamina を回復
+      adjustStamina(hero, staminaRecoverPerTick(hero));
+      if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
+    } else if (hero.state === HERO_STATE.IDLE) {
+      // Phase 1D-12: idle 中も緩やかに体力減少 (1 tick あたり 1)。
+      // ゼロになったら自動で休憩状態へ。
+      adjustStamina(hero, -1);
+      if (isExhausted(hero)) hero.state = HERO_STATE.RESTING;
+    }
   }
 }
 
@@ -514,10 +532,16 @@ function closeQuestView() {
 function renderQuestView() {
   const lang = getLang() === "en" ? "en" : "ja";
 
-  // 1. ノードカード (4 通常ノード) — 背景画像 + 名前 + 素材アイコン (常に rare 含む) + 選択 ボタン
-  $("questNodeCards").innerHTML = NORMAL_NODES.map(n => {
+  // 1. ノードカード — 背景画像 + 名前 + 素材アイコン + 選択/購入 ボタン
+  // Phase 1D-12: state.questNodeType で 通常ノード / ランドノード を切替
+  const isLandTab = state.questNodeType === "land";
+  const nodeList = isLandTab ? LAND_NODES : NORMAL_NODES;
+  const cardsHost = $("questNodeCards");
+  if (cardsHost) cardsHost.classList.toggle("quest-node-cards--land", isLandTab);
+  cardsHost.innerHTML = nodeList.map(n => {
     const sel = n.id === state.questPickedNodeId ? " quest-node-card--sel" : "";
-    const bg = `./Image/Factory/quest-node-${n.id}.png`;
+    const bgPrefix = isLandTab ? "quest-land" : "quest-node";
+    const bg = `./Image/Factory/${bgPrefix}-${n.id}.png`;
     const matIds = [];
     const seen = new Set();
     for (const id of (n.poolNormal || [])) {
@@ -531,11 +555,17 @@ function renderQuestView() {
       return `<img class="quest-node-card__mat${isRare ? " quest-node-card__mat--rare" : ""}" src="${materialIcon(id)}" alt="${escapeHtml(materialName(id, lang))}" title="${escapeHtml(materialName(id, lang))}" onerror="this.style.opacity='0.2'" />`;
     }).join("");
     const displayName = `node : ${lang === "en" ? (n.nameEn || n.nameJa) : n.nameJa}`;
-    return `<div class="quest-node-card${sel}" data-node-card="${n.id}">
+    // Phase 1D-12 land: pass を持っていなければ locked 状態でカード表示
+    const locked = isLandTab && !state.landPasses.has(n.id);
+    const lockedCls = locked ? " quest-node-card--locked" : "";
+    const btnHtml = locked
+      ? `<button type="button" class="quest-node-card__buy-btn" data-buy-land="${n.id}">${escapeHtml(ti18n("quest.land.buyBtn").replace("{n}", LAND_PASS_COST.toLocaleString()))}</button>`
+      : `<button type="button" class="quest-node-card__sel-btn" data-node="${n.id}">${escapeHtml(ti18n("quest.pickBtn"))}</button>`;
+    return `<div class="quest-node-card${sel}${lockedCls}" data-node-card="${locked ? "" : n.id}">
       <div class="quest-node-card__bg" style="background-image:url('${bg}')"></div>
       <span class="quest-node-card__name">${escapeHtml(displayName)}</span>
       <div class="quest-node-card__mats">${matsHtml}</div>
-      <button type="button" class="quest-node-card__sel-btn" data-node="${n.id}">${escapeHtml(ti18n("quest.pickBtn"))}</button>
+      ${btnHtml}
     </div>`;
   }).join("");
 
@@ -690,6 +720,35 @@ function closeQlInfoModal() {
   resumeTime();
 }
 
+/** Phase 1D-12: ランドセクター通行証を購入 (or 最初のランドは無料 home 設定)。
+ *  - 既に home land 未設定なら、選択ランドを home land に (無料)
+ *  - 既に home land あり → 500 GUM で通行証購入
+ *  - GUM 不足の場合は Mai 通知 + 何もしない */
+function buyLandPass(landId) {
+  if (!landId || state.landPasses.has(landId)) return;
+  const isFirst = state.homeLand == null;
+  if (isFirst) {
+    // 最初のランドは home land = 無料
+    state.homeLand = landId;
+    state.landPasses.add(landId);
+    state.questPickedNodeId = landId;
+    maiSays("quest.land.mai.firstHome", { onClose: () => {} });
+    renderHeader();
+    renderQuestView();
+    return;
+  }
+  if (state.gum < LAND_PASS_COST) {
+    maiSays("quest.land.mai.notEnoughGum");
+    return;
+  }
+  state.gum -= LAND_PASS_COST;
+  state.landPasses.add(landId);
+  state.questPickedNodeId = landId;
+  maiSays("quest.land.mai.bought", { onClose: () => {} });
+  renderHeader();
+  renderQuestView();
+}
+
 function extractNote(note, lang) {
   // "ja:..|en:.." 形式
   const segs = (note || "").split("|");
@@ -816,10 +875,12 @@ function closeQuestResultScreen() {
   renderQuestOverlay();
 }
 
-/** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える) */
-function pushSpriteFloat(slotIdx, element, value) {
+/** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える)。
+ *  Phase 1D-12: slotIdx ではなく heroId をキーに使う (workshop が ownedHeroes
+ *  全員を表示するようになり、slot 番号と sprite の対応が変わったため)。 */
+function pushSpriteFloat(heroId, element, value) {
   const id = ++_floatId;
-  state.spriteFloats.push({ id, slotIdx, element, value, createdTick: state.tickCount });
+  state.spriteFloats.push({ id, heroId, element, value, createdTick: state.tickCount });
 }
 let _floatId = 0;
 
@@ -1003,7 +1064,9 @@ function renderHeroList() {
     host.innerHTML = `<p class="hero-list-empty">${escapeHtml(ti18n("hero.list.empty"))}</p>`;
     return;
   }
-  const inTeam = new Set(state.craftTeam.filter(id => id != null));
+  // Phase 1D-12: 現在のタブに対応するチームで配属チェック
+  const activeTeam = state.heroTeamTab === "quest" ? state.questTeam : state.craftTeam;
+  const inTeam = new Set(activeTeam.filter(id => id != null));
   host.innerHTML = heroes.map(hero => {
     const portrait = hero.img();
     const name = tHero(hero.heroId, hero.nameJa);
@@ -1055,10 +1118,25 @@ function renderHeroList() {
 function openHeroView() {
   pauseTime();
   $("heroView")?.classList.remove("hidden");
+  setHeroTeamTab(state.heroTeamTab || "craft");
   renderHeroTeam();
+  renderQuestTeamPanel();
   renderHeroList();
   // Phase 1D-5: 初回ヒーロー画面でクラフトチーム編成の解説
   runTutorialOnce("heroTeam");
+}
+
+/** Phase 1D-12: 編成 view のタブ切替 (craft / quest) */
+function setHeroTeamTab(tab) {
+  state.heroTeamTab = tab;
+  document.querySelectorAll(".hero-team-tab").forEach(btn => {
+    btn.classList.toggle("hero-team-tab--active",
+      btn.getAttribute("data-team-tab") === tab);
+  });
+  document.querySelectorAll("[data-team-body]").forEach(el => {
+    el.classList.toggle("hidden", el.getAttribute("data-team-body") !== tab);
+  });
+  renderHeroList();
 }
 /**
  * Hero view を閉じる。
@@ -1081,19 +1159,28 @@ function closeHeroView() {
   resumeTime();
 }
 
-/** ─── Hero card click → toggle team membership (Phase 1A: simple add/remove) ── */
+/** ─── Hero card click → toggle team membership ──
+ *  Phase 1D-12: クラフトチーム / クエストチーム タブ切替対応。
+ *  どちらか一方にしか入れない (mutually exclusive)。 */
 function onHeroCardClick(heroId) {
-  const idx = state.craftTeam.indexOf(heroId);
+  const tab = state.heroTeamTab || "craft";
+  const team = tab === "quest" ? state.questTeam : state.craftTeam;
+  const otherTeam = tab === "quest" ? state.craftTeam : state.questTeam;
+  const idx = team.indexOf(heroId);
   if (idx >= 0) {
-    // Already in team → remove
-    state.craftTeam[idx] = null;
+    // 既に居る → 外す
+    team[idx] = null;
   } else {
-    // Find first empty slot
-    const empty = state.craftTeam.indexOf(null);
-    if (empty < 0) return; // team full
-    state.craftTeam[empty] = heroId;
+    // mutually exclusive: 反対チームに居れば外しておく
+    const otherIdx = otherTeam.indexOf(heroId);
+    if (otherIdx >= 0) otherTeam[otherIdx] = null;
+    // 空きスロットを探す
+    const empty = team.indexOf(null);
+    if (empty < 0) return;
+    team[empty] = heroId;
   }
   renderHeroTeam();
+  renderQuestTeamPanel();
   renderHeroList();
 }
 
@@ -1103,6 +1190,35 @@ function onTeamSlotClick(slot) {
     state.craftTeam[slot] = null;
     renderHeroTeam();
     renderHeroList();
+  }
+}
+
+/** Phase 1D-12: hero view のクエストチームスロットを描画 (3 枠) */
+function renderQuestTeamPanel() {
+  const host = $("heroQuestTeamSlots");
+  if (!host) return;
+  host.innerHTML = state.questTeam.map((heroId, idx) => {
+    if (heroId == null) {
+      return `<div class="hero-team__slot" data-quest-slot="${idx}" title="${escapeHtml(ti18n("hero.team.empty"))}">+</div>`;
+    }
+    const hero = findHero(heroId);
+    if (!hero) return `<div class="hero-team__slot" data-quest-slot="${idx}">?</div>`;
+    const name = tHero(hero.heroId, hero.nameJa);
+    return `<div class="hero-team__slot hero-team__slot--filled" data-quest-slot="${idx}" title="${escapeHtml(name)}">
+      <img src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <span class="hero-team__slot-name">${escapeHtml(name)}</span>
+    </div>`;
+  }).join("");
+  // 合計クエストレベル (HP 比率込み + 農 boost)
+  const totalEl = $("heroQuestTeamTotal");
+  if (totalEl) {
+    const total = state.questTeam.reduce((s, id) => {
+      if (id == null) return s;
+      const h = findHero(id);
+      if (!h) return s;
+      return s + heroQuestLevelBreakdown(h).ql;
+    }, 0);
+    totalEl.textContent = `${ti18n("hero.craftLevel").replace("クラフトLV","クエストLv") } : ${total.toLocaleString()}`;
   }
 }
 
@@ -1491,59 +1607,61 @@ function formatGameDate(d) {
  *  - +N 浮上値は「その tick で発生したもの」だけ append する (1 秒で消える)。
  *  - bounce アニメも同上で、新規 float があるスロットだけ class を付け直す。
  */
+/** Phase 1D-12: workshop に所有ヒーロー全員を常時表示する版。
+ *  各ヒーローの状態 (idle / crafting / questing / resting) でアイコン
+ *  +グレーアウト等を出し分け。クラフト中は +N 浮上 + bounce アニメ。
+ *  クエスト中はグレーアウト + 「クエスト中」アイコン。 */
 function renderWorkshop() {
   const host = $("workshopHeroes");
   if (!host) return;
-  // activeCraft が無くても、pendingCompletion (= 完成モーダル表示中) の間は
-  // 直前の team を表示し続ける ─ 突然 sprite が消えないようにする。
-  const ac = state.activeCraft || state.pendingCompletion;
-  if (!ac) {
+  const heroes = state.ownedHeroes;
+  if (!heroes || heroes.length === 0) {
     host.innerHTML = "";
     host.dataset.fingerprint = "";
     return;
   }
-  // 配属が変わった (heroId 列が変わった) ときだけ全 rebuild。それ以外は属性更新のみ。
-  const fingerprint = ac.team.join(",");
+  // 所有ヒーロー一覧 (heroId 列) の fingerprint で全 rebuild 判定
+  const fingerprint = heroes.map(h => h.heroId).join(",");
   if (host.dataset.fingerprint !== fingerprint) {
     host.dataset.fingerprint = fingerprint;
-    host.innerHTML = ac.team.map((heroId, slotIdx) => {
-      if (heroId == null) return "";
-      const hero = findHero(heroId);
-      if (!hero) return "";
-      const pos = WORKSHOP_SLOT_POS[slotIdx] || WORKSHOP_SLOT_POS[0];
-      return `<div class="workshop-hero" data-slot="${slotIdx}" data-hero-id="${hero.heroId}"
+    host.innerHTML = heroes.map((hero, idx) => {
+      const pos = workshopSlotPosFor(idx, heroes.length);
+      return `<div class="workshop-hero" data-hero-id="${hero.heroId}"
         style="left:${pos.x}; top:${pos.y};"
         title="${escapeHtml(tHero(hero.heroId, hero.nameJa))}">
-        <span class="workshop-hero__sleep hidden" title="${escapeHtml(ti18n("hero.state.resting"))}">💤</span>
+        <span class="workshop-hero__state-icon workshop-hero__state-icon--rest hidden" title="${escapeHtml(ti18n("hero.state.resting"))}">💤</span>
+        <span class="workshop-hero__state-icon workshop-hero__state-icon--craft hidden" title="${escapeHtml(ti18n("hero.state.crafting"))}">⚒</span>
+        <span class="workshop-hero__state-icon workshop-hero__state-icon--quest hidden" title="${escapeHtml(ti18n("hero.state.questing"))}">🗺</span>
         <img class="workshop-hero__img" src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
         <div class="workshop-hero__stam"><div class="workshop-hero__stam-fill"></div></div>
         <div class="workshop-hero__floats"></div>
       </div>`;
     }).join("");
   }
-  // ── 属性更新 (sleeping / stamina) ──
-  for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
-    const heroId = ac.team[slotIdx];
-    if (heroId == null) continue;
-    const sprite = host.querySelector(`.workshop-hero[data-slot="${slotIdx}"]`);
+  // ── 属性更新 (state / stamina) ──
+  for (const hero of heroes) {
+    const sprite = host.querySelector(`.workshop-hero[data-hero-id="${hero.heroId}"]`);
     if (!sprite) continue;
-    const hero = findHero(heroId);
-    if (!hero) continue;
-    const sleeping = hero.state === HERO_STATE.RESTING;
-    sprite.classList.toggle("workshop-hero--sleeping", sleeping);
-    sprite.querySelector(".workshop-hero__sleep")?.classList.toggle("hidden", !sleeping);
+    const isResting  = hero.state === HERO_STATE.RESTING;
+    const isCrafting = hero.state === HERO_STATE.CRAFTING;
+    const isQuesting = hero.state === HERO_STATE.QUESTING;
+    sprite.classList.toggle("workshop-hero--sleeping", isResting);
+    sprite.classList.toggle("workshop-hero--questing", isQuesting);
+    sprite.classList.toggle("workshop-hero--crafting", isCrafting);
+    sprite.querySelector(".workshop-hero__state-icon--rest")?.classList.toggle("hidden", !isResting);
+    sprite.querySelector(".workshop-hero__state-icon--craft")?.classList.toggle("hidden", !isCrafting);
+    sprite.querySelector(".workshop-hero__state-icon--quest")?.classList.toggle("hidden", !isQuesting);
     const stamPct = hero.stamina.max > 0
       ? Math.max(0, Math.min(100, (hero.stamina.current / hero.stamina.max) * 100))
       : 0;
     const fill = sprite.querySelector(".workshop-hero__stam-fill");
     if (fill) fill.style.width = stamPct.toFixed(1) + "%";
   }
-  // ── 今 tick で発生した floats / bounce を反映 (=既存の DOM に追加だけ) ──
-  // 既に DOM に存在する float-id を集めて差分だけ append + bounce class を一度だけ付ける
+  // ── 今 tick で発生した floats / bounce を反映 (heroId キー) ──
   const liveFloats = state.spriteFloats.filter(f => f.createdTick === state.tickCount);
-  const bouncedSlots = new Set();
+  const bouncedHeroIds = new Set();
   for (const f of liveFloats) {
-    const sprite = host.querySelector(`.workshop-hero[data-slot="${f.slotIdx}"]`);
+    const sprite = host.querySelector(`.workshop-hero[data-hero-id="${f.heroId}"]`);
     if (!sprite) continue;
     const floatHost = sprite.querySelector(".workshop-hero__floats");
     if (!floatHost) continue;
@@ -1553,30 +1671,32 @@ function renderWorkshop() {
     span.setAttribute("data-float-id", String(f.id));
     span.textContent = `+${f.value}`;
     floatHost.appendChild(span);
-    // CSS animation 終了後に DOM から消す (1.0s)
     setTimeout(() => span.remove(), 1100);
-    bouncedSlots.add(f.slotIdx);
+    bouncedHeroIds.add(f.heroId);
   }
-  // bounce クラス: 該当スロットに 1 度だけ付与し、アニメ終了後に自動除去
-  for (const slotIdx of bouncedSlots) {
-    const sprite = host.querySelector(`.workshop-hero[data-slot="${slotIdx}"]`);
+  for (const hid of bouncedHeroIds) {
+    const sprite = host.querySelector(`.workshop-hero[data-hero-id="${hid}"]`);
     if (!sprite) continue;
     sprite.classList.remove("workshop-hero--bounce");
-    // フォース reflow して即時に再付与 → アニメ再開
     void sprite.offsetWidth;
     sprite.classList.add("workshop-hero--bounce");
     setTimeout(() => sprite.classList.remove("workshop-hero--bounce"), 460);
   }
 }
 
-/** 工房内の 5 配置座標 (workshop 領域の % 座標) */
-const WORKSHOP_SLOT_POS = [
-  { x: "12%", y: "55%" },
-  { x: "30%", y: "60%" },
-  { x: "48%", y: "55%" },
-  { x: "66%", y: "60%" },
-  { x: "82%", y: "55%" },
-];
+/** Phase 1D-12: ヒーロー数に応じて workshop 内の配置座標を計算。
+ *  最大 cap (15 名) まで対応するように 5 列 × 3 行のグリッドで配置。 */
+function workshopSlotPosFor(idx, total) {
+  const cols = 5;
+  const col = idx % cols;
+  const row = Math.floor(idx / cols);  // 0, 1, 2
+  // 横方向: 12% から 88% に等間隔 (5 ヒーロー均等)
+  const x = 12 + (col / (cols - 1)) * 76;
+  // 縦方向: 0行=55%, 1行=72%, 2行=88%
+  const yByRow = [55, 72, 88];
+  const y = yByRow[Math.min(row, yByRow.length - 1)] || 55;
+  return { x: x.toFixed(0) + "%", y: y + "%" };
+}
 
 /** ─── Passive notification banner ────────────────────────────────── */
 /** 通知バナーの差分更新。
@@ -2971,7 +3091,7 @@ async function init() {
       const action = btn.getAttribute("data-hero-action");
       hideAllSubmenus();
       closeMenu();
-      if (action === "craft-team") openHeroView();
+      if (action === "craft-team" || action === "formation") openHeroView();
       else if (action === "hire") {
         // 雇用は引き続き market view 内のタブで動かす (data モデル維持)
         state.marketTab = "hire";
@@ -2981,19 +3101,19 @@ async function init() {
     });
   });
 
-  // クエスト submenu: 通常 / ランド
+  // クエスト submenu: 通常 / ランド (Phase 1D-12: ランドノード実装)
   document.querySelectorAll(".menu-item[data-quest-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const filter = btn.getAttribute("data-quest-filter");
       hideAllSubmenus();
       closeMenu();
-      if (filter === "land") {
-        // ランドノードは未実装 → Mai 通知
-        maiSays("menu.land.todo");
-        return;
-      }
-      // 通常 (= デフォルト)
       if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      state.questNodeType = filter;
+      // ノードタイプに合わせて picked を初期化 (該当タイプ最初のノード)
+      const list = filter === "land" ? LAND_NODES : NORMAL_NODES;
+      if (list.length > 0 && (!state.questPickedNodeId || !list.some(n => n.id === state.questPickedNodeId))) {
+        state.questPickedNodeId = list[0].id;
+      }
       openQuestView();
     });
   });
@@ -3145,9 +3265,18 @@ async function init() {
   $("questViewBack")?.addEventListener("click", closeQuestView);
   // ノードカード「選択」ボタン (or カード自体)
   $("questNodeCards")?.addEventListener("click", (ev) => {
+    // Phase 1D-12: ランド購入ボタン
+    const buyBtn = ev.target.closest("[data-buy-land]");
+    if (buyBtn) {
+      const landId = buyBtn.getAttribute("data-buy-land");
+      buyLandPass(landId);
+      return;
+    }
     const btn = ev.target.closest("[data-node]") || ev.target.closest("[data-node-card]");
     if (!btn) return;
-    state.questPickedNodeId = btn.getAttribute("data-node") || btn.getAttribute("data-node-card");
+    const nodeId = btn.getAttribute("data-node") || btn.getAttribute("data-node-card");
+    if (!nodeId) return;
+    state.questPickedNodeId = nodeId;
     renderQuestView();
   });
   // 難易度行「選択」ボタン
@@ -3241,6 +3370,23 @@ async function init() {
 
   // ── Hero view: back button + sort change + card/slot clicks ──
   $("heroViewBack")?.addEventListener("click", closeHeroView);
+  // Phase 1D-12: 編成 view の tab 切替
+  document.querySelectorAll(".hero-team-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      setHeroTeamTab(btn.getAttribute("data-team-tab"));
+    });
+  });
+  // クエストチームスロットタップで該当ヒーロー外す
+  $("heroQuestTeamSlots")?.addEventListener("click", (ev) => {
+    const slot = ev.target.closest("[data-quest-slot]");
+    if (!slot) return;
+    const idx = parseInt(slot.getAttribute("data-quest-slot"), 10);
+    if (Number.isFinite(idx) && state.questTeam[idx] != null) {
+      state.questTeam[idx] = null;
+      renderQuestTeamPanel();
+      renderHeroList();
+    }
+  });
   $("heroSortSel")?.addEventListener("change", (ev) => {
     state.heroSort = ev.target.value;
     renderHeroList();

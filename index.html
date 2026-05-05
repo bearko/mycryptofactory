@@ -1343,6 +1343,29 @@
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 0.5rem;
     }
+    /* Phase 1D-12: ランド (9 ノード) は 4 列 grid で 3 行表示にしやすく */
+    .quest-node-cards--land {
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+    /* Phase 1D-12: ロック中ランドはグレーアウト + 購入ボタン表示 */
+    .quest-node-card--locked .quest-node-card__bg {
+      filter: grayscale(0.85) brightness(0.5);
+    }
+    .quest-node-card--locked .quest-node-card__name {
+      color: #aaa;
+    }
+    .quest-node-card__buy-btn {
+      position: relative; z-index: 1;
+      appearance: none;
+      background: var(--ifrit);
+      color: #fff;
+      border: none;
+      padding: 0.5rem;
+      font-weight: 800; font-size: 0.78rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .quest-node-card__buy-btn:hover { background: #d04848; }
     .quest-node-card {
       position: relative;
       border: 2px solid var(--border);
@@ -2457,6 +2480,29 @@
       padding: 0.6rem;
       margin-bottom: 0.75rem;
     }
+    /* Phase 1D-12: 編成 view tabs (クラフトチーム / クエストチーム) */
+    .hero-team-tabs {
+      display: flex; gap: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+    .hero-team-tab {
+      flex: 1;
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 0.5rem;
+      font-weight: 700; cursor: pointer;
+    }
+    .hero-team-tab--active {
+      background: var(--panel);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .hero-team__slots--3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
     .hero-team__title {
       font-size: 0.78rem; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.1em;
@@ -3256,7 +3302,7 @@
       <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規開発</button>
     </div>
     <div class="menu-card hidden" id="heroSubmenu" aria-label="Hero submenu">
-      <button type="button" class="menu-item" data-hero-action="craft-team" data-i18n="menu.hero.craftTeam">クラフトチーム</button>
+      <button type="button" class="menu-item" data-hero-action="formation" data-i18n="menu.hero.formation">編成</button>
       <button type="button" class="menu-item" data-hero-action="hire" data-i18n="menu.hero.hire">雇用</button>
     </div>
     <div class="menu-card hidden" id="questSubmenu" aria-label="Quest submenu">
@@ -3574,9 +3620,14 @@
     </div>
     <div class="hero-view__body">
 
-      <!-- 5-slot craft team formation. The summary block previews the running
-           total Craft Lv + 4-element totals as the player picks heroes. -->
-      <div class="hero-team">
+      <!-- Phase 1D-12: tab で クラフトチーム / クエストチーム を切替 -->
+      <div class="hero-team-tabs">
+        <button type="button" class="hero-team-tab hero-team-tab--active" data-team-tab="craft" data-i18n="hero.tab.craft">クラフトチーム</button>
+        <button type="button" class="hero-team-tab" data-team-tab="quest" data-i18n="hero.tab.quest">クエストチーム</button>
+      </div>
+
+      <!-- クラフトチーム (5 枠) -->
+      <div class="hero-team" data-team-body="craft">
         <div class="hero-team__head">
           <p class="hero-team__title" data-i18n="hero.team.title">クラフトチーム (最大 5 体)</p>
           <div class="hero-team__summary" id="heroTeamSummary">
@@ -3586,6 +3637,19 @@
         </div>
         <div class="hero-team__slots" id="heroTeamSlots">
           <!-- Filled by JS: 5 slots, each shows assigned hero or "+" placeholder -->
+        </div>
+      </div>
+
+      <!-- クエストチーム (3 枠) -->
+      <div class="hero-team hidden" data-team-body="quest">
+        <div class="hero-team__head">
+          <p class="hero-team__title" data-i18n="hero.team.questTitle">クエストチーム (最大 3 体)</p>
+          <div class="hero-team__summary" id="heroQuestTeamSummary">
+            <span class="hero-team__total" id="heroQuestTeamTotal"></span>
+          </div>
+        </div>
+        <div class="hero-team__slots hero-team__slots--3" id="heroQuestTeamSlots">
+          <!-- Filled by JS: 3 slots -->
         </div>
       </div>
 
