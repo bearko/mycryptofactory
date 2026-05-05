@@ -2340,6 +2340,32 @@
       margin: 0; font-size: 0.78rem; color: var(--muted);
       text-align: center;
     }
+    /* Phase 1D-28: 現在のクラフト進捗 (4 色 cur/tgt) */
+    .craft-event-picker__progress {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.35rem;
+      padding: 0.45rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .craft-event-picker__prog-el {
+      display: flex; align-items: center; gap: 0.25rem;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .craft-event-picker__prog-el img {
+      width: 18px; height: 18px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+    .craft-event-picker__prog-el strong { font-weight: 800; }
+    .craft-event-picker__prog-el .pe-tgt { color: var(--muted); font-weight: 600; }
+    .craft-event-picker__prog-el--reached,
+    .craft-event-picker__prog-el--reached strong,
+    .craft-event-picker__prog-el--reached .pe-tgt {
+      color: #67d676;
+    }
     .craft-event-picker__section { display: flex; flex-direction: column; gap: 0.3rem; }
     .craft-event-picker__sec-title {
       margin: 0; font-size: 0.72rem; color: var(--muted);
@@ -2444,6 +2470,37 @@
     .craft-event__fly--ifrit     { filter: drop-shadow(0 0 6px var(--ifrit)); }
     .craft-event__fly--leviathan { filter: drop-shadow(0 0 6px var(--leviathan)); }
     .craft-event__fly--tiamat    { filter: drop-shadow(0 0 6px var(--tiamat)); }
+    /* Phase 1D-28: 着弾時の +N ダメージ風ポップアップ (エクステンション横) */
+    .craft-event__pop {
+      position: absolute;
+      right: 60px; top: 50%;
+      transform: translate(50%, -50%);
+      font-weight: 900;
+      font-size: 1.45rem;
+      color: var(--accent);
+      text-shadow:
+        0 0 6px rgba(196,163,90,0.85),
+        0 0 14px rgba(196,163,90,0.55),
+        0 1px 0 #1a1420, 0 -1px 0 #1a1420,
+        1px 0 0 #1a1420, -1px 0 0 #1a1420;
+      animation: pop-rise 0.85s ease-out forwards;
+      pointer-events: none;
+      z-index: 6;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    .craft-event__pop--big   { font-size: 2.0rem; }
+    .craft-event__pop--crit  { color: #ffd86b; font-size: 2.4rem; text-shadow: 0 0 10px rgba(255,200,80,0.9), 0 0 20px rgba(255,150,40,0.7), 0 1px 0 #2a1818, 0 -1px 0 #2a1818, 1px 0 0 #2a1818, -1px 0 0 #2a1818; }
+    .craft-event__pop--garuda    { color: var(--garuda); }
+    .craft-event__pop--ifrit     { color: var(--ifrit); }
+    .craft-event__pop--leviathan { color: var(--leviathan); }
+    .craft-event__pop--tiamat    { color: var(--tiamat); }
+    @keyframes pop-rise {
+      0%   { opacity: 0; transform: translate(50%, -10%) scale(0.5); }
+      18%  { opacity: 1; transform: translate(50%, -55%) scale(1.25); }
+      55%  { opacity: 1; transform: translate(50%, -70%) scale(1.0); }
+      100% { opacity: 0; transform: translate(50%, -110%) scale(0.85); }
+    }
     .craft-event-anim__el {
       display: flex; align-items: center; gap: 0.35rem;
       justify-content: center;
@@ -4663,9 +4720,7 @@
           <div class="hire-overlay hidden" id="hireOverlay" aria-live="polite"></div>
           <!-- Sale progress overlay (Phase 1D-10) — 出品中のみ表示 (1〜複数件) -->
           <div class="sale-overlay hidden" id="saleOverlay" aria-live="polite"></div>
-        </div>
-        <!-- Phase 1D-25: 下部スタック: パッシブ発動などの一時通知 (進行系より優先度低) -->
-        <div class="workshop__overlays workshop__overlays--bottom">
+          <!-- Phase 1D-28: パッシブ発動などの一時通知 (進行系の最下部に積む) -->
           <div class="notif-banner hidden" id="notifBanner" aria-live="polite"></div>
         </div>
         <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
@@ -5176,6 +5231,8 @@
     <div class="craft-event-picker__card">
       <h2 class="craft-event-picker__title" id="craftEventTitle">—</h2>
       <p class="craft-event-picker__intro" data-i18n="craftEvent.intro">伸ばしたいクラフトパワーと、担当するヒーローを選んでください。</p>
+      <!-- Phase 1D-28: 現在のクラフト進捗 (cur/tgt) -->
+      <div class="craft-event-picker__progress" id="craftEventPickerProgress"></div>
       <div class="craft-event-picker__section">
         <h3 class="craft-event-picker__sec-title" data-i18n="craftEvent.pickElement">クラフトパワーを選択</h3>
         <div class="craft-event__elements" id="craftEventElements"></div>
