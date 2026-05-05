@@ -679,6 +679,36 @@
       from { opacity: 1; transform: translate(-50%, 0); }
       to   { opacity: 0; transform: translate(-50%, -28px); }
     }
+    /* Phase 1D-19: ヒーローのフレーバーセリフ (sprite 左上の小バブル) */
+    .workshop-hero__flavors {
+      position: absolute;
+      top: -8%; left: -10%;
+      pointer-events: none;
+      display: flex; flex-direction: column; gap: 2px;
+      align-items: flex-start;
+      z-index: 3;
+    }
+    .workshop-hero__flavor {
+      display: inline-block;
+      background: rgba(245, 240, 230, 0.95);
+      color: #1a1420;
+      border: 1.5px solid #4a3f33;
+      border-radius: 10px 10px 10px 2px;
+      padding: 0.18rem 0.45rem;
+      font-size: clamp(0.6rem, 0.45rem + 0.5vw, 0.85rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      animation: hero-flavor-fade 2.4s ease-out forwards;
+      transform-origin: bottom left;
+    }
+    @keyframes hero-flavor-fade {
+      0%   { opacity: 0; transform: translateY(4px) scale(0.85); }
+      12%  { opacity: 1; transform: translateY(0) scale(1); }
+      75%  { opacity: 1; transform: translateY(-2px) scale(1); }
+      100% { opacity: 0; transform: translateY(-8px) scale(0.95); }
+    }
 
     /* Order panel (bottom) — Phase 1B-2 mockup 準拠 */
     .order-panel {
@@ -907,6 +937,12 @@
       line-height: 1.55;
       /* 画面幅にあわせてフォントを拡大 */
       font-size: clamp(0.95rem, 0.55rem + 1.0vw, 1.5rem);
+    }
+    /* Phase 1D-19: Mai セリフ内のゲーム用語強調 */
+    .mai-modal__body .term {
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0.02em;
     }
     .mai-modal__close {
       grid-column: 3; grid-row: 1 / span 2;
