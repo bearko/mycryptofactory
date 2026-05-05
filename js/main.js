@@ -143,7 +143,9 @@ const state = {
   week: 1, // 1..4 within month
   weekProgress: 0, // 0..6 (seconds elapsed within current week, ticks 1/sec)
   // Resources
-  gum: 500,
+  // Phase 1D-21: 初期 GUM を 500 → 1000 に増額。最初の 1 体 Common 雇用 (300 GUM)
+  // + 工房レベルアップへの足がかり (1000 GUM) を立ち上げ序盤で達成しやすく。
+  gum: 1000,
   // Active craft (Phase 1B). Set when player taps クラフト開始.
   // { extId, team: [heroId|null × 5], targets: {...}, progress: {...},
   //   recipe: [{id, qty}], startedAtWeek: <int>, durationWeeks: <int> }
@@ -152,6 +154,8 @@ const state = {
   pauseFlags: 0,
   // Phase 1D-9: 設定 > 時間2倍速 トグル (1 tick = 500ms)
   timeSpeed2x: false,
+  /** Phase 1D-21: 20倍速 (テスト/バランス調整用) */
+  timeSpeed20x: false,
   // Phase 1A: hero roster + craft team
   ownedHeroes: /** @type {ReturnType<typeof buildOwnedHeroes>} */ ([]),
   craftTeam: /** @type {Array<number|null>} */ (new Array(TEAM_SIZE).fill(null)),
@@ -206,6 +210,9 @@ const state = {
   /** Phase 1D-3 ファクトリーレベル (Phase 1D-3 では 1 固定。
    *  level-up フローは別 PR で実装予定) */
   factoryLevel: 1,
+  /** Phase 1D-21: 工房レベルアップに必要な GUM (Lv N → N+1)
+   *  Lv1→2 = 1,000 / Lv2→3 = 3,000 / Lv3→4 = 8,000 / Lv4→5 = 20,000 */
+  // (定数は state ではなく定数 FACTORY_LV_UP_COST_TABLE で管理)
   /** Phase 1D-3 進行中の雇用プラン
    *  { planId, recruiterId, startedAtTick, candidates? }
    *  candidates が null → まだ待機中 (1 ヶ月待ち)
@@ -269,6 +276,8 @@ const $ = (id) => document.getElementById(id);
 /** ─── Time progression ──────────────────────────────────────────── */
 function currentTickInterval() {
   // Phase 1D-9: 設定 > 時間2倍速 が ON なら interval を半分にする
+  // Phase 1D-21: 時間20倍速 (テスト用) があれば優先 (= 50ms / tick)
+  if (state.timeSpeed20x) return Math.round(TICK_INTERVAL_MS / 20);
   return state.timeSpeed2x ? Math.round(TICK_INTERVAL_MS / 2) : TICK_INTERVAL_MS;
 }
 function startTimeLoop() {
@@ -288,15 +297,51 @@ function restartTimeLoopWithSpeed() {
 /** Phase 1D-9: 設定 submenu の トグルラベル更新 */
 function refreshSettingsSubmenu() {
   const btn = $("settingSpeed2x");
-  if (!btn) return;
-  const lbl = ti18n("settings.speed2x");
-  const state_ = state.timeSpeed2x ? ti18n("settings.on") : ti18n("settings.off");
-  btn.textContent = `${lbl}: ${state_}`;
+  if (btn) {
+    const lbl = ti18n("settings.speed2x");
+    const st  = state.timeSpeed2x ? ti18n("settings.on") : ti18n("settings.off");
+    btn.textContent = `${lbl}: ${st}`;
+  }
+  // Phase 1D-21: 20x mode toggle
+  const btn20 = $("settingSpeed20x");
+  if (btn20) {
+    const lbl20 = ti18n("settings.speed20x");
+    const st20  = state.timeSpeed20x ? ti18n("settings.on") : ti18n("settings.off");
+    btn20.textContent = `${lbl20}: ${st20}`;
+  }
 }
 
 function pauseTime() { state.pauseFlags++; }
 function resumeTime() {
   state.pauseFlags = Math.max(0, state.pauseFlags - 1);
+}
+
+/** Phase 1D-21: 工房レベルアップ */
+const FACTORY_LV_UP_COST_TABLE = {
+  1: 1000,    // Lv1→2
+  2: 3000,    // Lv2→3
+  3: 8000,    // Lv3→4
+  4: 20000,   // Lv4→5
+};
+function factoryLvUpCost(currentLv) {
+  return FACTORY_LV_UP_COST_TABLE[currentLv] || Infinity;
+}
+function tryFactoryLevelUp() {
+  const cur = state.factoryLevel || 1;
+  if (cur >= 5) {
+    maiSays("settings.factoryLvMax");
+    return;
+  }
+  const cost = factoryLvUpCost(cur);
+  if ((state.gum || 0) < cost) {
+    maiSays("settings.factoryLvNotEnoughGum");
+    return;
+  }
+  state.gum -= cost;
+  state.factoryLevel = cur + 1;
+  renderHeader();
+  maiSays("settings.factoryLvUpDone");
+  playSe("appraisalHigh");
 }
 
 function onTick() {
@@ -4032,6 +4077,20 @@ async function init() {
     refreshSettingsSubmenu();
     // tick interval を再起動
     restartTimeLoopWithSpeed();
+  });
+  // Phase 1D-21: 時間 20x speed トグル (テスト/バランス調整用)
+  $("settingSpeed20x")?.addEventListener("click", () => {
+    state.timeSpeed20x = !state.timeSpeed20x;
+    refreshSettingsSubmenu();
+    restartTimeLoopWithSpeed();
+  });
+  // Phase 1D-21: 工房レベルアップ
+  document.querySelectorAll("[data-factory-lv-up]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      hideAllSubmenus();
+      closeMenu();
+      tryFactoryLevelUp();
+    });
   });
 
   // ── Stub close ──

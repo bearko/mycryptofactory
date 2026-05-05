@@ -27,8 +27,13 @@
   "menu.quest.normal":         { "ja": "通常node",     "en": "Normal node" },
   "menu.quest.land":           { "ja": "ランドnode",   "en": "Land node" },
   "settings.speed2x":          { "ja": "時間2倍速", "en": "2x speed" },
+  "settings.speed20x":         { "ja": "時間20倍速 (test)", "en": "20x speed (test)" },
   "settings.on":               { "ja": "ON",  "en": "ON" },
   "settings.off":              { "ja": "OFF", "en": "OFF" },
+  "settings.factoryLvUp":      { "ja": "工房レベルアップ", "en": "Workshop level up" },
+  "settings.factoryLvMax":     { "ja": "工房レベルは既に最大 (Lv 5) です。", "en": "Workshop is already at max level (5)." },
+  "settings.factoryLvNotEnoughGum": { "ja": "GUMが足りません。Lv1→2 = 1,000 GUM, Lv2→3 = 3,000 GUM など必要です。", "en": "Not enough GUM. (Lv1→2 = 1,000 / Lv2→3 = 3,000 GUM)" },
+  "settings.factoryLvUpDone":  { "ja": "工房レベルがアップしました！ヒーロー上限が増え、新しいエクステンションが解放されます。", "en": "Workshop leveled up! Hero capacity increased and new extensions unlocked." },
   "menu.land.todo":            { "ja": "ランドnodeは将来のアップデートで実装予定です。", "en": "Land nodes are coming in a future update." },
   "menu.auction.todo":          { "ja": "オークション機能はまだ準備中です。今しばらくお待ちください！", "en": "Auction is still in preparation. Please stay tuned!" },
 
