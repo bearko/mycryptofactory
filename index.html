@@ -637,6 +637,8 @@
       line-height: 1;
       pointer-events: none;
       box-shadow: 0 1px 3px rgba(0,0,0,0.55);
+      /* Phase 1D-23: ヒーロー本体 (img) より前面に表示する */
+      z-index: 5;
     }
     .workshop-hero__state-icon.hidden { display: none !important; }
     .workshop-hero__state-icon--rest  { animation: sleep-bob 1.6s ease-in-out infinite; }
@@ -1975,6 +1977,166 @@
       cursor: pointer;
     }
     .quest-diff-row__btn--sel .quest-diff-row__sel-btn { background: var(--accent); }
+
+    /* Phase 1D-23: ホーム目標バナー (workshop 最上部) */
+    .home-goal-banner {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 6;
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: linear-gradient(90deg, rgba(196,163,90,0.92), rgba(155,127,210,0.85));
+      color: #1a1420;
+      font-size: 0.78rem;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .home-goal-banner.hidden { display: none !important; }
+    .home-goal-banner__text {
+      flex: 1;
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+    }
+    .home-goal-banner__btn {
+      appearance: none;
+      background: rgba(26,20,32,0.78);
+      color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.7rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .home-goal-banner__btn:hover { background: rgba(0,0,0,0.55); }
+
+    /* Phase 1D-23: 工房レベルアップ view */
+    .factory-lvup-view {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.85);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .factory-lvup-view.hidden { display: none !important; }
+    .factory-lvup-view__card {
+      max-width: 720px; width: 100%;
+      max-height: 92vh;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem 1rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      overflow: hidden;
+    }
+    .factory-lvup-view__head {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .factory-lvup-view__title {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
+    .factory-lvup-view__close {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      font-weight: 700; cursor: pointer;
+    }
+    .factory-lvup-view__intro {
+      margin: 0; color: var(--muted); font-size: 0.78rem;
+    }
+    .factory-lvup-list {
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      padding-right: 4px;
+    }
+    .flv__row {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 0.85rem;
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .flv__row[data-state="done"]    { opacity: 0.55; border-color: #5ecf8a; }
+    .flv__row[data-state="current"] { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(196,163,90,0.3); }
+    .flv__row[data-state="future"]  { opacity: 0.85; }
+    .flv__head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .flv__lv-label {
+      font-size: 0.95rem; font-weight: 800; color: var(--text);
+      letter-spacing: 0.04em;
+    }
+    .flv__cost {
+      font-size: 0.92rem; font-weight: 800; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .flv__conds {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.25rem;
+    }
+    .flv__cond {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 0.4rem;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .flv__cond-mark {
+      color: var(--muted);
+      text-align: center;
+      font-weight: 800;
+    }
+    .flv__cond-num {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+    .flv__cond--met .flv__cond-mark   { color: #5ecf8a; }
+    .flv__cond--met .flv__cond-label  { color: #5ecf8a; text-decoration: line-through; opacity: 0.85; }
+    .flv__cond--met .flv__cond-num    { color: #5ecf8a; }
+    .flv__unlocks-label {
+      margin: 0.2rem 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .flv__unlocks {
+      list-style: disc inside;
+      padding: 0; margin: 0;
+      font-size: 0.78rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .flv__action-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.55rem 0.9rem;
+      font-weight: 800; font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .flv__action-btn:hover:not(:disabled) { background: #d6b873; }
+    .flv__action-btn:disabled {
+      background: #3a3450; color: var(--muted);
+      cursor: not-allowed;
+    }
+    .flv__action-done {
+      text-align: center;
+      color: #5ecf8a; font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+    .flv__action-locked {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-style: italic;
+    }
 
     /* Phase 1D-22: シリーズレシピ獲得ポップアップ */
     .recipe-popup {
@@ -3856,6 +4018,43 @@
       color: var(--accent);
       letter-spacing: 0.06em;
     }
+    /* Phase 1D-23: 強化詳細 (before/after) — 4 元素 + 3 適性 Lv */
+    .ench-detail {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.15rem 0.7rem;
+      padding-top: 0.35rem;
+    }
+    .ench-row {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .ench-row__icon {
+      width: 16px; height: 16px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .ench-row__label {
+      color: var(--muted);
+      flex: 1;
+    }
+    .ench-row--lv .ench-row__label {
+      color: var(--text); font-weight: 700;
+    }
+    .ench-cmp {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+    }
+    .ench-cmp__cur { color: var(--text); }
+    .ench-cmp__cur--max { color: var(--accent); font-weight: 800; }
+    .ench-cmp__arrow { color: var(--muted); font-size: 0.7rem; }
+    .ench-cmp__nxt   { color: var(--garuda); font-weight: 800; }
+    .ench-divider {
+      grid-column: 1 / -1;
+      height: 1px;
+      background: rgba(196,163,90,0.18);
+      margin: 0.15rem 0;
+    }
 
     /* hero-card__name-row (バッジ統合のため inline-flex に変更) */
     .hero-card__name-row {
@@ -3963,6 +4162,11 @@
       <!-- Workshop view -->
       <div class="workshop" id="workshopView">
         <img class="workshop__bg" src="./Image/Factory/workshop-bg.webp" alt="" />
+        <!-- Phase 1D-23: 工房レベルアップへの目標バナー (workshop 最上部) -->
+        <div class="home-goal-banner hidden" id="homeGoalBanner">
+          <span class="home-goal-banner__text" id="homeGoalBannerText"></span>
+          <button type="button" class="home-goal-banner__btn" id="homeGoalBannerBtn" data-i18n="goal.openBtn">レベルアップ画面へ</button>
+        </div>
         <!-- ── オーバーレイ群 (workshop 画像の上に重ねる: 縦方向にレイアウトを押さない) ── -->
         <div class="workshop__overlays">
           <!-- Quest progress overlay (Phase 1C-1) — クエスト中のみ表示 -->
@@ -4039,6 +4243,7 @@
     <!-- 各メニューのサブメニュー (画面右側に展開) -->
     <div class="menu-card hidden" id="craftSubmenu" aria-label="Craft submenu">
       <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規開発</button>
+      <button type="button" class="menu-item" data-craft-action="factoryLvUp" data-i18n="menu.craft.factoryLvUp">工房レベルアップ</button>
     </div>
     <div class="menu-card hidden" id="heroSubmenu" aria-label="Hero submenu">
       <button type="button" class="menu-item" data-hero-action="formation" data-i18n="menu.hero.formation">編成</button>
@@ -4056,7 +4261,6 @@
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
       <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
       <button type="button" class="menu-item" data-setting-toggle="speed20x" id="settingSpeed20x">時間20倍速 (test): OFF</button>
-      <button type="button" class="menu-item" data-factory-lv-up data-i18n="settings.factoryLvUp">工房レベルアップ</button>
     </div>
   </div>
 
@@ -4428,6 +4632,18 @@
     <div class="hero-view__body">
       <p class="hero-enhance__intro" data-i18n="enhance.intro">GUM を支払ってヒーローのランクを上げよう (☆☆☆☆☆ → ★★★★★)</p>
       <div class="hero-enhance-list" id="heroEnhanceList"></div>
+    </div>
+  </div>
+
+  <!-- Phase 1D-23: 工房レベルアップ画面 (条件 + コスト + 解放内容を多段表示) -->
+  <div class="factory-lvup-view hidden" id="factoryLvUpView" role="dialog" aria-labelledby="factoryLvUpTitle">
+    <div class="factory-lvup-view__card">
+      <header class="factory-lvup-view__head">
+        <h2 class="factory-lvup-view__title" id="factoryLvUpTitle" data-i18n="factoryLvUp.title">工房レベルアップ</h2>
+        <button type="button" class="factory-lvup-view__close" id="factoryLvUpClose" data-i18n="btn.close">閉じる</button>
+      </header>
+      <p class="factory-lvup-view__intro" data-i18n="factoryLvUp.intro">条件と必要 GUM を満たして工房を成長させよう。先々のレベルも事前にチェックできます。</p>
+      <div class="factory-lvup-list" id="factoryLvUpList"></div>
     </div>
   </div>
 
