@@ -1678,7 +1678,8 @@
       overflow: hidden;
       cursor: default;
       background: var(--panel-2);
-      min-height: 180px;
+      /* Phase 1D-15: 縦幅 -20% (180 → 144px) */
+      min-height: 144px;
       display: flex; flex-direction: column;
     }
     .quest-node-card--sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(196,163,90,0.35); }
@@ -1708,12 +1709,13 @@
       padding: 0.5rem 0.7rem;
     }
     .quest-node-card__mat {
-      width: 22px; height: 22px;
+      /* Phase 1D-15: 素材アイコンを 2 倍 (22 → 44px) */
+      width: 44px; height: 44px;
       object-fit: contain;
       image-rendering: pixelated;
       border-radius: 50%;
-      background: rgba(255,255,255,0.7);
-      padding: 1px;
+      background: rgba(255,255,255,0.78);
+      padding: 3px;
     }
     .quest-node-card__mat--rare {
       box-shadow: 0 0 0 2px var(--accent), 0 0 8px rgba(196,163,90,0.6);
@@ -1741,12 +1743,23 @@
     @media (max-width: 720px) {
       .quest-diff-row { grid-template-columns: 1fr; }
     }
+    /* Phase 1D-15: 詳細パネルを 2 カラム化 (左 = info / 右 = Mai) */
     .quest-detail-panel {
       background: var(--panel-2);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 0.7rem;
+      display: grid;
+      grid-template-columns: 1fr minmax(180px, 0.85fr);
+      gap: 0.6rem 0.8rem;
+      align-items: start;
+    }
+    .quest-detail-panel__info {
       display: flex; flex-direction: column; gap: 0.45rem;
+      min-width: 0;
+    }
+    @media (max-width: 540px) {
+      .quest-detail-panel { grid-template-columns: 1fr; }
     }
     .quest-detail-panel__head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
     .quest-detail-panel__name { font-size: 1rem; font-weight: 800; color: var(--text); }
@@ -1762,21 +1775,29 @@
       letter-spacing: 0.04em;
     }
     .quest-detail-panel__mats {
-      display: flex; gap: 0.4rem; flex-wrap: wrap;
+      display: flex; gap: 0.6rem; flex-wrap: wrap;
       align-items: flex-end;
     }
     .quest-detail-panel__mat {
-      display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
-      font-size: 0.7rem; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      font-size: 0.72rem; color: var(--muted);
     }
     .quest-detail-panel__mat img {
-      width: 28px; height: 28px;
+      /* Phase 1D-15: 素材アイコン拡大 (28 → 48px) */
+      width: 48px; height: 48px;
       object-fit: contain;
       image-rendering: pixelated;
     }
     .quest-detail-panel__mat--rare img {
-      box-shadow: 0 0 0 1.5px var(--accent);
+      box-shadow: 0 0 0 2px var(--accent), 0 0 8px rgba(196,163,90,0.5);
       border-radius: 50%;
+    }
+    .quest-detail-panel__mat-name {
+      color: var(--text); font-weight: 700;
+    }
+    .quest-detail-panel__mat-qty {
+      color: var(--accent); font-weight: 800; font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
     }
     .quest-detail-panel__lv {
       font-size: 0.85rem; color: var(--text);
@@ -1789,15 +1810,36 @@
     .quest-detail-panel__rate strong[data-rate="blocked"] { color: var(--ifrit); }
     .quest-detail-panel__rate strong { font-size: 1.4rem; color: var(--accent); }
     .quest-detail-panel__rate strong[data-rate="100"] { color: #5ecf8a; }
+    /* Phase 1D-15: Mai bubble をカード右側に配置 */
     .quest-detail-panel__mai {
-      display: flex; gap: 0.5rem; align-items: flex-start;
-      padding: 0.45rem;
+      display: flex; flex-direction: column; gap: 0.3rem;
+      padding: 0.55rem 0.6rem;
       background: var(--panel);
       border-left: 3px solid var(--accent);
       border-radius: 4px;
+      align-self: stretch;
     }
-    .quest-detail-panel__mai img { width: 32px; height: 32px; border-radius: 50%; image-rendering: pixelated; flex-shrink: 0; }
-    .quest-detail-panel__mai p { margin: 0; font-size: 0.78rem; color: var(--text); line-height: 1.4; }
+    .quest-detail-panel__mai-head {
+      display: flex; gap: 0.5rem; align-items: center;
+    }
+    .quest-detail-panel__mai img {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      image-rendering: pixelated; flex-shrink: 0;
+    }
+    .quest-detail-panel__mai-name {
+      font-size: 0.72rem; font-weight: 800; color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .quest-detail-panel__mai p {
+      margin: 0; font-size: 0.82rem;
+      color: var(--text); line-height: 1.5;
+    }
+    .quest-detail-panel__empty {
+      grid-column: 1 / -1;
+      color: var(--muted); text-align: center;
+      padding: 1rem; margin: 0;
+    }
 
     .quest-diff-rows { display: flex; flex-direction: column; gap: 0.4rem; }
     .quest-diff-row__btn {

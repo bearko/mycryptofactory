@@ -35,6 +35,8 @@ const SE_FILES = {
   appraisalHigh: "open_treasure.mp3",
   /** Phase 1D-14: ヒーローのパッシブが発動した瞬間 (通知バナー表示と同時) */
   passiveTrigger: "insp.mp3",
+  /** Phase 1D-15: クエスト成功時 (失敗時は SE なし)。MCH 公式 CDN を直接参照。 */
+  questSuccess: "https://d2fvodbijouf8s.cloudfront.net/sounds/se/craft/token_drop.mp3",
 };
 
 /** デフォルト音量 (0..1)。BGM は控えめ、SE は中ぐらい。 */
@@ -54,6 +56,7 @@ const SE_THROTTLE_MS = {
   appraisalHigh: 150,
   // パッシブ発動: 同じ tick で連続 trigger することはほぼ無いが念のため軽く
   passiveTrigger: 200,
+  questSuccess: 500,
 };
 
 let _bgmEl = null;
@@ -119,7 +122,9 @@ export function playSe(seKey) {
     if (now - last < wait) return;
     _lastSeAt[seKey] = now;
   }
-  const a = new Audio(AUDIO_BASE + file);
+  // Phase 1D-15: 絶対 URL (https://...) はそのまま使う / それ以外は AUDIO_BASE 配下
+  const src = /^https?:\/\//.test(file) ? file : AUDIO_BASE + file;
+  const a = new Audio(src);
   a.volume = SE_VOLUME;
   a.play().catch(() => { /* user gesture not yet present, ignore */ });
 }
@@ -128,7 +133,8 @@ export function playSe(seKey) {
  *  初回再生のラグを減らせる。 */
 export function preloadAllSe() {
   for (const file of Object.values(SE_FILES)) {
-    const a = new Audio(AUDIO_BASE + file);
+    const src = /^https?:\/\//.test(file) ? file : AUDIO_BASE + file;
+    const a = new Audio(src);
     a.preload = "auto";
     // 何もしない (Audio オブジェクトは破棄されるが内部キャッシュには載る)
     a.load?.();
