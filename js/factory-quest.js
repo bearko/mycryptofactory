@@ -204,10 +204,11 @@ export function successRateCommentKey(rate) {
 /**
  * クエスト成功時の素材 reward を生成。
  *
- * 仕様:
- *  - 各エネミーを倒すたびに宝箱がドロップ → 成功 = 5 個ドロップ
- *  - 宝箱 1 個 = 該当 node の poolNormal から 1 種抽選 + 1-2 個
- *  - hard 難易度では 5 個中 1-2 個が高ランク帯素材 (poolHighTier) になる
+ * 仕様 (Phase 1D-38: 難易度差を強化):
+ *  - 初級: 5 ドロップ × 1〜2 個 (= 5〜10 個合計)
+ *  - 中級: 7 ドロップ × 1〜3 個 (= 7〜21 個合計、 約 2x)
+ *  - 上級: 9 ドロップ × 1〜3 個、 うち 2-3 個が高ランク帯 (poolHighTier) で qty 1〜2
+ *         (= 9〜27 個 + 高ランク 2〜6 個)
  *
  * @param {object} node      NORMAL_NODES の 1 つ
  * @param {string} difficulty "easy" | "normal" | "hard"
@@ -215,15 +216,19 @@ export function successRateCommentKey(rate) {
  */
 export function rollQuestRewards(node, difficulty, rng = Math.random) {
   const out = {};
-  const dropCount = 5; // 5 戦闘 → 5 ドロップ
-  const useHighTierSlots = (difficulty === "hard" && node.poolHighTier.length > 0)
-    ? Math.floor(rng() * 2) + 1   // 1 or 2 個
-    : 0;
-  for (let i = 0; i < dropCount; i++) {
+  // 難易度 → ドロップ数 / qty 上限
+  const cfg = difficulty === "hard"
+    ? { dropCount: 9, normalMaxQty: 3, hardMaxQty: 2, highTierSlots: 2 + Math.floor(rng() * 2) }  // 2 or 3
+    : difficulty === "normal"
+    ? { dropCount: 7, normalMaxQty: 3, hardMaxQty: 0, highTierSlots: 0 }
+    : { dropCount: 5, normalMaxQty: 2, hardMaxQty: 0, highTierSlots: 0 };
+  const useHighTierSlots = (cfg.highTierSlots > 0 && node.poolHighTier.length > 0) ? cfg.highTierSlots : 0;
+  for (let i = 0; i < cfg.dropCount; i++) {
     const useHigh = i < useHighTierSlots;
     const pool = useHigh ? node.poolHighTier : node.poolNormal;
     const matId = pool[Math.floor(rng() * pool.length)];
-    const qty   = useHigh ? 1 : (Math.floor(rng() * 2) + 1);
+    const maxQ = useHigh ? cfg.hardMaxQty : cfg.normalMaxQty;
+    const qty   = 1 + Math.floor(rng() * Math.max(1, maxQ));  // 1..maxQ
     out[matId] = (out[matId] || 0) + qty;
   }
   return out;
