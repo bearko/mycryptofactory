@@ -1041,9 +1041,11 @@ function runCraftEventAnimation() {
   $("craftEventAnimHero").className = `craft-event__anim-hero craft-event__anim-hero--shaking`;
   $("craftEventAnimExt").src = extIconUrl(ac.extId);
   $("craftEventAnimEl").innerHTML = `<img src="${elementIconUrl(elKey)}" alt="" /> <span>${escapeHtml(elementLabel(elKey))}</span>`;
-  // 意気込み
+  // Phase 1D-29: 演出冒頭でバフ SE。ソウル注入 / オーラ付与 共通。
+  playSe("craftBuff");
+  // 意気込み — 工房のフレーバーバブルと同じ見た目でヒーローアイコンに被せて表示
   const intro = (lang === "en" ? CRAFT_EVENT_INTRO_LINES_EN : CRAFT_EVENT_INTRO_LINES_JA);
-  $("craftEventAnimQuote").textContent = `${tHero(hero.heroId, hero.nameJa)}：「${intro[Math.floor(Math.random() * intro.length)]}」`;
+  showCraftEventBubble(`${tHero(hero.heroId, hero.nameJa)}：「${intro[Math.floor(Math.random() * intro.length)]}」`);
   // 累計表示
   let total = 0;
   $("craftEventAnimTotal").textContent = `${total}`;
@@ -1117,9 +1119,22 @@ function runCraftEventAnimation() {
   fireOne();
 }
 
+/** Phase 1D-29: 演出ステージ内でヒーローアイコンに被せて吹き出しを表示する。
+ *  intro/outro 共通。同じ要素を使い回し、CSS animation を再起動する。 */
+function showCraftEventBubble(text) {
+  const bubble = $("craftEventAnimQuoteBubble");
+  if (!bubble) return;
+  bubble.classList.remove("hidden");
+  bubble.textContent = text;
+  // animation を再起動 (一度 hidden 化 → reflow → 再表示)
+  bubble.style.animation = "none";
+  void bubble.offsetWidth;
+  bubble.style.animation = "";
+}
+
 function finishCraftEventAnim(hero, elKey, total, lang) {
   const outro = (lang === "en" ? CRAFT_EVENT_OUTRO_LINES_EN : CRAFT_EVENT_OUTRO_LINES_JA);
-  $("craftEventAnimQuote").textContent = `${tHero(hero.heroId, hero.nameJa)}：「${outro[Math.floor(Math.random() * outro.length)]}」`;
+  showCraftEventBubble(`${tHero(hero.heroId, hero.nameJa)}：「${outro[Math.floor(Math.random() * outro.length)]}」`);
   // 1.2 秒後に閉じてホーム再開
   setTimeout(() => {
     $("craftEventAnim")?.classList.add("hidden");
@@ -1235,6 +1250,9 @@ function maybeIdleSpeak(hero) {
 function tickActiveQuest() {
   const aq = state.activeQuest;
   if (!aq) return;
+  // Phase 1D-29 fix: 他のモーダルが開いている間は完了通知を保留
+  //   (同 tick での mai 重複呼び出しによる pauseFlags 不整合を回避)
+  if (state.pauseFlags > 0) return;
   // 進捗 = elapsed ticks / total ticks
   const elapsed = state.tickCount - aq.startedAtTick;
   const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
@@ -1534,9 +1552,15 @@ function renderQuestView() {
     const inTeam = state.questTeam.includes(h.heroId);
     const stamPct = h.stamina.max > 0 ? (h.stamina.current / h.stamina.max * 100) : 0;
     const bd = heroQuestLevelBreakdown(h);
-    // Phase 1D-24: 他作業占有 (sale / hire recruiter / craft) は disabled
-    const lockedByOther = isHeroLocked(h.heroId, { ignoreQuestTeam: true });
-    const disabled = h.state === HERO_STATE.CRAFTING || lockedByOther;
+    // Phase 1D-29: クラフト編成 (craftTeam) に居るだけのヒーローは選択可能。
+    //   実際にクラフト中 (h.state === CRAFTING) のヒーローのみ disabled として
+    //   「クラフト中」バッジを表示。sale / hire 占有は従来どおり disabled。
+    const lockedByOther = isHeroLocked(h.heroId, { ignoreQuestTeam: true, ignoreCraftTeam: true });
+    const isCrafting = h.state === HERO_STATE.CRAFTING;
+    const disabled = isCrafting || lockedByOther;
+    const busyTag = isCrafting
+      ? `<span class="quest-hero-pick__busy-tag">${escapeHtml(ti18n("hero.state.crafting", "クラフト中"))}</span>`
+      : "";
     return `<button type="button" class="quest-hero-pick${inTeam ? " quest-hero-pick--in" : ""}" data-hero="${h.heroId}" ${disabled ? "disabled" : ""}>
       <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
       <span class="quest-hero-pick__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
@@ -1545,12 +1569,19 @@ function renderQuestView() {
         <span class="quest-hero-pick__ql-info" data-ql-info="${h.heroId}" title="${escapeHtml(ti18n("quest.qlInfo.title"))}">i</span>
       </span>
       <span class="quest-hero-pick__hp">HP ${h.stamina.current}/${h.stamina.max}</span>
+      ${busyTag}
     </button>`;
   }).join("");
 
   // 出発 ボタン enable/disable
+  // Phase 1D-29: ランドノード未取得 (= 通行証なし) で出発できないようガード追加。
+  //   従来は Ocean (= LAND_NODES[0]) がデフォルト選択で買わずに depart できた。
   const startBtn = $("questStartBtn");
-  if (rate < 0 || state.questTeam.filter(x => x != null).length === 0) {
+  const isLandTab2 = state.questNodeType === "land";
+  const noLandPass = isLandTab2 && !(state.landPasses instanceof Set
+    ? state.landPasses.has(state.questPickedNodeId)
+    : false);
+  if (rate < 0 || state.questTeam.filter(x => x != null).length === 0 || noLandPass) {
     startBtn.disabled = true;
   } else {
     startBtn.disabled = false;
@@ -1634,6 +1665,12 @@ function extractNote(note, lang) {
 function startActiveQuest() {
   const node = NODE_BY_ID[state.questPickedNodeId];
   if (!node) return;
+  // Phase 1D-29: ランドノードは通行証必須。
+  //   button enable/disable とは独立した二重ガード (例: 直接呼ばれた場合の対策)。
+  if (state.questNodeType === "land") {
+    const hasPass = state.landPasses instanceof Set && state.landPasses.has(node.id);
+    if (!hasPass) return;
+  }
   const diff = state.questPickedDifficulty;
   const team = state.questTeam.slice();
   const teamHeroes = team.map(id => id == null ? null : findHero(id));
@@ -3155,7 +3192,16 @@ function renderWorkshop() {
     span.setAttribute("data-flavor-id", String(f.id));
     span.textContent = f.text;
     flavorHost.appendChild(span);
-    setTimeout(() => span.remove(), 2400);
+    // Phase 1D-29: フレーバー表示中はヒーロー本体ごと最前面に押し出して、
+    //   隣接ヒーローの sprite にバブルが隠されないようにする。
+    sprite.classList.add("workshop-hero--has-flavor");
+    setTimeout(() => {
+      span.remove();
+      // 残り flavor が 0 件になったら最前面化を解除
+      if (!flavorHost.querySelector(".workshop-hero__flavor")) {
+        sprite.classList.remove("workshop-hero--has-flavor");
+      }
+    }, 2400);
   }
   for (const hid of bouncedHeroIds) {
     const sprite = host.querySelector(`.workshop-hero[data-hero-id="${hid}"]`);
@@ -3611,11 +3657,81 @@ function renderHeroDetailPopup() {
   } else {
     pBlock.classList.add("hidden");
   }
+  // Phase 1D-29: クイックアクションボタンの enable/disable
+  //   Idle (= 他作業に占有されていない & state IDLE) のみ全有効。それ以外はグレー。
+  const isIdle = hero.state === HERO_STATE.IDLE && !isHeroLocked(hero.heroId);
+  const actionsHost = $("heroDetailActions");
+  if (actionsHost) {
+    actionsHost.querySelectorAll(".hero-detail__action").forEach(btn => {
+      btn.disabled = !isIdle;
+    });
+  }
 }
 function closeHeroDetailPopup() {
   $("heroDetailPopup")?.classList.add("hidden");
   state.popupHeroId = null;
   resumeTime();
+}
+
+/** Phase 1D-29: ヒーロー詳細ポップアップから直接対象画面へ遷移する。
+ *  必要に応じて編成 (craftTeam / questTeam) に hero を pre-add してから遷移。
+ *
+ *  action: "craft" | "quest" | "hire" | "rest" | "trade"
+ */
+function handleHeroQuickAction(hero, action) {
+  if (!hero || !action) return;
+  const hid = hero.heroId;
+  switch (action) {
+    case "craft": {
+      // 既に craftTeam に居なければ空きスロットへ pre-add
+      if (Array.isArray(state.craftTeam) && !state.craftTeam.includes(hid)) {
+        const empty = state.craftTeam.indexOf(null);
+        if (empty >= 0) state.craftTeam[empty] = hid;
+      }
+      closeHeroDetailPopup();
+      // activeCraft 中なら開けない (既存ガードと整合)
+      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      openCraftView();
+      break;
+    }
+    case "quest": {
+      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      // questTeam に pre-add (空きがあれば)
+      if (Array.isArray(state.questTeam) && !state.questTeam.includes(hid)) {
+        const empty = state.questTeam.indexOf(null);
+        if (empty >= 0) state.questTeam[empty] = hid;
+      }
+      closeHeroDetailPopup();
+      openQuestView();
+      break;
+    }
+    case "hire": {
+      // 雇用は plan → recruiter の 2 ステップなので画面遷移のみ
+      closeHeroDetailPopup();
+      state.marketTab = "hire";
+      openMarketView();
+      setMarketTab("hire");
+      break;
+    }
+    case "rest": {
+      // 即時休憩入り。ポップアップを閉じて workshop を再描画
+      hero.state = HERO_STATE.RESTING;
+      closeHeroDetailPopup();
+      if (typeof renderWorkshop === "function") renderWorkshop();
+      if (typeof renderHeroList === "function") renderHeroList();
+      if (typeof renderHeroTeam === "function") renderHeroTeam();
+      break;
+    }
+    case "trade": {
+      // 出品 (extension 売却) は本来「extension を選んで → seller を選ぶ」フロー。
+      // ここでは market の出品タブを直接開いて、ユーザー操作に任せる。
+      closeHeroDetailPopup();
+      state.marketTab = "warehouse";
+      openMarketView();
+      setMarketTab("warehouse");
+      break;
+    }
+  }
 }
 
 /** ─── Title screen ──────────────────────────────────────────────── */
@@ -4220,6 +4336,12 @@ function closeSellModal() {
 /** 出品 tick: 完了時に GUM 加算 + warehouse から削除 + 通知 */
 function tickActiveSales() {
   if (state.activeSales.length === 0) return;
+  // Phase 1D-29 fix: 既に他のモーダル (例: ソウル注入トリガーの maiSays) が開いて
+  //   pauseFlags > 0 の場合、ここで maiSays を重ねると body / _maiNextAction が
+  //   上書きされ pauseFlags の累積/取りこぼしでフリーズする。
+  //   pauseFlags が 0 に戻る (= 他のモーダルが閉じた) tick まで settlement を遅延。
+  //   売上は state.tickCount 基準なので、待機 tick 中も elapsed 判定は崩れない。
+  if (state.pauseFlags > 0) return;
   const completed = [];
   for (const s of state.activeSales) {
     const elapsed = state.tickCount - s.listedAtTick;
@@ -4491,6 +4613,9 @@ function tickActiveHire() {
   renderSaleOverlay();
     return;
   }
+  // Phase 1D-29 fix: 他のモーダルが開いている間は候補通知を保留
+  //   (= mai 同時呼び出しで pauseFlags 不整合 → フリーズ回避)
+  if (state.pauseFlags > 0) return;
   const elapsed = state.tickCount - ah.startedAtTick;
   if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
     const plan = PLAN_BY_ID[ah.planId];
@@ -5280,6 +5405,17 @@ async function init() {
   $("heroDetailPopup")?.addEventListener("click", (e) => {
     if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
+  // Phase 1D-29: クイックアクション (Idle ヒーローを直接 craft/quest/hire/rest/trade へ)
+  $("heroDetailActions")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".hero-detail__action");
+    if (!btn || btn.disabled) return;
+    const hid = state.popupHeroId;
+    if (hid == null) return;
+    const hero = findHero(hid);
+    if (!hero) return;
+    const action = btn.getAttribute("data-quick");
+    handleHeroQuickAction(hero, action);
+  });
 
   // ── 完成画面 (Phase 1B-3) ──
   $("craftDoneClose")?.addEventListener("click", closeCompletionScreen);
@@ -5460,7 +5596,15 @@ async function init() {
       state.questTeam[idx] = null;
     } else {
       const empty = state.questTeam.indexOf(null);
-      if (empty >= 0) state.questTeam[empty] = hid;
+      if (empty >= 0) {
+        state.questTeam[empty] = hid;
+        // Phase 1D-29: クラフト編成にも居る場合は自動でそちらから外す
+        //   (= 同一ヒーローが両方の編成に乗っている曖昧な状態を避ける)
+        if (Array.isArray(state.craftTeam)) {
+          const ci = state.craftTeam.indexOf(hid);
+          if (ci >= 0) state.craftTeam[ci] = null;
+        }
+      }
     }
     renderQuestView();
   });
