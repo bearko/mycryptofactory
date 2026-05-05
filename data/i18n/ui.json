@@ -5,6 +5,8 @@
 
   "title.aria":                { "ja": "ゲームを始める",  "en": "Start the game" },
   "title.press":               { "ja": "Press to Start", "en": "Press to Start" },
+  "alpha.badge":               { "ja": "α 版 / ALPHA", "en": "α / ALPHA" },
+  "alpha.note":                { "ja": "フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。", "en": "Feedback welcome. Save data is local-only and resets on reload." },
 
   "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
 
