@@ -1756,27 +1756,19 @@
       font-size: 0.7rem; color: var(--muted);
       align-items: center;
     }
-    /* Phase 2B: 工房画面のアクティブ効果ボタン */
-    .workshop__active-effects-btn {
-      position: absolute;
-      top: 0.5rem; right: 0.5rem;
-      appearance: none;
-      background: rgba(15, 12, 22, 0.78);
+    /* Phase 2B → β2-3 part 2: アクティブ効果ボタンは header に移動。 旧 workshop 用は隠す */
+    .workshop__active-effects-btn { display: none !important; }
+    /* Phase β2-3 part 2: header 内のアクティブ効果ボタン */
+    .factory-header__effects-btn {
+      background: rgba(196,163,90,0.12);
       color: var(--accent);
       border: 1px solid var(--accent);
-      border-radius: 999px;
-      padding: 0.3rem 0.7rem;
-      font-size: 0.75rem; font-weight: 800;
-      cursor: pointer;
-      letter-spacing: 0.04em;
-      z-index: 11;
-      transition: background 0.15s, color 0.15s;
+      padding: 0 0.45rem;
+      font-size: 0.78rem; font-weight: 800;
+      letter-spacing: 0.03em;
     }
-    .workshop__active-effects-btn:hover {
-      background: var(--accent);
-      color: #1a1420;
-    }
-    .workshop__active-effects-btn.hidden { display: none !important; }
+    .factory-header__effects-btn.hidden { display: none !important; }
+    .factory-header__effects-btn:hover { background: var(--accent); color: #1a1420; }
     /* Phase 2B: アクティブ効果モーダル */
     .active-effects-modal {
       position: fixed; inset: 0; z-index: 320;
@@ -2052,6 +2044,20 @@
     .quest-overlay__node {
       font-weight: 800;
       font-size: 0.95rem;
+    }
+    /* Phase β2-3 part 2: 並行クエスト「他N件」 補足バッジ */
+    .quest-overlay__other {
+      display: inline-block;
+      margin-left: 0.4rem;
+      padding: 0.05rem 0.35rem;
+      background: rgba(196,163,90,0.25);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      vertical-align: middle;
     }
     .quest-overlay__status {
       font-size: 0.78rem;
@@ -2599,7 +2605,8 @@
     }
     /* Phase 1D-46: ランキング閲覧モーダル */
     .ranking-viewer {
-      position: fixed; inset: 0; z-index: 320;
+      /* Phase β2-3 part 2: title-screen (z=1000) 上に表示するため z=1100 へ */
+      position: fixed; inset: 0; z-index: 1100;
       background: rgba(15, 12, 22, 0.94);
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
@@ -3709,6 +3716,27 @@
     }
     .quest-start-btn:disabled {
       opacity: 0.45; cursor: not-allowed;
+    }
+    /* Phase β2-3 part 2: 2 ボタン出発レイアウト */
+    .quest-start-row {
+      display: flex; gap: 0.5rem;
+    }
+    .quest-start-row .quest-start-btn {
+      flex: 1;
+      font-size: 0.92rem;
+      padding: 0.6rem;
+    }
+    .quest-start-btn--rest {
+      background: rgba(196,163,90,0.18) !important;
+      color: var(--accent) !important;
+      border: 1.5px solid var(--accent) !important;
+    }
+    .quest-start-btn--rest.hidden { display: none !important; }
+    .quest-detail-panel__rate-full {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-left: 0.3rem;
+      letter-spacing: 0.02em;
     }
 
     /* Quest result modal */
@@ -5833,6 +5861,10 @@
       </div>
       <span class="factory-header__factory-lv" id="factoryLvText" title="工房レベル"></span>
       <div class="factory-header__spacer"></div>
+      <!-- Phase β2-3 part 2: アクティブ効果ボタン (= 旧 workshop__active-effects-btn を header へ移動) -->
+      <button type="button" class="factory-header__btn factory-header__effects-btn hidden" id="headerActiveEffectsBtn" title="アクティブ効果">
+        ✨ <span id="headerActiveEffectsCount">0</span>
+      </button>
       <div class="factory-header__gum" title="GUM">
         <img class="factory-header__gum-icon" src="https://www.mycryptoheroes.net/_nuxt/img/icon_gum.cd9a4ae.png" alt="GUM" />
         <span id="factoryGum">500</span>
@@ -5840,6 +5872,8 @@
       <button type="button" class="factory-header__btn factory-header__mai-btn" data-mai-help-btn title="マイのアドバイス">
         <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
       </button>
+      <!-- Phase β2-3 part 2: ホームヘッダーからもランキング画面を開けるように -->
+      <button type="button" class="factory-header__btn" id="headerRankingBtn" title="ランキング">🏆</button>
       <button type="button" class="factory-header__btn" id="btnLangToggle" data-i18n-attr-title="lang.toggle.label" title="言語 / Language">JP</button>
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
@@ -5922,7 +5956,13 @@
           </section>
 
           <!-- Card 2: Quest -->
-          <section class="progress-card" data-card-id="quest">
+          <section class="progress-card" data-card-id="quest" style="position:relative;">
+            <!-- Phase β2-3 part 2: 並行クエストスロットページャ -->
+            <div class="order-pager hidden" id="questPager">
+              <button type="button" class="order-pager__btn" id="questPagerPrev" aria-label="Prev">◀</button>
+              <span class="order-pager__label" id="questPagerLabel">1 / 1</span>
+              <button type="button" class="order-pager__btn" id="questPagerNext" aria-label="Next">▶</button>
+            </div>
             <h3 class="progress-card__title" data-i18n="progress.quest">Quest</h3>
             <div class="progress-card__body" id="questCard"></div>
           </section>
@@ -6257,7 +6297,11 @@
         </section>
       </div>
 
-      <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
+      <!-- Phase β2-3 part 2: 出発ボタン 2 種類 (体力満タンにして出発 / すぐに出発) -->
+      <div class="quest-start-row">
+        <button type="button" class="quest-start-btn quest-start-btn--rest hidden" id="questStartRestBtn" disabled>体力満タンにして出発</button>
+        <button type="button" class="quest-start-btn" id="questStartBtn" disabled>すぐに出発</button>
+      </div>
     </div>
   </div>
 
