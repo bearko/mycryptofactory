@@ -740,6 +740,9 @@
     .workshop-hero--questing .workshop-hero__img { filter: grayscale(0.85) brightness(0.7); }
     /* クラフト中ヒーローは薄い輝き */
     .workshop-hero--crafting .workshop-hero__img { filter: drop-shadow(0 0 4px rgba(196,163,90,0.55)); }
+    /* Phase 1D-47: 雇用担当 / 出品中はクエスト中と同様にグレーアウト */
+    .workshop-hero--hiring  .workshop-hero__img,
+    .workshop-hero--selling .workshop-hero__img { filter: grayscale(0.85) brightness(0.7); }
     .workshop-hero__stam {
       position: absolute;
       /* Phase 1D-16: 2x sprite に合わせて HP バーを少し下 + 太く
@@ -5442,6 +5445,17 @@
     .ench-row--lv .ench-row__label {
       color: var(--text); font-weight: 700;
     }
+    /* Phase 1D-47: クラフトパワーは アイコン + 値 のみ (テキストラベル省略) */
+    .ench-row--icon-only {
+      gap: 0.4rem;
+    }
+    /* Phase 1D-47: 年俸行 (rank で変動 / GUM 単位を末尾に表示) */
+    .ench-row--salary { color: var(--accent); }
+    .ench-row--salary .ench-row__label { color: var(--accent); }
+    .ench-row__unit {
+      color: var(--muted); font-size: 0.66rem;
+      letter-spacing: 0.05em;
+    }
     .ench-cmp {
       display: inline-flex; align-items: center; gap: 0.25rem;
     }
@@ -5820,6 +5834,11 @@
       <div class="hero-detail__row">
         <span class="hero-detail__row-label" data-i18n="hero.craftLevel">クラフトLV</span>
         <strong class="hero-detail__row-val" id="heroDetailCl">—</strong>
+      </div>
+      <!-- Phase 1D-47: 年俸表示 (rank によって変動) -->
+      <div class="hero-detail__row">
+        <span class="hero-detail__row-label" data-i18n="hero.salary">年俸</span>
+        <strong class="hero-detail__row-val" id="heroDetailSalary">—</strong>
       </div>
       <div class="hero-detail__elements" id="heroDetailElements"></div>
       <div class="hero-detail__passive hidden" id="heroDetailPassive"></div>
