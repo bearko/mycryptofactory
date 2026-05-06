@@ -228,6 +228,14 @@
   "mai.next":                  { "ja": "次へ", "en": "Next" },
   "mai.craftBusy":             { "ja": "クラフトラインが全て埋まっています。 完成を待つか工房を Lv アップしましょう。", "en": "All craft lines are full. Wait for completion or level up the workshop." },
   "craft.mai.allSlotsFull":    { "ja": "クラフトラインが全て埋まっています。", "en": "All craft lines are full." },
+  "quest.mai.allSlotsFull":    { "ja": "クエストパーティが全て出払っています。", "en": "All quest parties are deployed." },
+  "quest.overlay.other":       { "ja": "他 {n} 件のクエストが進行中", "en": "{n} more quest(s) in progress" },
+  "quest.overlay.otherShort":  { "ja": "他 {n} 件", "en": "+{n}" },
+  "quest.startNow":            { "ja": "すぐに出発 [{rate}]", "en": "Depart now [{rate}]" },
+  "quest.startRest":           { "ja": "体力満タンにして出発 [{rate}]", "en": "Rest first, then depart [{rate}]" },
+  "quest.detail.rateFullHp":   { "ja": "体力100%で {n}", "en": "at full HP {n}" },
+  "quest.notif.restThenDeploy":{ "ja": "ヒーローの体力を満タンにしてから出発します", "en": "Resting heroes to full HP before departure" },
+  "quest.mai.redeployBusy":    { "ja": "別のクエストが再派遣待ちです。", "en": "Another quest is awaiting redeploy." },
 
   "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Workshop Lv: {n}" },
 
@@ -312,7 +320,7 @@
   "hero.quick.rest":           { "ja": "休憩", "en": "Rest" },
   "hero.quick.trade":          { "ja": "取引", "en": "Trade" },
 
-  "mai.questBusy":             { "ja": "他のクエストが進行中です。終わるまでお待ちください。", "en": "Another quest is in progress. Please wait until it finishes." },
+  "mai.questBusy":             { "ja": "クエストパーティが全て出払っています。 帰還を待つか工房を Lv アップしましょう。", "en": "All quest parties are deployed. Wait for return or level up the workshop." },
   "mai.spontaneousHire":       { "ja": "工房の評判を聞いて、採用の申込みがありました！", "en": "Word of your workshop has spread — a new applicant has stepped forward!" },
   "mai.deficitFirst1":         { "ja": "所持金がマイナスになっています…！", "en": "Your funds have gone into the red!" },
   "mai.deficitFirst2":         { "ja": "このままでは雇用やランクアップができないので、クラフトしてエクステンションを売りましょう。", "en": "You can't hire or rank up while in the red — let's craft an extension and sell it." },

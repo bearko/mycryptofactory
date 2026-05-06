@@ -44,6 +44,16 @@ export const QUEST_BASE_LEVEL = {
   hard:    3000,
 };
 
+/** Phase β2-3 part 2: ノード別の baseLv オーバーライドを優先して返す。
+ *  node.baseLvOverride.easy などが定義されていればそれを返し、 無ければ
+ *  QUEST_BASE_LEVEL[difficulty]。 */
+export function baseLvForNode(node, difficulty) {
+  if (node && node.baseLvOverride && node.baseLvOverride[difficulty] != null) {
+    return node.baseLvOverride[difficulty];
+  }
+  return QUEST_BASE_LEVEL[difficulty] || 0;
+}
+
 /**
  * 通常ノード定義。各 node は主要 reward 素材 (= 多めに出る) を 1 つ持ち、
  * 高ランク帯 (= hard 難易度) のみ高ランク素材を追加で落とす。
@@ -63,6 +73,9 @@ export const NORMAL_NODES = [
     poolNormal: ["iron", "copper", "zinc"],
     poolHighTier: [],    // 高ランク帯なし
     note: "ja:通常素材を満遍なく入手|en:Balanced normal-material rewards",
+    // Phase β2-3 part 2: アバカスは練習用ノードとして他より難易度を低く
+    //   (= 農ヒーロー 3 体 ★0 で初級 100% クリア相当)
+    baseLvOverride: { easy: 200, normal: 600, hard: 1800 },
   },
   {
     id: "atanasoff",
