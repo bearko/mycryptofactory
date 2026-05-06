@@ -1505,7 +1505,8 @@ function triggerRecruitmentEvent() {
   if (!plan) return;
   pauseTime();
   const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
-  const candidates = rollHireCandidates(plan, ownedIds);
+  // Phase 2B: hireRareBoost を rarityWeights に適用 (= 高レア出現率アップ)
+  const candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
   if (candidates.length === 0) {
     // 候補ゼロ → スキップ
     resumeTime();
@@ -1595,7 +1596,23 @@ function startRemakeFromWarehouse(idx) {
   renderConfirm?.();
 }
 
-/** ─── Phase 2A: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
+/** ─── Phase 2A/2B: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
+
+/** Phase 2B: hireRareBoost を適用した plan の clone を返す。
+ *  rarity 重みを「rare 以上の重み × (1 + X%)」 に持ち上げる。 */
+function planWithHireRareBoost(plan) {
+  const pct = activeEffectPct("hireRareBoost");
+  if (!plan || pct <= 0) return plan;
+  const cloned = { ...plan, rarityWeights: { ...plan.rarityWeights } };
+  const m = 1 + pct / 100;
+  for (const r of ["rare", "epic", "legendary"]) {
+    if (cloned.rarityWeights[r] != null) {
+      cloned.rarityWeights[r] = cloned.rarityWeights[r] * m;
+    }
+  }
+  return cloned;
+}
+
 
 /** state.warehouse の全 ext から発動中の効果を集計し、 effect type → % map で返す。
  *  打ち直し済み (rarityOverride あり) は昇格 rarity でスケール。
@@ -1618,6 +1635,47 @@ function getActiveSkillEffects() {
 function activeEffectPct(type) {
   const eff = getActiveSkillEffects();
   return eff[type] || 0;
+}
+
+/** Phase 2B: アクティブ効果モーダルを開く + 描画。 工房画面のボタンから起動。 */
+function openActiveEffectsModal() {
+  const modal = $("activeEffectsModal");
+  const list  = $("activeEffectsList");
+  const empty = $("activeEffectsEmpty");
+  if (!modal || !list) return;
+  pauseTime();
+  const effects = getActiveSkillEffects();
+  const entries = Object.entries(effects).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    list.innerHTML = "";
+    empty?.classList.remove("hidden");
+  } else {
+    empty?.classList.add("hidden");
+    list.innerHTML = entries.map(([type, value]) => {
+      const def = EFFECT_DEFS[type];
+      const lbl = def ? ti18n(def.labelKey, type) : type;
+      return `<li>
+        <span>${escapeHtml(lbl)}</span>
+        <strong>+${value.toFixed(1)}%</strong>
+      </li>`;
+    }).join("");
+  }
+  modal.classList.remove("hidden");
+}
+function closeActiveEffectsModal() {
+  $("activeEffectsModal")?.classList.add("hidden");
+  resumeTime();
+}
+
+/** 工房画面右上のアクティブ効果ボタンの表示更新 (= 効果数バッジ)。
+ *  renderWorkshop の最後に呼び出されることで毎 tick 反映。 */
+function refreshActiveEffectsBtn() {
+  const btn   = $("workshopActiveEffectsBtn");
+  const count = $("workshopActiveEffectsCount");
+  if (!btn || !count) return;
+  const n = Object.keys(getActiveSkillEffects()).length;
+  count.textContent = String(n);
+  btn.classList.toggle("hidden", n === 0);
 }
 
 /** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
@@ -2275,7 +2333,10 @@ function tickActiveCraft() {
     if (!hero) continue;
     // 1. stamina 状態遷移
     if (hero.state === HERO_STATE.RESTING) {
-      adjustStamina(hero, staminaRecoverPerTick(hero));
+      // Phase 2B: restTimeShort — 倉庫スキルで休憩中の回復を加速
+      const restPct = activeEffectPct("restTimeShort");
+      const restMult = restPct > 0 ? (1 + restPct / 100) : 1.0;
+      adjustStamina(hero, staminaRecoverPerTick(hero) * restMult);
       if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
     } else {
       // Phase 1D-34: アロマバフ中は体力減少を半減
@@ -2762,7 +2823,10 @@ function tickPassiveRestRecovery() {
     if (skip.has(hero.heroId)) continue;
     if (hero.state === HERO_STATE.RESTING) {
       // 休憩中: stamina を回復
-      adjustStamina(hero, staminaRecoverPerTick(hero));
+      // Phase 2B: restTimeShort — 倉庫スキルで回復速度を加速
+      const restPctP = activeEffectPct("restTimeShort");
+      const restMultP = restPctP > 0 ? (1 + restPctP / 100) : 1.0;
+      adjustStamina(hero, staminaRecoverPerTick(hero) * restMultP);
       if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
     } else if (hero.state === HERO_STATE.IDLE) {
       // Phase 1D-23: Idle 中の体力減少を廃止 (ユーザー仕様)。
@@ -2859,7 +2923,30 @@ function triggerQuestComplete(aq) {
   const success = (r >= 1.0) ? true : (Math.random() <= r);
   const node = NODE_BY_ID[aq.nodeId];
   let rewards = {};
-  if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
+  if (success && node) {
+    rewards = rollQuestRewards(node, aq.difficulty);
+    // Phase 2B: matYieldBoost — 各 drop qty を倉庫スキル分上乗せ (round + min 1)
+    const yieldPct = activeEffectPct("matYieldBoost");
+    if (yieldPct > 0) {
+      const m = 1 + yieldPct / 100;
+      for (const [matId, q] of Object.entries(rewards)) {
+        rewards[matId] = Math.max(1, Math.round(q * m));
+      }
+    }
+    // Phase 2B: rareMatBoost — rare 素材 (poolHighTier) の追加 drop を確率発火
+    const rarePct = activeEffectPct("rareMatBoost");
+    if (rarePct > 0 && Array.isArray(node.poolHighTier) && node.poolHighTier.length > 0) {
+      // Bernoulli + 期待値: cap 40% を 2 回に分割 (= 各 20% 確率で +1 個まで)
+      const trials = 2;
+      const pPer = (rarePct / 100) / trials;
+      for (let i = 0; i < trials; i++) {
+        if (Math.random() < pPer) {
+          const matId = node.poolHighTier[Math.floor(Math.random() * node.poolHighTier.length)];
+          rewards[matId] = (rewards[matId] || 0) + 1;
+        }
+      }
+    }
+  }
 
   // 報酬を所持素材に追加
   if (success) {
@@ -2912,7 +2999,10 @@ function triggerQuestComplete(aq) {
   if (success) playSe("questSuccess");
   // Phase 1D-22: クエスト成功で 12% の確率で未取得シリーズレシピが手に入る
   //   (発火は result 画面が閉じた後に showRecipePopup 起動)
-  state.pendingRecipeReason = (success && Math.random() < 0.12) ? "recipe.from.quest" : null;
+  // Phase 2B: recipeRateBoost — 倉庫スキルでベースレシピ獲得率 12% を上乗せ
+  const recipeRatePct = activeEffectPct("recipeRateBoost");
+  const recipeChance = 0.12 * (1 + recipeRatePct / 100);
+  state.pendingRecipeReason = (success && Math.random() < recipeChance) ? "recipe.from.quest" : null;
   // Mai ポップアップ → 閉じるとレポート画面
   maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
     onClose: openQuestResultScreen,
@@ -4861,17 +4951,24 @@ function renderConfirm() {
         </div>`;
     }
   } else {
+    // Phase 2B: matCostReduce — 表示も削減後 qty に揃える (= 不足判定も削減後で再評価)
+    const costPctConfirm = activeEffectPct("matCostReduce");
+    const costMultConfirm = costPctConfirm > 0 ? Math.max(0.3, 1 - costPctConfirm / 100) : 1.0;
     $("confirmMaterials").innerHTML = recipe.map(m => {
       const have = state.materials[m.id] || 0;
-      const short = avail.shortage[m.id] > 0;
+      const reducedQty = Math.max(1, Math.ceil((m.qty || 0) * costMultConfirm));
+      const short = have < reducedQty;
       const rowCls = short ? "craft-confirm__mat-row craft-confirm__mat-row--short" : "craft-confirm__mat-row";
       const qtyText = ti18n("craft.material.qtyHave")
-        .replace("{qty}", m.qty)
+        .replace("{qty}", reducedQty)
         .replace("{have}", have);
+      const discountMark = costPctConfirm > 0 && reducedQty < (m.qty || 0)
+        ? ` <span style="color:var(--accent);font-size:0.65rem">(-${costPctConfirm.toFixed(0)}%)</span>`
+        : "";
       return `<div class="${rowCls}">
         <img src="${materialIcon(m.id)}" alt="" onerror="this.style.opacity='0.2'" />
         <span class="craft-confirm__mat-name">${escapeHtml(materialName(m.id, getLang()))}</span>
-        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}</span>
+        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}${discountMark}</span>
       </div>`;
     }).join("");
   }
@@ -5034,9 +5131,13 @@ function startActiveCraft() {
   const recipe = recipeFor(ext);
 
   // 素材消費 (受注 / 打ち直しはスキップ)
+  // Phase 2B: matCostReduce — 倉庫スキルで要求素材量を軽減 (= 消費量を割り戻す)
   if (!isCommission && !isRemake) {
+    const costPct = activeEffectPct("matCostReduce");
+    const costMult = costPct > 0 ? Math.max(0.3, 1 - costPct / 100) : 1.0;  // 最低 70% は消費
     for (const m of recipe) {
-      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - (m.qty || 0));
+      const consumed = Math.max(1, Math.ceil((m.qty || 0) * costMult));
+      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - consumed);
     }
   }
 
@@ -5316,6 +5417,8 @@ function renderWorkshop() {
     sprite.classList.add("workshop-hero--bounce");
     setTimeout(() => sprite.classList.remove("workshop-hero--bounce"), 460);
   }
+  // Phase 2B: アクティブ効果ボタンの表示数を更新
+  refreshActiveEffectsBtn();
 }
 
 /** Phase 1D-13: 工房内の 12 固定配置座標 (workshop 領域の % 座標)。
@@ -6427,7 +6530,10 @@ function renderSellModal() {
 
   // 推定価格 + 純収益
   const seller = findHero(_sellPickedSellerId);
-  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const expectedRaw = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 2B: tradePriceBoost プレビューに反映
+  const tpPctPrev = activeEffectPct("tradePriceBoost");
+  const expected = tpPctPrev > 0 ? Math.round(expectedRaw * (1 + tpPctPrev / 100)) : expectedRaw;
   const net = netSaleRevenue(expected);
   $("sellEstPrice").innerHTML = `
     <div class="sell-est__row">
@@ -6463,7 +6569,10 @@ function startSale() {
   // Phase 1D-25: 前回の seller を記録 → 次回 modal 起動時に default 選択
   state.lastSaleSellerId = seller.heroId;
   const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
-  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const expectedRaw = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 2B: tradePriceBoost — 倉庫スキルで売却額を上乗せ
+  const tpPct = activeEffectPct("tradePriceBoost");
+  const expected = tpPct > 0 ? Math.round(expectedRaw * (1 + tpPct / 100)) : expectedRaw;
   // Phase 1D-40: seller が「商」属性持ちなら、 ext rarity に応じて取引期間を短縮
   //   - Rare:      1/2 期間 (= 倍速)
   //   - Epic:      1/3 期間 (= 3 倍速)
@@ -6506,10 +6615,13 @@ function tickActiveSales() {
   //   (= 1D-29 で導入した「他モーダル open 中は settlement を遅延」ガードを撤去)
   // Phase 1D-34: ローラーバフ中は取引時間 1/2 (= elapsed を 2x として判定)
   const rollerMult = isBuffActive("roller") ? 2 : 1;
+  // Phase 2B: tradeSpeedBoost — 倉庫スキルで取引時間を加速
+  const tsPct = activeEffectPct("tradeSpeedBoost");
+  const tsMult = tsPct > 0 ? (1 + tsPct / 100) : 1.0;
   const completed = [];
   for (const s of state.activeSales) {
-    // Phase 1D-40 + 1D-34: 商 seller × rarity 短縮 × ローラーバフ
-    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult;
+    // Phase 1D-40 + 1D-34 + 2B: 商 seller × rarity 短縮 × ローラーバフ × 倉庫スキル
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult * tsMult;
     const total = s.weeks * SECONDS_PER_WEEK;
     if (elapsed >= total && s.status === "listed") {
       // 価格にランダム ±10% 変動
@@ -6819,7 +6931,8 @@ function tickActiveHire() {
   if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
     const plan = PLAN_BY_ID[ah.planId];
     const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
-    ah.candidates = rollHireCandidates(plan, ownedIds);
+    // Phase 2B: hireRareBoost を適用
+    ah.candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
     // Phase 1D-7: Mai 通知 → 「次へ」 押下で雇用画面に直接遷移
     maiSays("hire.mai.candidatesReady", {
       onClose: () => {
@@ -7553,6 +7666,12 @@ async function init() {
 
   // ── Help ──
   $("btnHelpOpen")?.addEventListener("click", openHelp);
+  // Phase 2B: アクティブ効果モーダル
+  $("workshopActiveEffectsBtn")?.addEventListener("click", openActiveEffectsModal);
+  $("activeEffectsClose")?.addEventListener("click", closeActiveEffectsModal);
+  $("activeEffectsModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "activeEffectsModal") closeActiveEffectsModal();
+  });
   $("btnHelpClose")?.addEventListener("click", closeHelp);
   $("helpOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "helpOverlay") closeHelp();

@@ -426,6 +426,9 @@
   "skill.eff.hireRareBoost":   { "ja": "高レア採用率",    "en": "Hire rare rate" },
   "skill.eff.tradePriceBoost": { "ja": "取引金額",        "en": "Trade price" },
   "skill.eff.tradeSpeedBoost": { "ja": "取引スピード",    "en": "Trade speed" },
+  "skill.active.title":        { "ja": "✨ アクティブ効果",     "en": "✨ Active effects" },
+  "skill.active.lead":         { "ja": "倉庫のエクステンションから発動中の効果合計", "en": "Total bonuses from your warehouse extensions" },
+  "skill.active.empty":        { "ja": "倉庫にエクステンションが無いか、効果がまだ発動していません。", "en": "No extensions in warehouse, or no active effects yet." },
 
   "progress.craft":            { "ja": "Craft",  "en": "Craft" },
   "progress.quest":            { "ja": "Quest",  "en": "Quest" },

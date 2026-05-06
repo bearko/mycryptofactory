@@ -1716,6 +1716,93 @@
       font-size: 0.7rem; color: var(--muted);
       align-items: center;
     }
+    /* Phase 2B: 工房画面のアクティブ効果ボタン */
+    .workshop__active-effects-btn {
+      position: absolute;
+      top: 0.5rem; right: 0.5rem;
+      appearance: none;
+      background: rgba(15, 12, 22, 0.78);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.75rem; font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      z-index: 11;
+      transition: background 0.15s, color 0.15s;
+    }
+    .workshop__active-effects-btn:hover {
+      background: var(--accent);
+      color: #1a1420;
+    }
+    .workshop__active-effects-btn.hidden { display: none !important; }
+    /* Phase 2B: アクティブ効果モーダル */
+    .active-effects-modal {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .active-effects-modal.hidden { display: none !important; }
+    .active-effects-modal__card {
+      max-width: 480px; width: 100%;
+      max-height: 85vh; overflow-y: auto;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .active-effects-modal__head {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .active-effects-modal__title {
+      margin: 0; flex: 1;
+      font-size: 1.05rem; color: var(--accent);
+    }
+    .active-effects-modal__close-x {
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      width: 28px; height: 28px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .active-effects-modal__close-x:hover { color: var(--accent); border-color: var(--accent); }
+    .active-effects-modal__lead {
+      margin: 0; text-align: center;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .active-effects-modal__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column;
+      gap: 0.3rem;
+    }
+    .active-effects-modal__list li {
+      display: flex; justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.6rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .active-effects-modal__list li strong {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .active-effects-modal__empty {
+      text-align: center; color: var(--muted);
+      font-size: 0.85rem;
+      padding: 1rem 0.5rem;
+    }
+    .active-effects-modal__empty.hidden { display: none; }
+
     /* Phase 2A: 倉庫アイテムにスキル表示 */
     .warehouse-item__skill {
       grid-column: 1 / -1;
@@ -5638,7 +5725,24 @@
         </div>
         <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
         <div class="workshop__heroes" id="workshopHeroes"></div>
+        <!-- Phase 2B: 倉庫スキルから発動中のアクティブ効果一覧 -->
+        <button type="button" class="workshop__active-effects-btn hidden" id="workshopActiveEffectsBtn" title="アクティブ効果">
+          ✨ <span id="workshopActiveEffectsCount">0</span>
+        </button>
         <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
+      </div>
+
+      <!-- Phase 2B: アクティブ効果モーダル (倉庫スキル合算表示) -->
+      <div class="active-effects-modal hidden" id="activeEffectsModal" role="dialog" aria-modal="true">
+        <div class="active-effects-modal__card">
+          <header class="active-effects-modal__head">
+            <h2 class="active-effects-modal__title" data-i18n="skill.active.title">✨ アクティブ効果</h2>
+            <button type="button" class="active-effects-modal__close-x" id="activeEffectsClose" aria-label="Close">×</button>
+          </header>
+          <p class="active-effects-modal__lead" data-i18n="skill.active.lead">倉庫のエクステンションから発動中の効果合計</p>
+          <ul class="active-effects-modal__list" id="activeEffectsList"></ul>
+          <p class="active-effects-modal__empty hidden" id="activeEffectsEmpty" data-i18n="skill.active.empty">倉庫にエクステンションが無いか、効果がまだ発動していません。</p>
+        </div>
       </div>
 
       <!-- Progress area: 3 カード (Craft / Quest / Market) の Carousel -->
