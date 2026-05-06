@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MyCryptoFactory — β version</title>
+  <title>MyCryptoFactory — β2 version</title>
   <meta name="description" content="My Crypto Heroes 経済圏モチーフの工房経営シム。GUM を稼いで世界一の工房を目指そう。" />
 
   <!-- favicon -->
@@ -11,13 +11,13 @@
 
   <!-- Open Graph / Twitter Card -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="MyCryptoFactory — β version" />
+  <meta property="og:title" content="MyCryptoFactory — β2 version" />
   <meta property="og:description" content="MCH 経済圏ベースの工房経営シム。クラフト受注・クエストで素材調達・GUM を稼ぐサイクルを楽しもう。" />
   <meta property="og:url" content="https://mycryptofactory.vercel.app/" />
   <meta property="og:image" content="https://mycryptofactory.vercel.app/og-image.png" />
   <meta property="og:site_name" content="MyCryptoFactory" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="MyCryptoFactory — β version" />
+  <meta name="twitter:title" content="MyCryptoFactory — β2 version" />
   <meta name="twitter:description" content="MCH 経済圏ベースの工房経営シム。" />
   <meta name="twitter:image" content="https://mycryptofactory.vercel.app/og-image.png" />
 
@@ -237,6 +237,32 @@
       font-weight: 800;
       letter-spacing: 0.04em;
       color: #1a1420;
+    }
+    /* Phase β2-3: 並行スロットページャ */
+    .order-pager {
+      position: absolute;
+      top: 0.55rem; right: 0.55rem;
+      display: flex; align-items: center; gap: 0.25rem;
+      z-index: 2;
+    }
+    .order-pager.hidden { display: none !important; }
+    .order-pager__btn {
+      appearance: none;
+      background: rgba(15,12,22,0.7);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      width: 24px; height: 22px;
+      font-size: 0.78rem; font-weight: 800;
+      cursor: pointer;
+      padding: 0;
+    }
+    .order-pager__btn:hover { background: var(--accent); color: #1a1420; }
+    .order-pager__btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .order-pager__label {
+      color: #1a1420;
+      font-size: 0.78rem; font-weight: 800;
+      font-variant-numeric: tabular-nums;
     }
     .progress-card__body {
       flex: 1; min-height: 0;
@@ -1234,6 +1260,20 @@
       padding: 0.45rem 1.2rem;
       font-weight: 700; cursor: pointer;
     }
+    /* Phase β2-2: 解雇ボタン (赤系で警告色) */
+    .hero-detail__fire-btn {
+      appearance: none;
+      background: rgba(239, 83, 80, 0.15);
+      color: #ef5350;
+      border: 1.5px solid #ef5350;
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.78rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .hero-detail__fire-btn:hover { background: #ef5350; color: #1a1420; }
+    .hero-detail__fire-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     /* Phase 1D-29: ヒーロー詳細ポップアップ — クイックアクション (閉じるの左) */
     .hero-detail__footer {
       display: flex; align-items: center; gap: 0.5rem;
@@ -1716,6 +1756,118 @@
       font-size: 0.7rem; color: var(--muted);
       align-items: center;
     }
+    /* Phase 2B → β2-3 part 2: アクティブ効果ボタンは header に移動。 旧 workshop 用は隠す */
+    .workshop__active-effects-btn { display: none !important; }
+    /* Phase β2-3 part 2: header 内のアクティブ効果ボタン */
+    .factory-header__effects-btn {
+      background: rgba(196,163,90,0.12);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0 0.45rem;
+      font-size: 0.78rem; font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+    .factory-header__effects-btn.hidden { display: none !important; }
+    .factory-header__effects-btn:hover { background: var(--accent); color: #1a1420; }
+    /* Phase 2B: アクティブ効果モーダル */
+    .active-effects-modal {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .active-effects-modal.hidden { display: none !important; }
+    .active-effects-modal__card {
+      max-width: 480px; width: 100%;
+      max-height: 85vh; overflow-y: auto;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .active-effects-modal__head {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .active-effects-modal__title {
+      margin: 0; flex: 1;
+      font-size: 1.05rem; color: var(--accent);
+    }
+    .active-effects-modal__close-x {
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      width: 28px; height: 28px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .active-effects-modal__close-x:hover { color: var(--accent); border-color: var(--accent); }
+    .active-effects-modal__lead {
+      margin: 0; text-align: center;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .active-effects-modal__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column;
+      gap: 0.3rem;
+    }
+    .active-effects-modal__list li {
+      display: flex; justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.6rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .active-effects-modal__list li strong {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .active-effects-modal__empty {
+      text-align: center; color: var(--muted);
+      font-size: 0.85rem;
+      padding: 1rem 0.5rem;
+    }
+    .active-effects-modal__empty.hidden { display: none; }
+
+    /* Phase 2A: 倉庫アイテムにスキル表示 */
+    .warehouse-item__skill {
+      grid-column: 1 / -1;
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      padding: 0.15rem 0.3rem;
+      background: rgba(196,163,90,0.08);
+      border-radius: 3px;
+      margin-top: 0.2rem;
+    }
+    /* Phase 2A: クラフト完成画面のスキル */
+    .craft-done__skill {
+      margin: 0.4rem 0 0;
+      padding: 0.45rem 0.6rem;
+      background: rgba(196,163,90,0.1);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--accent);
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+    .craft-done__skill.hidden { display: none; }
+    /* Phase 2A: クラフト確認画面のスキルプレビュー */
+    .craft-confirm__skill-preview {
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      margin-top: 0.15rem;
+    }
+    .craft-confirm__skill-preview.hidden { display: none; }
+
     /* Phase 1D-44: コンテスト受賞バッジ */
     .warehouse-item__contest {
       display: inline-flex; align-items: center; gap: 0.15rem;
@@ -1892,6 +2044,20 @@
     .quest-overlay__node {
       font-weight: 800;
       font-size: 0.95rem;
+    }
+    /* Phase β2-3 part 2: 並行クエスト「他N件」 補足バッジ */
+    .quest-overlay__other {
+      display: inline-block;
+      margin-left: 0.4rem;
+      padding: 0.05rem 0.35rem;
+      background: rgba(196,163,90,0.25);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      vertical-align: middle;
     }
     .quest-overlay__status {
       font-size: 0.78rem;
@@ -2439,7 +2605,8 @@
     }
     /* Phase 1D-46: ランキング閲覧モーダル */
     .ranking-viewer {
-      position: fixed; inset: 0; z-index: 320;
+      /* Phase β2-3 part 2: title-screen (z=1000) 上に表示するため z=1100 へ */
+      position: fixed; inset: 0; z-index: 1100;
       background: rgba(15, 12, 22, 0.94);
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
@@ -3550,6 +3717,27 @@
     .quest-start-btn:disabled {
       opacity: 0.45; cursor: not-allowed;
     }
+    /* Phase β2-3 part 2: 2 ボタン出発レイアウト */
+    .quest-start-row {
+      display: flex; gap: 0.5rem;
+    }
+    .quest-start-row .quest-start-btn {
+      flex: 1;
+      font-size: 0.92rem;
+      padding: 0.6rem;
+    }
+    .quest-start-btn--rest {
+      background: rgba(196,163,90,0.18) !important;
+      color: var(--accent) !important;
+      border: 1.5px solid var(--accent) !important;
+    }
+    .quest-start-btn--rest.hidden { display: none !important; }
+    .quest-detail-panel__rate-full {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-left: 0.3rem;
+      letter-spacing: 0.02em;
+    }
 
     /* Quest result modal */
     .quest-result {
@@ -3647,6 +3835,192 @@
     .quest-result__back:hover, .quest-result__close:hover {
       border-color: var(--accent);
     }
+
+    /* Phase β2-3 part 2: 年俸支払いレポート popup */
+    .salary-report {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.94);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .salary-report.hidden { display: none !important; }
+    .salary-report__card {
+      max-width: 520px; width: 100%;
+      max-height: 90vh; overflow-y: auto;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .salary-report__head {
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .salary-report__title {
+      margin: 0; font-size: 1.1rem; color: var(--accent);
+      letter-spacing: 0.04em; text-align: center;
+    }
+    .salary-report__summary {
+      margin: 0; font-size: 0.85rem;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .salary-report__summary strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .salary-report__list-wrap {
+      max-height: 50vh; overflow-y: auto;
+    }
+    .salary-report__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.3rem;
+    }
+    .salary-report__row {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 0.5rem; align-items: center;
+      padding: 0.4rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+    }
+    .salary-report__portrait {
+      width: 40px; height: 40px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .salary-report__main {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+    }
+    .salary-report__name {
+      font-size: 0.88rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .salary-report__meta {
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .salary-report__salary {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.92rem;
+    }
+    .salary-report__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+
+    /* Phase β2-3 part 2: 行商人マルコ・ポーロ modal */
+    .marco-polo {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .marco-polo.hidden { display: none !important; }
+    .marco-polo__card {
+      max-width: 560px; width: 100%;
+      max-height: 92vh; overflow-y: auto;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 0.9rem 1rem 0.8rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .marco-polo__head {
+      display: grid; grid-template-columns: 64px 1fr; gap: 0.7rem;
+      align-items: center;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .marco-polo__portrait {
+      width: 64px; height: 64px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 6px;
+      border: 1.5px solid var(--accent);
+    }
+    .marco-polo__title {
+      margin: 0; font-size: 1.05rem; color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .marco-polo__greeting {
+      margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--muted);
+      line-height: 1.4;
+    }
+    .marco-polo__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.35rem;
+      max-height: 60vh; overflow-y: auto;
+    }
+    .marco-polo__item {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 0.5rem; align-items: center;
+      padding: 0.45rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+    }
+    .marco-polo__icon {
+      width: 40px; height: 40px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .marco-polo__main {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+    }
+    .marco-polo__name {
+      font-size: 0.88rem; font-weight: 700;
+    }
+    .marco-polo__desc {
+      font-size: 0.7rem; color: var(--muted);
+      line-height: 1.3;
+      white-space: normal;
+    }
+    .marco-polo__buy {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      align-items: flex-end;
+    }
+    .marco-polo__price {
+      display: flex; align-items: baseline; gap: 0.3rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .marco-polo__price-old {
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-decoration: line-through;
+    }
+    .marco-polo__price-new {
+      color: var(--accent);
+      font-size: 0.92rem;
+    }
+    .marco-polo__btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer;
+    }
+    .marco-polo__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .marco-polo__close {
+      align-self: stretch;
+      appearance: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-weight: 700; font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+    }
+    .marco-polo__close:hover { background: var(--accent); color: #1a1420; }
 
     /* Phase 1D-44: 12 月エクステンションコンテスト結果モーダル */
     .contest-modal {
@@ -5354,6 +5728,112 @@
       color: var(--muted);
       font-size: 0.85rem;
     }
+    /* Phase β2-2: ヒーロー管理 タブ切替 */
+    .hero-management__tabs {
+      display: flex; gap: 0.4rem;
+      padding: 0.5rem 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-management__tab {
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .hero-management__tab--active {
+      background: var(--panel);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .hero-management__panel.hidden { display: none !important; }
+    .hero-management__bridge-intro,
+    .hero-management__fire-intro {
+      margin: 0 0 0.7rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .hero-management__bridge-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.55rem 1.2rem;
+      font-weight: 800; font-size: 0.9rem;
+      cursor: pointer;
+    }
+    /* 解雇リスト */
+    .hero-fire-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.55rem;
+    }
+    .hero-fire-row {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .hero-fire-row__portrait {
+      width: 48px; height: 48px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .hero-fire-row__main {
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .hero-fire-row__name {
+      font-weight: 700; font-size: 0.92rem;
+    }
+    .hero-fire-row__meta {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .hero-fire-row__salary {
+      font-size: 0.72rem; color: var(--accent);
+    }
+    .hero-fire-row__btn {
+      appearance: none;
+      background: rgba(239, 83, 80, 0.15);
+      color: #ef5350;
+      border: 1.5px solid #ef5350;
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer;
+    }
+    .hero-fire-row__btn:hover { background: #ef5350; color: #1a1420; }
+    .hero-fire-row__btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* Phase β2-2: 強化画面のソート/フィルタコントロール */
+    .hero-enhance__controls {
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+      margin-bottom: 0.6rem;
+      padding: 0.45rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .hero-enhance__ctrl {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      font-size: 0.7rem; color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .hero-enhance__ctrl select {
+      appearance: none;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
     .hero-enhance-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -5531,8 +6011,8 @@
   <div id="titleView" class="title-screen" role="button" aria-label="Start the game" data-i18n-attr-aria-label="title.aria" tabindex="0">
     <img class="title-logo" src="./Image/Factory/title-logo.jpg" alt="MyCryptoFactory" />
     <div class="title-alpha-stack">
-      <span class="alpha-badge" data-i18n="alpha.badge">β 版 / BETA</span>
-      <p class="title-alpha-note" data-i18n="alpha.note">β 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。</p>
+      <span class="alpha-badge" data-i18n="alpha.badge">β2 版 / BETA2</span>
+      <p class="title-alpha-note" data-i18n="alpha.note">β2 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。</p>
     </div>
     <p class="title-press" data-i18n="title.press">Press to Start</p>
     <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
@@ -5555,7 +6035,7 @@
       <!-- Phase β (1D-45 改): ホームでも β 版であることが分かるよう header 先頭に
            小さめのバッジを置く (= 旧 fixed top-left は date と被るため改善)。
            1D-39 で導入した classname (.alpha-badge) は安定のため据置。 -->
-      <span class="alpha-badge alpha-badge--header" data-i18n="alpha.badge">β 版 / BETA</span>
+      <span class="alpha-badge alpha-badge--header" data-i18n="alpha.badge">β2 版 / BETA2</span>
       <div class="factory-header__date">
         <span id="factoryDate">2018年 12月 1週</span>
         <svg class="week-gauge" viewBox="0 0 32 32" aria-hidden="true">
@@ -5567,6 +6047,10 @@
       </div>
       <span class="factory-header__factory-lv" id="factoryLvText" title="工房レベル"></span>
       <div class="factory-header__spacer"></div>
+      <!-- Phase β2-3 part 2: アクティブ効果ボタン (= 旧 workshop__active-effects-btn を header へ移動) -->
+      <button type="button" class="factory-header__btn factory-header__effects-btn hidden" id="headerActiveEffectsBtn" title="アクティブ効果">
+        ✨ <span id="headerActiveEffectsCount">0</span>
+      </button>
       <div class="factory-header__gum" title="GUM">
         <img class="factory-header__gum-icon" src="https://www.mycryptoheroes.net/_nuxt/img/icon_gum.cd9a4ae.png" alt="GUM" />
         <span id="factoryGum">500</span>
@@ -5574,6 +6058,8 @@
       <button type="button" class="factory-header__btn factory-header__mai-btn" data-mai-help-btn title="マイのアドバイス">
         <img src="./Image/Factory/MAI_SD.png" alt="マイ" />
       </button>
+      <!-- Phase β2-3 part 2: ホームヘッダーからもランキング画面を開けるように -->
+      <button type="button" class="factory-header__btn" id="headerRankingBtn" title="ランキング">🏆</button>
       <button type="button" class="factory-header__btn" id="btnLangToggle" data-i18n-attr-title="lang.toggle.label" title="言語 / Language">JP</button>
       <button type="button" class="factory-header__btn" id="btnHelpOpen" data-i18n-attr-title="res.help.title" title="ヘルプ">?</button>
     </div>
@@ -5605,7 +6091,24 @@
         </div>
         <!-- 配属ヒーロー sprite (クラフト中のみ JS で挿入) -->
         <div class="workshop__heroes" id="workshopHeroes"></div>
+        <!-- Phase 2B: 倉庫スキルから発動中のアクティブ効果一覧 -->
+        <button type="button" class="workshop__active-effects-btn hidden" id="workshopActiveEffectsBtn" title="アクティブ効果">
+          ✨ <span id="workshopActiveEffectsCount">0</span>
+        </button>
         <button type="button" class="workshop__menu-btn" id="btnMenuOpen" data-i18n="menu.open">MENU</button>
+      </div>
+
+      <!-- Phase 2B: アクティブ効果モーダル (倉庫スキル合算表示) -->
+      <div class="active-effects-modal hidden" id="activeEffectsModal" role="dialog" aria-modal="true">
+        <div class="active-effects-modal__card">
+          <header class="active-effects-modal__head">
+            <h2 class="active-effects-modal__title" data-i18n="skill.active.title">✨ アクティブ効果</h2>
+            <button type="button" class="active-effects-modal__close-x" id="activeEffectsClose" aria-label="Close">×</button>
+          </header>
+          <p class="active-effects-modal__lead" data-i18n="skill.active.lead">倉庫のエクステンションから発動中の効果合計</p>
+          <ul class="active-effects-modal__list" id="activeEffectsList"></ul>
+          <p class="active-effects-modal__empty hidden" id="activeEffectsEmpty" data-i18n="skill.active.empty">倉庫にエクステンションが無いか、効果がまだ発動していません。</p>
+        </div>
       </div>
 
       <!-- Progress area: 3 カード (Craft / Quest / Market) の Carousel -->
@@ -5614,6 +6117,12 @@
           <!-- Card 1: Craft (= 既存 order-panel をカード内に保持。データ差し替え無し) -->
           <section class="progress-card" data-card-id="craft">
             <h3 class="progress-card__title" data-i18n="progress.craft">Craft</h3>
+            <!-- Phase β2-3: 並行スロットページャ (= 工房 Lv 2+ で 2 スロット以上のとき表示) -->
+            <div class="order-pager hidden" id="orderPager">
+              <button type="button" class="order-pager__btn" id="orderPagerPrev" aria-label="Prev">◀</button>
+              <span class="order-pager__label" id="orderPagerLabel">1 / 1</span>
+              <button type="button" class="order-pager__btn" id="orderPagerNext" aria-label="Next">▶</button>
+            </div>
             <div class="order-panel order-panel--empty" id="orderPanel">
               <div class="order-panel__top">
                 <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
@@ -5633,7 +6142,13 @@
           </section>
 
           <!-- Card 2: Quest -->
-          <section class="progress-card" data-card-id="quest">
+          <section class="progress-card" data-card-id="quest" style="position:relative;">
+            <!-- Phase β2-3 part 2: 並行クエストスロットページャ -->
+            <div class="order-pager hidden" id="questPager">
+              <button type="button" class="order-pager__btn" id="questPagerPrev" aria-label="Prev">◀</button>
+              <span class="order-pager__label" id="questPagerLabel">1 / 1</span>
+              <button type="button" class="order-pager__btn" id="questPagerNext" aria-label="Next">▶</button>
+            </div>
             <h3 class="progress-card__title" data-i18n="progress.quest">Quest</h3>
             <div class="progress-card__body" id="questCard"></div>
           </section>
@@ -5851,6 +6366,8 @@
           <button type="button" class="hero-detail__action" data-quick="rest"  data-i18n="hero.quick.rest">休憩</button>
           <button type="button" class="hero-detail__action" data-quick="trade" data-i18n="hero.quick.trade">取引</button>
         </div>
+        <!-- Phase β2-2: 解雇ボタン (= 能動的にヒーローをリストラ) -->
+        <button type="button" class="hero-detail__fire-btn" id="heroDetailFireBtn" data-i18n="fire.fireBtn">解雇する</button>
         <button type="button" class="hero-detail__close" id="heroDetailClose" data-i18n="btn.close">閉じる</button>
       </div>
     </div>
@@ -5882,6 +6399,8 @@
           <p class="craft-done__mai-says" id="craftDoneMaiSays">—</p>
         </div>
       </div>
+      <!-- Phase 2A: 完成 ext のシリーズ共通スキル表示 -->
+      <p class="craft-done__skill hidden" id="craftDoneSkill"></p>
 
       <button type="button" class="craft-done__close" id="craftDoneClose" data-i18n="comp.toMarket">OK</button>
     </div>
@@ -5964,7 +6483,11 @@
         </section>
       </div>
 
-      <button type="button" class="quest-start-btn" id="questStartBtn" data-i18n="quest.start" disabled>出発</button>
+      <!-- Phase β2-3 part 2: 出発ボタン 2 種類 (体力満タンにして出発 / すぐに出発) -->
+      <div class="quest-start-row">
+        <button type="button" class="quest-start-btn quest-start-btn--rest hidden" id="questStartRestBtn" disabled>体力満タンにして出発</button>
+        <button type="button" class="quest-start-btn" id="questStartBtn" disabled>すぐに出発</button>
+      </div>
     </div>
   </div>
 
@@ -5979,6 +6502,35 @@
 
   <!-- Phase 1D-44: 紙吹雪レイヤー (傑作査定 / 大賞受賞時にスポーン) -->
   <div class="confetti-layer hidden" id="confettiLayer" aria-hidden="true"></div>
+
+  <!-- Phase β2-3 part 2: 年俸支払いレポート popup -->
+  <div class="salary-report hidden" id="salaryReportModal" role="dialog" aria-modal="true" aria-labelledby="salaryReportTitle">
+    <div class="salary-report__card">
+      <header class="salary-report__head">
+        <h2 class="salary-report__title" id="salaryReportTitle">年俸支払いレポート</h2>
+      </header>
+      <p class="salary-report__summary" id="salaryReportSummary"></p>
+      <div class="salary-report__list-wrap">
+        <ol class="salary-report__list" id="salaryReportList"></ol>
+      </div>
+      <button type="button" class="salary-report__close" id="salaryReportClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Phase β2-3 part 2: 5 月行商人マルコ・ポーロ訪問 modal -->
+  <div class="marco-polo hidden" id="marcoPoloModal" role="dialog" aria-modal="true" aria-labelledby="marcoPoloTitle">
+    <div class="marco-polo__card">
+      <header class="marco-polo__head">
+        <img class="marco-polo__portrait" src="https://raw.githubusercontent.com/bearko/mycryptoheroes/main/Image/Heroes/4008.png" alt="Marco Polo" onerror="this.style.opacity='0.2'" />
+        <div class="marco-polo__head-text">
+          <h2 class="marco-polo__title" id="marcoPoloTitle">行商人マルコ・ポーロの訪問</h2>
+          <p class="marco-polo__greeting" id="marcoPoloGreeting">やぁ！世界各地から珍品を運んできましたよ。今日は半額でお譲りします！</p>
+        </div>
+      </header>
+      <ul class="marco-polo__list" id="marcoPoloList"></ul>
+      <button type="button" class="marco-polo__close" id="marcoPoloClose" data-i18n="marcoPolo.bye">ありがとう、また来てね</button>
+    </div>
+  </div>
 
   <!-- Phase 1D-44: 12 月エクステンションコンテスト結果モーダル -->
   <div class="contest-modal hidden" id="contestModal" role="dialog" aria-modal="true" aria-labelledby="contestModalTitle">
@@ -6133,16 +6685,63 @@
     </div>
   </div>
 
-  <!-- Phase 1D-20: 強化ビュー (ヒーローのランクアップ) -->
+  <!-- Phase 1D-20 → β2-2: ヒーロー管理ビュー (強化 / 雇用 / 解雇 タブ) -->
   <div class="hero-view hidden" id="heroEnhanceView" role="dialog" aria-labelledby="heroEnhanceTitle">
     <div class="hero-view__header">
-      <h2 class="hero-view__title" id="heroEnhanceTitle" data-i18n="menu.hero.enhance">強化</h2>
+      <h2 class="hero-view__title" id="heroEnhanceTitle" data-i18n="hero.management.title">ヒーロー管理</h2>
       <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button>
       <button type="button" class="hero-view__back" id="heroEnhanceBack" data-i18n="btn.back">← 戻る</button>
     </div>
+    <!-- Phase β2-2: タブ切替 (強化 / 雇用 / 解雇) -->
+    <div class="hero-management__tabs">
+      <button type="button" class="hero-management__tab hero-management__tab--active" data-mgmt-tab="enhance" data-i18n="menu.hero.enhance">強化</button>
+      <button type="button" class="hero-management__tab" data-mgmt-tab="hire" data-i18n="menu.hero.hire">雇用</button>
+      <button type="button" class="hero-management__tab" data-mgmt-tab="fire" data-i18n="hero.management.tab.fire">解雇</button>
+    </div>
     <div class="hero-view__body">
+      <!-- 強化 panel -->
+      <div class="hero-management__panel" data-mgmt-panel="enhance">
       <p class="hero-enhance__intro" data-i18n="enhance.intro">GUM を支払ってヒーローのランクを上げよう (☆☆☆☆☆ → ★★★★★)</p>
+      <!-- Phase β2-2: ソート + フィルタ -->
+      <div class="hero-enhance__controls">
+        <label class="hero-enhance__ctrl">
+          <span data-i18n="enhance.filter.rarity">レアリティ</span>
+          <select id="heroEnhanceFilterRarity">
+            <option value="all" data-i18n="enhance.filter.all">すべて</option>
+            <option value="common"    data-i18n="rarity.common">Common</option>
+            <option value="uncommon"  data-i18n="rarity.uncommon">Uncommon</option>
+            <option value="rare"      data-i18n="rarity.rare">Rare</option>
+            <option value="epic"      data-i18n="rarity.epic">Epic</option>
+            <option value="legendary" data-i18n="rarity.legendary">Legendary</option>
+          </select>
+        </label>
+        <label class="hero-enhance__ctrl">
+          <span data-i18n="enhance.sort.label">並び替え</span>
+          <select id="heroEnhanceSortKey">
+            <option value="rankDesc"     data-i18n="enhance.sort.rankDesc">ランク (高い順)</option>
+            <option value="paramDesc"    data-i18n="enhance.sort.paramDesc">パラメータ合計 (高い順)</option>
+            <option value="craftDesc"    data-i18n="enhance.sort.craftDesc">クラフト Lv (高い順)</option>
+            <option value="questDesc"    data-i18n="enhance.sort.questDesc">クエスト Lv (高い順)</option>
+            <option value="merchantDesc" data-i18n="enhance.sort.merchantDesc">マーチャント Lv (高い順)</option>
+            <option value="salaryDesc"   data-i18n="enhance.sort.salaryDesc">年俸 (高い順)</option>
+            <option value="salaryAsc"    data-i18n="enhance.sort.salaryAsc">年俸 (安い順)</option>
+          </select>
+        </label>
+      </div>
       <div class="hero-enhance-list" id="heroEnhanceList"></div>
+      </div><!-- 強化 panel end -->
+
+      <!-- 雇用 panel: 既存の market view 雇用タブへブリッジ (= MVP) -->
+      <div class="hero-management__panel hidden" data-mgmt-panel="hire">
+        <p class="hero-management__bridge-intro" data-i18n="hero.management.hire.intro">採用プランの選択 / 候補確認はマーケットの雇用タブで行います。</p>
+        <button type="button" class="hero-management__bridge-btn" id="heroMgmtOpenMarketHire" data-i18n="hero.management.hire.openBtn">雇用タブを開く</button>
+      </div>
+
+      <!-- 解雇 panel: ヒーロー一覧 + 詳細的な情報 + 解雇ボタン -->
+      <div class="hero-management__panel hidden" data-mgmt-panel="fire">
+        <p class="hero-management__fire-intro" data-i18n="hero.management.fire.intro">能動的にヒーローを解雇できます。 進行中作業のヒーローは解雇できません。</p>
+        <div class="hero-fire-list" id="heroFireList"></div>
+      </div>
     </div>
   </div>
 
@@ -6346,6 +6945,8 @@
                 <span class="craft-confirm__ext-name" id="confirmExtName">—</span>
                 <span class="craft-confirm__ext-series" id="confirmExtSeries">—</span>
                 <span class="craft-confirm__duration" id="confirmDuration">—</span>
+                <!-- Phase 2A: スキルプレビュー (= 完成時に付与される効果の見込み) -->
+                <span class="craft-confirm__skill-preview hidden" id="confirmSkillPreview"></span>
               </div>
             </div>
 
@@ -6391,14 +6992,14 @@
   <div id="helpOverlay" class="hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <div class="help-card">
       <h2 id="helpTitle" data-i18n="help.title">ヘルプ</h2>
-      <p data-i18n="help.body">マイクリ工房 (MyCryptoFactory) を 8 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう。</p>
+      <p data-i18n="help.body">マイクリ工房 (MyCryptoFactory) を 10 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう (引退エンディングは 2028 年 12 月、その後も自由プレイ可)。</p>
       <p data-i18n="help.timeNote">ホーム画面で待機している間のみ時間が進行します（1 週間 = 7 秒）。メニュー / 機能画面を開いている間は時間が止まります。</p>
       <button type="button" id="btnHelpClose" data-i18n="deck.modal.close">閉じる</button>
     </div>
   </div>
 
   <footer>
-    <span class="footer-meta" data-i18n="footer.meta">MyCryptoFactory β version · 非営利のファン制作</span>
+    <span class="footer-meta" data-i18n="footer.meta">MyCryptoFactory β2 version · 非営利のファン制作</span>
     <br />
     <span class="footer-credit" data-i18n-html="footer.credit.full">
       キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は

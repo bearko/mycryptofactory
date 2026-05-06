@@ -120,6 +120,14 @@ import {
   fetchFactoryRanking,
 } from "./factory-ranking-client.js";
 import {
+  resolveExtSkill,
+  aggregateEffectsFromResolved,
+  formatSkillSummary,
+  formatEffectText,
+  EFFECT_DEFS,
+  CATEGORY_LABEL_KEY,
+} from "./factory-ext-skill.js";
+import {
   HIRE_PLANS,
   PLAN_BY_ID,
   canBeRecruiter,
@@ -138,6 +146,7 @@ import {
   QUEST_DIFFICULTY,
   QUEST_DURATION_WEEKS,
   QUEST_BASE_LEVEL,
+  baseLvForNode,
   QUEST_DIFFICULTY_LABEL,
   NORMAL_NODES,
   LAND_NODES,
@@ -168,8 +177,20 @@ const state = {
   gum: 1000,
   // Active craft (Phase 1B). Set when player taps クラフト開始.
   // { extId, team: [heroId|null × 5], targets: {...}, progress: {...},
-  //   recipe: [{id, qty}], startedAtWeek: <int>, durationWeeks: <int> }
+  //   recipe: [{id, qty}], startedAtWeek: <int>, durationWeeks: <int>,
+  //   slotIdx: 0 (= Phase β2-3 で追加。 並行スロット index) }
   activeCraft: null,
+  /** Phase β2-3: 並行クラフトスロット (slot 1, 2)。 工房 Lv 2 で slot 1
+   *  が解放、 Lv 3 で slot 2 が解放。 slot 0 は既存の state.activeCraft。
+   *  各要素は activeCraft と同じ shape + slotIdx スタンプ。 */
+  activeCraftExtra: /** @type {Array<object|null>} */ ([null, null]),
+  /** Phase β2-3: 並行クラフトの完成画面待ち (slot 1, 2 用)。 ただし完成画面の
+   *  modal 表示は同時 1 件のみのため、 slot 0 が完成画面表示中は他スロットの
+   *  triggerCraftCompletion は次 tick まで待機する。 */
+  pendingCompletionExtra: /** @type {Array<object|null>} */ ([null, null]),
+  pendingAppraisalExtra:  /** @type {Array<object|null>} */ ([null, null]),
+  /** Phase β2-3: 進捗カードでどのスロットを表示中か (= ページ送り index) */
+  craftViewSlotIdx: 0,
   // Pause flags (any !==0 means time is paused)
   pauseFlags: 0,
   // Phase 1D-9: 設定 > 時間2倍速 トグル (1 tick = 500ms)
@@ -233,6 +254,11 @@ const state = {
   pendingAppraisal: /** @type {object | null} */ (null),
   /** Phase 1D-44 12 月コンテスト結果の表示中データ (4 部門 winner + 大賞 + 賞金合計) */
   pendingContest: /** @type {object | null} */ (null),
+  /** Phase β2-3 part 2 年俸支払いレポート popup の表示中データ */
+  pendingSalaryReport: /** @type {object | null} */ (null),
+  /** Phase β2-3 part 2 行商人マルコ・ポーロ訪問 popup の表示中データ
+   *  { year, stock: { [itemId]: 1 } (= 全 1 在庫), purchased } */
+  pendingMarcoPolo: /** @type {object | null} */ (null),
   /** Phase 1D-45 打ち直しクラフトの対象倉庫 index (= state.warehouse[idx])。
    *  非 null のときは pickExtForConfirm 経由ではなく remake 専用フローで起動。 */
   craftPickedRemakeIdx: /** @type {number | null} */ (null),
@@ -259,10 +285,17 @@ const state = {
   /** Phase 1D-4 出品 modal の現在ピック中 ext (warehouse index) */
   sellPickedIdx: -1,
   /** Phase 1C-1 クエスト関連 */
-  questTeam: /** @type {Array<number|null>} */ ([null, null, null]),  // 3 枠
+  questTeam: /** @type {Array<number|null>} */ ([null, null, null]),  // 3 枠 (= 編成フォーム)
   activeQuest: /** @type {object | null} */ (null),
   /**  { nodeId, difficulty, team:[heroId|null × 3], successRate,
-   *     startedAtTick, durationWeeks, progress: 0..1 } */
+   *     startedAtTick, durationWeeks, progress: 0..1, slotIdx (β2-3p2) } */
+  /** Phase β2-3 part 2: クエスト並行スロット (slot 1, 2)。 工房 Lv 2 で slot 1
+   *  が解放、 Lv 3 で slot 2 が解放。 slot 0 は既存の state.activeQuest。 */
+  activeQuestExtra: /** @type {Array<object|null>} */ ([null, null]),
+  /** Phase β2-3 part 2: クエスト結果待ち (slot 1, 2 用)。 結果 modal は同時 1 件のみ。 */
+  pendingQuestResultExtra: /** @type {Array<object|null>} */ ([null, null]),
+  /** Phase β2-3 part 2: 進捗カード / クエストオーバーレイで表示中のスロット */
+  questViewSlotIdx: 0,
   questPickedNodeId: null,
   questPickedDifficulty: "easy",
   /** Phase 1D-12: ヒーロー画面 (= 編成 view) で選択中のタブ */
@@ -463,27 +496,31 @@ function factoryLvUpConditions(targetLv) {
 
 /** Lv N → N+1 で解放されること */
 function factoryLvUpUnlocks(targetLv) {
+  // Phase β2-3 part 2: 並行クラフト/クエスト解禁を明記 (= ユーザー要望)
+  // ヒーロー上限は β2-2 で × 1.5 に拡張済 (= 7/14/17/18/23)
   if (targetLv === 2) return [
     "Uncommon エクステンションのレシピが解放対象に",
-    "ヒーロー上限 7 → 9 名",
+    "ヒーロー上限 7 → 14 名",
     "ドラエグプラン (Uncommon〜Rare 雇用) 解禁",
+    "クラフト・クエストが 2 並行で実行可能に",
   ];
   if (targetLv === 3) return [
     "Rare エクステンションのレシピが解放対象に",
-    "ヒーロー上限 9 → 11 名",
+    "ヒーロー上限 14 → 17 名",
     "中級クエスト解禁",
     "ベビドラプラン (Rare〜Epic 雇用) 解禁",
+    "クラフト・クエストが 3 並行で実行可能に",
   ];
   if (targetLv === 4) return [
     "Epic エクステンションのレシピが解放対象に",
-    "ヒーロー上限 11 → 12 名",
+    "ヒーロー上限 17 → 18 名",
     "上級クエスト解禁",
     "ブルドラプラン (Epic〜Legendary 雇用) 解禁",
     "デュエルモード解禁 (将来実装)",
   ];
   if (targetLv === 5) return [
     "Legendary エクステンションのレシピが解放対象に",
-    "ヒーロー上限 12 → 15 名",
+    "ヒーロー上限 18 → 23 名",
     "レッドラプラン (Legendary 雇用) 解禁",
   ];
   return [];
@@ -1348,6 +1385,15 @@ function maybeTriggerMonthlyEvent() {
       setTimeout(triggerRecruitmentEvent, 200);
     }
   }
+  // Phase β2-3 part 2: 5 月 3 週 → 行商人マルコ・ポーロ訪問 (= 半額ショップ、
+  //   全アイテム在庫 1。 ユーザー要望)。 採用イベントと被らない週で発火。
+  if (state.month === 5 && state.week === 3) {
+    const key = `${state.year}-marcopolo`;
+    if (!state.monthlyEventsFired.has(key)) {
+      state.monthlyEventsFired.add(key);
+      setTimeout(triggerMarcoPoloVisit, 200);
+    }
+  }
   // Phase 1D-44: 12/1 直前 (= 11 月 4 週終了) の検知 → エクステンションコンテスト
   //   2 年目から (= startY + 2 以降) 開催。 1 周目 12 月は告知だけにしたいが、
   //   今は単純に skip。 startY 不明のときは保守的に開催 (= 旧 save 互換)。
@@ -1427,63 +1473,115 @@ function triggerAnnualSalary() {
   if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) {
     return;
   }
-  pauseTime();
-  const lang = getLang() === "en" ? "en" : "ja";
   const items = state.ownedHeroes.map(h => ({ hero: h, salary: annualSalaryOf(h) }));
   const total = items.reduce((s, it) => s + it.salary, 0);
   // GUM 控除 (= 赤字突入を許容)
   state.gum -= total;
-  // 内訳テキスト (上位 5 名 + 残りは集約)
+  // 高い順にソートして popup へ
   items.sort((a, b) => b.salary - a.salary);
-  const topN = 5;
-  const top = items.slice(0, topN);
-  const rest = items.slice(topN);
-  const restTotal = rest.reduce((s, it) => s + it.salary, 0);
-  const linesJa = [
-    "年度末にヒーローの給与を支払います。",
-    `${state.year} 年の年俸支払い時期です！`,
-    `総額 ${total.toLocaleString()} GUM をお支払いしました。`,
-  ];
-  if (top.length > 0) {
-    linesJa.push("内訳 (高い順):");
-    for (const it of top) {
-      const name = tHero(it.hero.heroId, it.hero.nameJa);
-      const stars = "★".repeat(it.hero.rank || 0);
-      linesJa.push(`  ${name}${stars ? " " + stars : ""} … ${it.salary.toLocaleString()} GUM`);
-    }
-    if (rest.length > 0) {
-      linesJa.push(`  他 ${rest.length} 名 … ${restTotal.toLocaleString()} GUM`);
-    }
-  }
-  if ((state.gum || 0) < 0) {
-    linesJa.push(`現在所持金: ${state.gum.toLocaleString()} GUM (赤字)。 クラフトしてエクステンションを売りましょう！`);
-  } else {
-    linesJa.push(`現在所持金: ${state.gum.toLocaleString()} GUM`);
-  }
-  const linesEn = lang === "en"
-    ? [
-        "Year-end. Time to pay your heroes' annual salaries.",
-        `${state.year} annual salary payment.`,
-        `Total: ${total.toLocaleString()} GUM paid.`,
-        ...top.map(it => `  ${tHero(it.hero.heroId, it.hero.nameEn || it.hero.nameJa)} ${"★".repeat(it.hero.rank || 0)} … ${it.salary.toLocaleString()}`),
-        rest.length > 0 ? `  +${rest.length} more … ${restTotal.toLocaleString()}` : "",
-        (state.gum || 0) < 0
-          ? `Current GUM: ${state.gum.toLocaleString()} (deficit). Sell extensions to recover!`
-          : `Current GUM: ${state.gum.toLocaleString()}`,
-      ].filter(Boolean)
-    : null;
-  const lines = lang === "en" ? linesEn : linesJa;
-  maiSaysSequence(lines, { onClose: () => {
+  // Phase β2-3 part 2: マイの逐次セリフから、 ヒーローアイコン + 名前 + 年俸の
+  //   一覧 popup に変更 (ユーザー要望: 「マイのメッセージを 1 つ 1 つ送るのが面倒
+  //   + 頭に入ってこない」)。
+  state.pendingSalaryReport = {
+    year: state.year,
+    items: items.map(it => ({
+      heroId: it.hero.heroId,
+      nameJa: it.hero.nameJa,
+      rarity: it.hero.rarity,
+      rank: it.hero.rank || 0,
+      salary: it.salary,
+      img: typeof it.hero.img === "function" ? it.hero.img() : "",
+    })),
+    total,
+    gumAfter: state.gum,
+  };
+  openSalaryReportModal();
+}
+
+/** Phase β2-3 part 2: 年俸支払いレポート popup */
+function openSalaryReportModal() {
+  const sr = state.pendingSalaryReport;
+  if (!sr) return;
+  const modal = $("salaryReportModal");
+  if (!modal) {
+    // フォールバック: modal が無ければ通知タイルだけ残す
+    state.notifications.push({
+      id: ++_notifId,
+      text: `${sr.year}年 年俸 ${sr.total.toLocaleString()} GUM 支払い`,
+      element: "garuda", value: 0, createdTick: state.tickCount,
+    });
+    state.pendingSalaryReport = null;
     renderHeader?.();
-    // 赤字突入を検知 (= マイの初回助言の予約フラグ等)
     checkDeficitTransition?.();
-  }});
+    return;
+  }
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  // タイトル + サマリ
+  const titleEl = $("salaryReportTitle");
+  const summaryEl = $("salaryReportSummary");
+  if (titleEl) titleEl.textContent = lang === "en"
+    ? `${sr.year} Annual Salary Report`
+    : `${sr.year} 年 年俸支払いレポート`;
+  if (summaryEl) {
+    const totalLine = lang === "en"
+      ? `Total paid: <strong>${sr.total.toLocaleString()} GUM</strong>`
+      : `総額 <strong>${sr.total.toLocaleString()} GUM</strong> をお支払いしました`;
+    const balanceLine = (sr.gumAfter || 0) < 0
+      ? (lang === "en"
+          ? `Balance: <strong style="color:var(--ifrit)">${sr.gumAfter.toLocaleString()} GUM (deficit)</strong>`
+          : `現在所持金: <strong style="color:var(--ifrit)">${sr.gumAfter.toLocaleString()} GUM (赤字)</strong>`)
+      : (lang === "en"
+          ? `Balance: <strong>${sr.gumAfter.toLocaleString()} GUM</strong>`
+          : `現在所持金: <strong>${sr.gumAfter.toLocaleString()} GUM</strong>`);
+    summaryEl.innerHTML = `${totalLine}<br>${balanceLine}`;
+  }
+  // ヒーロー一覧
+  const listEl = $("salaryReportList");
+  if (listEl) {
+    listEl.innerHTML = sr.items.map(it => {
+      const name = tHero(it.heroId, it.nameJa);
+      const stars = "★".repeat(it.rank) + "☆".repeat(5 - it.rank);
+      const rarLbl = ti18n("rarity." + it.rarity, it.rarity);
+      return `<li class="salary-report__row" data-rarity="${it.rarity}">
+        <img class="salary-report__portrait" src="${it.img}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="salary-report__main">
+          <span class="salary-report__name">${escapeHtml(name)}</span>
+          <span class="salary-report__meta">${escapeHtml(rarLbl)} · ${stars}</span>
+        </div>
+        <strong class="salary-report__salary">${it.salary.toLocaleString()} GUM</strong>
+      </li>`;
+    }).join("");
+  }
+  modal.classList.remove("hidden");
+}
+
+function closeSalaryReportModal() {
+  $("salaryReportModal")?.classList.add("hidden");
+  state.pendingSalaryReport = null;
+  resumeTime();
+  renderHeader?.();
+  // 赤字突入を検知 (= マイの初回助言の予約フラグ等)
+  checkDeficitTransition?.();
 }
 
 /** 4 月採用イベント: 手持ちヒーローの最高 rarity と同じ rarity で雇用候補を 1 set
  *  ノーコストで生成し、 既存の hire candidates 経路に流す。 */
 function triggerRecruitmentEvent() {
   if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) return;
+  // Phase β2 hotfix: 既存の雇用が進行中 (= プラン進行中 / 候補出揃い済) なら
+  //   今年の採用イベントは上書きせず skip。 通知のみ残す。
+  if (state.activeHire) {
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("recruit.notif.skipped", "今年の採用イベントは雇用進行中のため見送りました"),
+      element: "garuda",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+    return;
+  }
   // 手持ち最高 rarity 判定
   const ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
   let maxRarityIdx = 0;
@@ -1497,7 +1595,8 @@ function triggerRecruitmentEvent() {
   if (!plan) return;
   pauseTime();
   const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
-  const candidates = rollHireCandidates(plan, ownedIds);
+  // Phase 2B: hireRareBoost を rarityWeights に適用 (= 高レア出現率アップ)
+  const candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
   if (candidates.length === 0) {
     // 候補ゼロ → スキップ
     resumeTime();
@@ -1585,6 +1684,305 @@ function startRemakeFromWarehouse(idx) {
   openCraftView?.();
   setCraftScreen("confirm");
   renderConfirm?.();
+}
+
+/** ─── Phase β2-3: 並行クラフトスロット (slot 0..2) のヘルパー ─── */
+
+/** factoryLevel に応じた利用可能スロット数 (1/2/3)。 Lv4-5 も 3 で頭打ち。 */
+function parallelCraftSlotsFor(factoryLevel) {
+  if ((factoryLevel || 1) >= 3) return 3;
+  if ((factoryLevel || 1) >= 2) return 2;
+  return 1;
+}
+
+/** 指定スロットの activeCraft を取得 */
+function getActiveCraftSlot(idx) {
+  if (idx === 0) return state.activeCraft || null;
+  if (idx === 1 || idx === 2) {
+    return (state.activeCraftExtra && state.activeCraftExtra[idx - 1]) || null;
+  }
+  return null;
+}
+
+/** 指定スロットの activeCraft を設定 (null で空にする) */
+function setActiveCraftSlot(idx, ac) {
+  if (idx === 0) { state.activeCraft = ac; return; }
+  if (!Array.isArray(state.activeCraftExtra)) state.activeCraftExtra = [null, null];
+  if (idx === 1 || idx === 2) {
+    state.activeCraftExtra[idx - 1] = ac;
+  }
+}
+
+/** 利用可能スロット範囲 [0..cap-1] で iter する。 stop に true を返すと break。 */
+function forEachCraftSlot(fn) {
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  for (let i = 0; i < cap; i++) {
+    if (fn(i, getActiveCraftSlot(i)) === true) return;
+  }
+}
+
+/** 空きスロット index を返す (利用可能範囲内)。 全埋まりなら -1。 */
+function findEmptyCraftSlot() {
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  for (let i = 0; i < cap; i++) {
+    if (getActiveCraftSlot(i) == null) return i;
+  }
+  return -1;
+}
+
+/** 現在ある active craft の数 (= 進行中本数) */
+function activeCraftCount() {
+  let n = 0;
+  forEachCraftSlot((_, ac) => { if (ac) n++; });
+  return n;
+}
+
+/** 指定スロットの pendingCompletion を取得 / 設定 */
+function getPendingCompletionSlot(idx) {
+  if (idx === 0) return state.pendingCompletion || null;
+  return (state.pendingCompletionExtra && state.pendingCompletionExtra[idx - 1]) || null;
+}
+function setPendingCompletionSlot(idx, pc) {
+  if (idx === 0) { state.pendingCompletion = pc; return; }
+  if (!Array.isArray(state.pendingCompletionExtra)) state.pendingCompletionExtra = [null, null];
+  if (idx === 1 || idx === 2) state.pendingCompletionExtra[idx - 1] = pc;
+}
+
+/** ─── Phase β2-3 part 2: 並行クエストスロット (slot 0..2) のヘルパー ─── */
+
+function parallelQuestSlotsFor(factoryLevel) {
+  if ((factoryLevel || 1) >= 3) return 3;
+  if ((factoryLevel || 1) >= 2) return 2;
+  return 1;
+}
+function getActiveQuestSlot(idx) {
+  if (idx === 0) return state.activeQuest || null;
+  if (idx === 1 || idx === 2) {
+    return (state.activeQuestExtra && state.activeQuestExtra[idx - 1]) || null;
+  }
+  return null;
+}
+function setActiveQuestSlot(idx, aq) {
+  if (idx === 0) { state.activeQuest = aq; return; }
+  if (!Array.isArray(state.activeQuestExtra)) state.activeQuestExtra = [null, null];
+  if (idx === 1 || idx === 2) state.activeQuestExtra[idx - 1] = aq;
+}
+function forEachQuestSlot(fn) {
+  const cap = parallelQuestSlotsFor(state.factoryLevel || 1);
+  for (let i = 0; i < cap; i++) {
+    if (fn(i, getActiveQuestSlot(i)) === true) return;
+  }
+}
+function findEmptyQuestSlot() {
+  const cap = parallelQuestSlotsFor(state.factoryLevel || 1);
+  for (let i = 0; i < cap; i++) {
+    if (getActiveQuestSlot(i) == null) return i;
+  }
+  return -1;
+}
+function activeQuestCount() {
+  let n = 0;
+  forEachQuestSlot((_, aq) => { if (aq) n++; });
+  return n;
+}
+
+/** Phase β2-3: 表示中スロットを正規化 (= 範囲外 / 空スロットなら最初の active へ) */
+function normalizeCraftViewSlot() {
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  let idx = state.craftViewSlotIdx || 0;
+  if (idx < 0 || idx >= cap) idx = 0;
+  // active がある最初のスロットを優先表示 (空スロットでも index は許容して空表示にする)
+  // ただしユーザーがページ送りで明示的に空スロットを選ぶ可能性もあるためそのまま採用
+  state.craftViewSlotIdx = idx;
+  return idx;
+}
+
+/** ─── Phase 2A/2B: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
+
+/** Phase 2B: hireRareBoost を適用した plan の clone を返す。
+ *  rarity 重みを「rare 以上の重み × (1 + X%)」 に持ち上げる。 */
+function planWithHireRareBoost(plan) {
+  const pct = activeEffectPct("hireRareBoost");
+  if (!plan || pct <= 0) return plan;
+  const cloned = { ...plan, rarityWeights: { ...plan.rarityWeights } };
+  const m = 1 + pct / 100;
+  for (const r of ["rare", "epic", "legendary"]) {
+    if (cloned.rarityWeights[r] != null) {
+      cloned.rarityWeights[r] = cloned.rarityWeights[r] * m;
+    }
+  }
+  return cloned;
+}
+
+
+/** state.warehouse の全 ext から発動中の効果を集計し、 effect type → % map で返す。
+ *  打ち直し済み (rarityOverride あり) は昇格 rarity でスケール。
+ *  キャッシュは持たず毎回再集計するが、 ヒット数が小さいので tickActiveCraft の
+ *  per-tick 呼び出しでも問題ない (= 100 アイテム × 4 元素読み程度)。
+ */
+function getActiveSkillEffects() {
+  const wh = state.warehouse || [];
+  if (!Array.isArray(wh) || wh.length === 0) return {};
+  const skills = wh.map(w => {
+    if (!w) return null;
+    const ext = EXTENSION_BY_ID[String(w.extId)];
+    if (!ext) return null;
+    return resolveExtSkill(ext, w.rarityOverride || null);
+  });
+  return aggregateEffectsFromResolved(skills);
+}
+
+/** Phase 2A: ある effect type について現在のアクティブ % を返すショートカット */
+function activeEffectPct(type) {
+  const eff = getActiveSkillEffects();
+  return eff[type] || 0;
+}
+
+/** Phase 2B: アクティブ効果モーダルを開く + 描画。 工房画面のボタンから起動。 */
+function openActiveEffectsModal() {
+  const modal = $("activeEffectsModal");
+  const list  = $("activeEffectsList");
+  const empty = $("activeEffectsEmpty");
+  if (!modal || !list) return;
+  pauseTime();
+  const effects = getActiveSkillEffects();
+  const entries = Object.entries(effects).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    list.innerHTML = "";
+    empty?.classList.remove("hidden");
+  } else {
+    empty?.classList.add("hidden");
+    list.innerHTML = entries.map(([type, value]) => {
+      const def = EFFECT_DEFS[type];
+      const lbl = def ? ti18n(def.labelKey, type) : type;
+      return `<li>
+        <span>${escapeHtml(lbl)}</span>
+        <strong>+${value.toFixed(1)}%</strong>
+      </li>`;
+    }).join("");
+  }
+  modal.classList.remove("hidden");
+}
+function closeActiveEffectsModal() {
+  $("activeEffectsModal")?.classList.add("hidden");
+  resumeTime();
+}
+
+/** 工房画面右上のアクティブ効果ボタンの表示更新 (= 効果数バッジ)。
+ *  Phase β2-3 part 2: 旧 workshop 内ボタンに加えて、 ヘッダー (= GUM 左) の
+ *  ボタンも同時に更新。 旧ボタンは CSS で常に非表示にしたが、 互換のため処理は維持。 */
+function refreshActiveEffectsBtn() {
+  const n = Object.keys(getActiveSkillEffects()).length;
+  // 旧 workshop 内ボタン (= 互換)
+  const oldBtn   = $("workshopActiveEffectsBtn");
+  const oldCount = $("workshopActiveEffectsCount");
+  if (oldBtn && oldCount) {
+    oldCount.textContent = String(n);
+    oldBtn.classList.toggle("hidden", n === 0);
+  }
+  // ヘッダー内ボタン (= 新規メイン UI)
+  const hBtn   = $("headerActiveEffectsBtn");
+  const hCount = $("headerActiveEffectsCount");
+  if (hBtn && hCount) {
+    hCount.textContent = String(n);
+    hBtn.classList.toggle("hidden", n === 0);
+  }
+}
+
+/** ─── Phase β2-3 part 2: 5 月行商人「マルコ・ポーロ」 訪問 ─── */
+
+/** 行商人イベントのトリガー: 5 月 3 週に発火。 半額・在庫 1 のショップ modal を開く。 */
+function triggerMarcoPoloVisit() {
+  // 在庫マップを構築 (= 全アイテム在庫 1)
+  const stock = {};
+  for (const it of SHOP_ITEMS) stock[it.id] = 1;
+  state.pendingMarcoPolo = {
+    year: state.year,
+    stock,
+    purchased: 0,
+  };
+  openMarcoPoloModal();
+}
+
+function openMarcoPoloModal() {
+  const modal = $("marcoPoloModal");
+  if (!modal) return;
+  pauseTime();
+  modal.classList.remove("hidden");
+  renderMarcoPoloModal();
+}
+
+function renderMarcoPoloModal() {
+  const mp = state.pendingMarcoPolo;
+  if (!mp) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const titleEl = $("marcoPoloTitle");
+  const greetingEl = $("marcoPoloGreeting");
+  const listEl = $("marcoPoloList");
+  if (titleEl) titleEl.textContent = ti18n("marcoPolo.title", "行商人マルコ・ポーロの訪問");
+  if (greetingEl) greetingEl.textContent = ti18n("marcoPolo.greeting",
+    "やぁ！世界各地から珍品を運んできましたよ。今日は半額でお譲りします！");
+  if (!listEl) return;
+  listEl.innerHTML = SHOP_ITEMS.map(it => {
+    const view = shopItemViewData(it, state.factoryLevel);
+    const halfPrice = Math.max(1, Math.floor(view.price / 2));
+    const stockLeft = mp.stock[it.id] ?? 0;
+    const name = lang === "en" ? (it.nameEn || it.nameJa) : it.nameJa;
+    const desc = lang === "en" ? (it.descEn || "") : (it.descJa || "");
+    const descFilled = desc
+      .replace("{lv}", String(view.lv))
+      .replace("{gain}", String(view.gain));
+    const canAfford = state.gum >= halfPrice;
+    const inStock = stockLeft > 0;
+    const disabled = !canAfford || !inStock;
+    const btnLabel = !inStock
+      ? ti18n("marcoPolo.soldOut", "売切")
+      : !canAfford
+        ? ti18n("marcoPolo.noGum", "GUM 不足")
+        : ti18n("shop.buy", "購入");
+    return `<li class="marco-polo__item" data-rarity="${it.category}">
+      <img class="marco-polo__icon" src="${view.iconUrl}" alt="${escapeHtml(name)}" onerror="this.style.opacity='0.2'" />
+      <div class="marco-polo__main">
+        <span class="marco-polo__name">${escapeHtml(name)}</span>
+        <span class="marco-polo__desc">${escapeHtml(descFilled)}</span>
+      </div>
+      <div class="marco-polo__buy">
+        <span class="marco-polo__price">
+          <span class="marco-polo__price-old">${view.price.toLocaleString()}</span>
+          <strong class="marco-polo__price-new">${halfPrice.toLocaleString()} GUM</strong>
+        </span>
+        <button type="button" class="marco-polo__btn" data-marco-buy="${it.id}" ${disabled ? "disabled" : ""}>${escapeHtml(btnLabel)}</button>
+      </div>
+    </li>`;
+  }).join("");
+}
+
+function purchaseMarcoPoloItem(itemId) {
+  const mp = state.pendingMarcoPolo;
+  if (!mp) return;
+  const it = SHOP_ITEM_BY_ID[itemId];
+  if (!it) return;
+  const view = shopItemViewData(it, state.factoryLevel);
+  const halfPrice = Math.max(1, Math.floor(view.price / 2));
+  if ((mp.stock[itemId] ?? 0) <= 0) return;
+  if (state.gum < halfPrice) return;
+  // 効果適用 (= 通常ショップと同じ applyShopItemEffect 経由)
+  const fakeView = { ...view, price: halfPrice };
+  const ok = applyShopItemEffect(it, fakeView);
+  if (!ok) return;
+  state.gum -= halfPrice;
+  mp.stock[itemId] = (mp.stock[itemId] || 0) - 1;
+  mp.purchased++;
+  playSe?.("buttonClick");
+  renderHeader();
+  renderMarcoPoloModal();
+}
+
+function closeMarcoPoloModal() {
+  $("marcoPoloModal")?.classList.add("hidden");
+  state.pendingMarcoPolo = null;
+  resumeTime();
+  renderHeader?.();
 }
 
 /** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
@@ -2131,7 +2529,8 @@ function renderCommissionView() {
 /** picker で commission を選択 → 既存 craftView の confirm 画面に流し込む。
  *  craft.commissionId フラグを保持してその後の処理 (材料免除 / 完了処理) で参照。 */
 function pickCommission(commissionId) {
-  if (state.activeCraft) {
+  // Phase β2-3: 全スロット埋まりの場合のみ block
+  if (findEmptyCraftSlot() < 0) {
     maiSays("commission.busy");
     return;
   }
@@ -2156,14 +2555,14 @@ function onTick() {
   if (state.weekProgress >= SECONDS_PER_WEEK) {
     advanceWeek();
   }
-  // Phase 1B-2: クラフト中の per-tick simulation (4色獲得 / HP消費 / 睡眠 / パッシブ)
-  if (state.activeCraft) {
-    tickActiveCraft();
-  }
-  // Phase 1C-1: アクティブクエストの 1 tick 進行
-  if (state.activeQuest) {
-    tickActiveQuest();
-  }
+  // Phase 1B-2 + β2-3: クラフト中の per-tick simulation (slot 0..2 並行)
+  forEachCraftSlot((idx, ac) => {
+    if (ac) tickActiveCraft(idx);
+  });
+  // Phase 1C-1 + β2-3 part 2: アクティブクエストの 1 tick 進行 (slot 0..2 並行)
+  forEachQuestSlot((idx, aq) => {
+    if (aq) tickActiveQuest(idx);
+  });
   // Phase 1D-3: 雇用プラン進行 (1 ヶ月で候補生成)
   if (state.activeHire) {
     tickActiveHire();
@@ -2229,25 +2628,35 @@ function onTick() {
  *   - 起きているヒーローはパッシブ発動をロール
  *   - 稼働中ヒーローが居れば timeProgress を加算
  *   - timeProgress >= 1 で triggerCraftCompletion */
-function tickActiveCraft() {
-  const ac = state.activeCraft;
+/** Phase β2-3: tickActiveCraft が並行スロットに対応。 craftSlotIdx を受け取り、
+ *  指定スロットの activeCraft を進行させる。 craftSlotIdx 省略時は slot 0 (= 後方互換)。 */
+function tickActiveCraft(craftSlotIdx = 0) {
+  const ac = getActiveCraftSlot(craftSlotIdx);
   if (!ac) return;
   let activeWorkers = 0;
   // Phase 1D-42: 工房クラフト経験値の Lv ボーナスを基底加算
   let totalCraftLv = craftLvBonusForCraft();
-  for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
-    const heroId = ac.team[slotIdx];
+  for (let heroIdx = 0; heroIdx < ac.team.length; heroIdx++) {
+    const heroId = ac.team[heroIdx];
     if (heroId == null) continue;
     const hero = findHero(heroId);
     if (!hero) continue;
     // 1. stamina 状態遷移
     if (hero.state === HERO_STATE.RESTING) {
-      adjustStamina(hero, staminaRecoverPerTick(hero));
+      // Phase 2B: restTimeShort — 倉庫スキルで休憩中の回復を加速
+      const restPct = activeEffectPct("restTimeShort");
+      const restMult = restPct > 0 ? (1 + restPct / 100) : 1.0;
+      adjustStamina(hero, staminaRecoverPerTick(hero) * restMult);
       if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
     } else {
       // Phase 1D-34: アロマバフ中は体力減少を半減
       const aromaMult = isBuffActive("aroma") ? 0.5 : 1.0;
-      adjustStamina(hero, -staminaDecayPerTick(hero) * aromaMult);
+      // Phase 2A: 倉庫スキル staminaDecaySlow を体力減少に適用 (= 1 - X%)
+      const skillDecayPct = activeEffectPct("staminaDecaySlow");
+      const skillMult = skillDecayPct > 0
+        ? Math.max(0, 1 - Math.min(0.7, skillDecayPct / 100))  // 0.7 (= 70%) でクランプ
+        : 1.0;
+      adjustStamina(hero, -staminaDecayPerTick(hero) * aromaMult * skillMult);
       if (isExhausted(hero)) {
         hero.state = HERO_STATE.RESTING;
         // Phase 1D-19: クラフト中に体力ゼロ → 「疲れた…」セリフ
@@ -2283,10 +2692,15 @@ function tickActiveCraft() {
     const heroBonus  = (activeWorkers - 1) * 0.10;
     // Phase 1D-40 + 1D-34: クラフトLv 短縮 (rarity 要求基準) × 潤滑油バフ
     // Phase 1D-45: 打ち直しクラフト中は昇格 rarity の要求値を使う
+    // Phase 2A: 倉庫スキル craftLvBoost を totalCraftLv に乗算
     const ext = EXTENSION_BY_ID[String(ac.extId)];
     const effRarity = ac.remakeTargetRarity || ext?.rarity;
     const required = REQUIRED_CRAFT_LV_BY_RARITY[effRarity] || 50;
-    const lvMult   = craftLvSpeedMultiplier(totalCraftLv, required);
+    const skillCraftPct = activeEffectPct("craftLvBoost");
+    const totalCraftLvWithSkill = skillCraftPct > 0
+      ? totalCraftLv * (1 + skillCraftPct / 100)
+      : totalCraftLv;
+    const lvMult   = craftLvSpeedMultiplier(totalCraftLvWithSkill, required);
     const lubeFactor = isBuffActive("lubricant") ? 2 : 1;
     const factor   = (1 + heroBonus) * lvMult * lubeFactor;
     const before = ac.timeProgress || 0;
@@ -2305,7 +2719,10 @@ function tickActiveCraft() {
   }
   // 5. 完了判定 (時間進捗 100%)
   if ((ac.timeProgress || 0) >= 1) {
-    triggerCraftCompletion(ac);
+    // Phase β2-3: 完成画面の modal 表示は同時 1 件のみ。 既に他スロットの
+    //   pendingCompletion / pendingAppraisal が flow 中なら次 tick まで待機。
+    if (state.pendingCompletion || state.pendingAppraisal) return;
+    triggerCraftCompletion(ac, craftSlotIdx);
   }
 }
 
@@ -2328,6 +2745,10 @@ function triggerCraftEvent(type) {
 }
 
 function openCraftEventPicker(type) {
+  // Phase β2 hotfix: maiSaysSequence の close で caller (tickActiveCraft) の
+  //   pause が消費されてしまうため、 picker 自身が pauseTime() で固定する。
+  //   finishCraftEventAnim の resumeTime とペアになる。
+  pauseTime();
   const view = $("craftEventPicker");
   if (!view) {
     // フォールバック: 自動で適当な要素 + チームの先頭で実行
@@ -2567,8 +2988,9 @@ function finishCraftEventAnim(hero, elKey, total, lang) {
 }
 
 /** 完成判定発火 ─ activeCraft を pendingCompletion に移し、
- *  Mai の通知 → 完成画面を順に表示する。 */
-function triggerCraftCompletion(ac) {
+ *  Mai の通知 → 完成画面を順に表示する。
+ *  Phase β2-3: craftSlotIdx を受け取り、 該当スロットの activeCraft を null に。 */
+function triggerCraftCompletion(ac, craftSlotIdx = 0) {
   // 実所要週数 (timeProgress 0 → 1 までの実時間)
   const elapsedTicks = state.tickCount - (ac.startedAtTick || 0);
   const actualWeeks  = Math.max(1, Math.ceil(elapsedTicks / SECONDS_PER_WEEK));
@@ -2627,8 +3049,11 @@ function triggerCraftCompletion(ac) {
     // Phase 1D-45: 打ち直しクラフトのコンテキストを完成画面 → 倉庫まで伝播
     remakeFromWarehouseIdx: ac.remakeFromWarehouseIdx ?? null,
     remakeTargetRarity:     ac.remakeTargetRarity     ?? null,
+    // Phase β2-3: どのスロットからの完成かを記録
+    craftSlotIdx,
   };
-  state.activeCraft = null;
+  // Phase β2-3: 該当スロットを空に (slot 0 = state.activeCraft / slot 1,2 = activeCraftExtra)
+  setActiveCraftSlot(craftSlotIdx, null);
 
   // 配属ヒーローはまず CRAFTING を解除 (RESTING のままなら回復継続するので、
   // ここでは触らず → 完成画面 close 時に IDLE に戻す)
@@ -2719,7 +3144,10 @@ function tickPassiveRestRecovery() {
     if (skip.has(hero.heroId)) continue;
     if (hero.state === HERO_STATE.RESTING) {
       // 休憩中: stamina を回復
-      adjustStamina(hero, staminaRecoverPerTick(hero));
+      // Phase 2B: restTimeShort — 倉庫スキルで回復速度を加速
+      const restPctP = activeEffectPct("restTimeShort");
+      const restMultP = restPctP > 0 ? (1 + restPctP / 100) : 1.0;
+      adjustStamina(hero, staminaRecoverPerTick(hero) * restMultP);
       if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
     } else if (hero.state === HERO_STATE.IDLE) {
       // Phase 1D-23: Idle 中の体力減少を廃止 (ユーザー仕様)。
@@ -2756,8 +3184,9 @@ function maybeIdleSpeak(hero) {
 
 /** ─── Quest tick (Phase 1C-1) ───────────────────────────────────── */
 
-function tickActiveQuest() {
-  const aq = state.activeQuest;
+/** Phase β2-3 part 2: 指定スロットのクエストを進行させる。 questSlotIdx 省略時は slot 0。 */
+function tickActiveQuest(questSlotIdx = 0) {
+  const aq = getActiveQuestSlot(questSlotIdx);
   if (!aq) return;
   // Phase 1D-29 fix: 他のモーダルが開いている間は完了通知を保留
   //   (同 tick での mai 重複呼び出しによる pauseFlags 不整合を回避)
@@ -2769,7 +3198,10 @@ function tickActiveQuest() {
   const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
   aq.progress = Math.min(1, elapsed / totalTicks);
   if (aq.progress >= 1) {
-    triggerQuestComplete(aq);
+    // Phase β2-3 part 2: クエスト結果 modal も同時 1 件のみ。 既に他スロットの
+    //   pendingQuestResult が flow 中なら次 tick まで待機。
+    if (state.pendingQuestResult) return;
+    triggerQuestComplete(aq, questSlotIdx);
   }
 }
 
@@ -2806,7 +3238,50 @@ function computeShoSpeedMult(seller, ext) {
   return 1;
 }
 
-function triggerQuestComplete(aq) {
+/** Phase β2-3 part 2: 「体力満タンにして出発」 ─ 編成中チームを RESTING にして
+ *  pendingQuestRedeploy 経路で全員 IDLE 復帰後に自動派遣する。
+ *  ユーザー要望: 出発前に休憩を挟むことで成功率を最大化したいケース用。 */
+function startActiveQuestAfterRest() {
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  if (!node) return;
+  const teamIds = state.questTeam.slice();
+  if (teamIds.filter(id => id != null).length === 0) return;
+  // 既に redeploy 予約があるなら上書き不可 (= シングル予約)
+  if (state.pendingQuestRedeploy) {
+    maiSays?.("quest.mai.redeployBusy");
+    return;
+  }
+  // チームメンバーを RESTING に (体力 0 にして即休憩)
+  for (const id of teamIds) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (!h) continue;
+    h.stamina.current = 0;
+    h.state = HERO_STATE.RESTING;
+  }
+  // 予約 (= tryAutoRedeployQuest が IDLE 復帰時に startActiveQuest を呼ぶ)
+  state.pendingQuestRedeploy = {
+    nodeId: node.id,
+    difficulty: state.questPickedDifficulty,
+    team: teamIds,
+  };
+  // questTeam フォームはリセット (= ユーザーが他編成を組めるように)
+  state.questTeam = state.questTeam.map(_ => null);
+  closeQuestView();
+  renderQuestOverlay();
+  // 通知でわかるように
+  state.notifications.push({
+    id: ++_notifId,
+    text: ti18n("quest.notif.restThenDeploy", "ヒーローの体力を満タンにしてから出発します"),
+    element: "garuda",
+    value: 0,
+    createdTick: state.tickCount,
+  });
+  renderNotifications?.();
+}
+
+/** Phase β2-3 part 2: questSlotIdx を受け取り、 該当スロットの activeQuest を null に。 */
+function triggerQuestComplete(aq, questSlotIdx = 0) {
   // Phase 1D-39: 成功率 100% を保証する。 浮動小数誤差や将来のバランス変更で
   //   aq.successRate が ~0.999 になっても 100% 表示されたなら必ず成功させる。
   //   (ユーザー報告: 100% 表示でクエスト失敗が発生)
@@ -2816,7 +3291,30 @@ function triggerQuestComplete(aq) {
   const success = (r >= 1.0) ? true : (Math.random() <= r);
   const node = NODE_BY_ID[aq.nodeId];
   let rewards = {};
-  if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
+  if (success && node) {
+    rewards = rollQuestRewards(node, aq.difficulty);
+    // Phase 2B: matYieldBoost — 各 drop qty を倉庫スキル分上乗せ (round + min 1)
+    const yieldPct = activeEffectPct("matYieldBoost");
+    if (yieldPct > 0) {
+      const m = 1 + yieldPct / 100;
+      for (const [matId, q] of Object.entries(rewards)) {
+        rewards[matId] = Math.max(1, Math.round(q * m));
+      }
+    }
+    // Phase 2B: rareMatBoost — rare 素材 (poolHighTier) の追加 drop を確率発火
+    const rarePct = activeEffectPct("rareMatBoost");
+    if (rarePct > 0 && Array.isArray(node.poolHighTier) && node.poolHighTier.length > 0) {
+      // Bernoulli + 期待値: cap 40% を 2 回に分割 (= 各 20% 確率で +1 個まで)
+      const trials = 2;
+      const pPer = (rarePct / 100) / trials;
+      for (let i = 0; i < trials; i++) {
+        if (Math.random() < pPer) {
+          const matId = node.poolHighTier[Math.floor(Math.random() * node.poolHighTier.length)];
+          rewards[matId] = (rewards[matId] || 0) + 1;
+        }
+      }
+    }
+  }
 
   // 報酬を所持素材に追加
   if (success) {
@@ -2863,13 +3361,19 @@ function triggerQuestComplete(aq) {
     success,
     rewards,
     finishedAt: { year: state.year, month: state.month, week: state.week },
+    // Phase β2-3 part 2: どのスロットからの完了かを記録
+    questSlotIdx,
   };
-  state.activeQuest = null;
+  // Phase β2-3 part 2: 該当スロットを空に
+  setActiveQuestSlot(questSlotIdx, null);
   // Phase 1D-15: クエスト成功時のみ SE (失敗時は無音)
   if (success) playSe("questSuccess");
   // Phase 1D-22: クエスト成功で 12% の確率で未取得シリーズレシピが手に入る
   //   (発火は result 画面が閉じた後に showRecipePopup 起動)
-  state.pendingRecipeReason = (success && Math.random() < 0.12) ? "recipe.from.quest" : null;
+  // Phase 2B: recipeRateBoost — 倉庫スキルでベースレシピ獲得率 12% を上乗せ
+  const recipeRatePct = activeEffectPct("recipeRateBoost");
+  const recipeChance = 0.12 * (1 + recipeRatePct / 100);
+  state.pendingRecipeReason = (success && Math.random() < recipeChance) ? "recipe.from.quest" : null;
   // Mai ポップアップ → 閉じるとレポート画面
   maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
     onClose: openQuestResultScreen,
@@ -3039,12 +3543,24 @@ function renderQuestView() {
   // 2-A. 詳細プレビュー (左)
   const node = NODE_BY_ID[state.questPickedNodeId];
   const team = state.questTeam.map(id => id == null ? null : findHero(id));
-  const baseLv = QUEST_BASE_LEVEL[state.questPickedDifficulty];
+  // Phase β2-3 part 2: ノード別の baseLv オーバーライドを優先 (= アバカス等)
+  const baseLv = baseLvForNode(node, state.questPickedDifficulty);
   // Phase 1D-42: ベース QL に「ノード Lv ボーナス」を加算
   const heroQl = teamQuestLevel(team);
   const nodeBonus = node ? nodeLvBonusForQuest(node.id) : 0;
-  const teamLv = heroQl + nodeBonus;
+  // Phase 2A: 倉庫スキル questLvBoost も最終 teamLv に乗算 (= 表示も startActiveQuest と整合)
+  const skillQlPct = activeEffectPct("questLvBoost");
+  const teamLvNoSkill = heroQl + nodeBonus;
+  const teamLv = skillQlPct > 0 ? Math.round(teamLvNoSkill * (1 + skillQlPct / 100)) : teamLvNoSkill;
   const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
+  // Phase β2-3 part 2: 体力 100% 想定の team Lv (= 出発前に休憩する場合の予測)
+  const heroQlFullHp = team.reduce((sum, h) => {
+    if (!h || !h.element) return sum;
+    return sum + heroQuestLevelBreakdown({ ...h, stamina: { current: h.stamina?.max || 0, max: h.stamina?.max || 0 } }).ql;
+  }, 0);
+  const teamLvFullHpNoSkill = heroQlFullHp + nodeBonus;
+  const teamLvFullHp = skillQlPct > 0 ? Math.round(teamLvFullHpNoSkill * (1 + skillQlPct / 100)) : teamLvFullHpNoSkill;
+  const rateFullHp = node ? questSuccessRate(teamLvFullHp, baseLv) : -1;
   const commentKey = successRateCommentKey(rate);
   const isHard = state.questPickedDifficulty === "hard";
   const detailMatIds = [];
@@ -3062,6 +3578,13 @@ function renderQuestView() {
   const diffLabel = QUEST_DIFFICULTY_LABEL[state.questPickedDifficulty][lang];
   const rateText = rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%");
   const rateAttr  = rate < 0 ? "blocked" : Math.round(rate * 100);
+  // Phase β2-3 part 2: 体力満タン時の併記用テキスト
+  const rateFullHpText = rateFullHp < 0
+    ? ti18n("quest.blocked")
+    : (Math.round(rateFullHp * 100) + "%");
+  const rateFullHpSuffix = rate >= 0 && rateFullHp >= 0 && rateFullHp !== rate
+    ? ` <span class="quest-detail-panel__rate-full">(${escapeHtml(ti18n("quest.detail.rateFullHp", "体力100%で {n}").replace("{n}", rateFullHpText))})</span>`
+    : "";
   // Phase 1D-15: 期待ドロップ数 range を計算 (難易度ごとの reward 見込み)
   const expectedRanges = node ? expectedQuestRewardRanges(node, state.questPickedDifficulty) : {};
   $("questDetailPanel").innerHTML = node ? `
@@ -3084,7 +3607,7 @@ function renderQuestView() {
         }).join("")}
       </div>
       <div class="quest-detail-panel__lv">${escapeHtml(ti18n("quest.detail.questLv"))}: <strong>${teamLv}</strong> / ${baseLv} <span class="quest-hero-pick__ql-info" data-team-ql-info title="${escapeHtml(ti18n("quest.qlInfo.teamTitle", "チームクエストレベル内訳"))}">i</span></div>
-      <div class="quest-detail-panel__rate">${escapeHtml(ti18n("quest.detail.rate"))}: <strong data-rate="${rateAttr}">${escapeHtml(rateText)}</strong></div>
+      <div class="quest-detail-panel__rate">${escapeHtml(ti18n("quest.detail.rate"))}: <strong data-rate="${rateAttr}">${escapeHtml(rateText)}</strong>${rateFullHpSuffix}</div>
     </div>
     <div class="quest-detail-panel__mai">
       <div class="quest-detail-panel__mai-head">
@@ -3103,7 +3626,8 @@ function renderQuestView() {
   $("questDiffRows").innerHTML = ["easy", "normal", "hard"].map(d => {
     const sel = d === state.questPickedDifficulty ? " quest-diff-row__btn--sel" : "";
     const label = QUEST_DIFFICULTY_LABEL[d][lang];
-    const baseLvD = QUEST_BASE_LEVEL[d];
+    // Phase β2-3 part 2: ノード別オーバーライド対応
+    const baseLvD = baseLvForNode(node, d);
     const weeksD  = QUEST_DURATION_WEEKS[d];
     const reqLv   = DIFF_REQUIRED_LV[d];
     const lvOk    = (state.factoryLevel || 1) >= reqLv;
@@ -3194,16 +3718,31 @@ function renderQuestView() {
 
   // 出発 ボタン enable/disable
   // Phase 1D-29: ランドノード未取得 (= 通行証なし) で出発できないようガード追加。
-  //   従来は Ocean (= LAND_NODES[0]) がデフォルト選択で買わずに depart できた。
-  const startBtn = $("questStartBtn");
+  // Phase β2-3 part 2: 2 ボタン化 (体力満タンにして出発 / すぐに出発)
+  const startBtn       = $("questStartBtn");
+  const startRestBtn   = $("questStartRestBtn");
   const isLandTab2 = state.questNodeType === "land";
   const noLandPass = isLandTab2 && !(state.landPasses instanceof Set
     ? state.landPasses.has(state.questPickedNodeId)
     : false);
-  if (rate < 0 || state.questTeam.filter(x => x != null).length === 0 || noLandPass) {
-    startBtn.disabled = true;
-  } else {
-    startBtn.disabled = false;
+  const filledCount = state.questTeam.filter(x => x != null).length;
+  const baseDisabled = filledCount === 0 || noLandPass;
+  // すぐに出発: 現在の rate を使う
+  if (startBtn) {
+    startBtn.disabled = baseDisabled || rate < 0;
+    const lblNow = rate < 0 ? ti18n("quest.blocked") : (Math.round(rate * 100) + "%");
+    const tmplNow = ti18n("quest.startNow", "すぐに出発 [{rate}]");
+    startBtn.textContent = tmplNow.replace("{rate}", lblNow);
+  }
+  // 体力満タンにして出発: rateFullHp を使う
+  if (startRestBtn) {
+    // 全員既に満タンなら表示不要 → hidden
+    const allFull = team.every(h => !h || (h.stamina && h.stamina.current >= h.stamina.max));
+    startRestBtn.classList.toggle("hidden", allFull);
+    startRestBtn.disabled = baseDisabled || rateFullHp < 0;
+    const lblFull = rateFullHp < 0 ? ti18n("quest.blocked") : (Math.round(rateFullHp * 100) + "%");
+    const tmplRest = ti18n("quest.startRest", "体力満タンにして出発 [{rate}]");
+    startRestBtn.textContent = tmplRest.replace("{rate}", lblFull);
   }
 }
 
@@ -3353,7 +3892,8 @@ function startActiveQuest() {
   const diff = state.questPickedDifficulty;
   const team = state.questTeam.slice();
   const teamHeroes = team.map(id => id == null ? null : findHero(id));
-  const baseLv = QUEST_BASE_LEVEL[diff];
+  // Phase β2-3 part 2: ノード別オーバーライド優先
+  const baseLv = baseLvForNode(node, diff);
   // Phase 1D-42: ベース QL に「ノード Lv ボーナス」を加算
   let teamLv = teamQuestLevel(teamHeroes) + nodeLvBonusForQuest(node.id);
   // Phase 1D-34: 翡翠の像バフが有効なら QL を 1.5x した上で 1 回限りの効果を消費
@@ -3361,6 +3901,9 @@ function startActiveQuest() {
     teamLv = Math.round(teamLv * 1.5);
     state.buffs["jade-statue"] = false;
   }
+  // Phase 2A: エクステンションスキル questLvBoost の倉庫合算 % を最終加算
+  const skillQlPct = activeEffectPct("questLvBoost");
+  if (skillQlPct > 0) teamLv = Math.round(teamLv * (1 + skillQlPct / 100));
   const rate   = questSuccessRate(teamLv, baseLv);
   if (rate < 0) return;
 
@@ -3373,7 +3916,13 @@ function startActiveQuest() {
 
   // Phase 1D-40: パーティ QL がベース QL を上回るほど進行速度がアップ
   const qlSpeedMult = questLvSpeedMultiplier(teamLv, baseLv);
-  state.activeQuest = {
+  // Phase β2-3 part 2: 空きスロットを picking
+  const slotIdx = findEmptyQuestSlot();
+  if (slotIdx < 0) {
+    maiSays?.("quest.mai.allSlotsFull");
+    return;
+  }
+  const newActiveQuest = {
     nodeId: node.id,
     difficulty: diff,
     team,
@@ -3382,7 +3931,12 @@ function startActiveQuest() {
     durationWeeks: QUEST_DURATION_WEEKS[diff],
     qlSpeedMult,
     progress: 0,
+    slotIdx,
   };
+  setActiveQuestSlot(slotIdx, newActiveQuest);
+  state.questViewSlotIdx = slotIdx;
+  // Phase β2-3 part 2: 並行スロットでの次回起動用に questTeam フォームをリセット
+  state.questTeam = state.questTeam.map(_ => null);
   closeQuestView();
   renderQuestOverlay();
   // Phase 1D-19 → 1D-26: クエスト出発のセリフ ("いってくる！" 等)
@@ -3407,13 +3961,21 @@ function renderQuestOverlay() {
     if (typeof renderQuestCard === "function") renderQuestCard();
     return;
   }
-  const aq = state.activeQuest;
-  if (!aq) {
+  // Phase β2-3 part 2: 並行スロットを集約。 メイン 1 件だけ表示し、 残りは
+  //   「他N件」 テキストで補足する (= ユーザー仕様: カードを増やさず工房上部
+  //   が圧迫されない構造)。
+  const activeQuests = [];
+  forEachQuestSlot((idx, aq) => { if (aq) activeQuests.push({ idx, aq }); });
+  if (activeQuests.length === 0) {
     host.classList.add("hidden");
     host.innerHTML = "";
     if (typeof renderQuestCard === "function") renderQuestCard();
     return;
   }
+  // 表示中スロットのクエスト (questViewSlotIdx) を優先、 該当が空なら先頭スロットへ
+  const viewIdx = state.questViewSlotIdx || 0;
+  let mainEntry = activeQuests.find(e => e.idx === viewIdx) || activeQuests[0];
+  const aq = mainEntry.aq;
   host.classList.remove("hidden");
   const node = NODE_BY_ID[aq.nodeId];
   const pctVal = Math.floor((aq.progress || 0) * 100);
@@ -3422,10 +3984,15 @@ function renderQuestOverlay() {
     if (!h) return "";
     return `<img class="quest-overlay__hero" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />`;
   }).join("");
+  // 他N件補足 (= 並行スロットがあり他クエスト進行中の場合)
+  const otherCount = activeQuests.length - 1;
+  const otherBadge = otherCount > 0
+    ? `<span class="quest-overlay__other" title="${escapeHtml(ti18n("quest.overlay.other", "他 {n} 件のクエストが進行中").replace("{n}", String(otherCount)))}">${escapeHtml(ti18n("quest.overlay.otherShort", "他 {n} 件").replace("{n}", String(otherCount)))}</span>`
+    : "";
   host.innerHTML = `
     <div class="quest-overlay__left">${teamHtml}</div>
     <div class="quest-overlay__right">
-      <span class="quest-overlay__node">${escapeHtml(ti18n("quest.nodeLabel"))}: ${escapeHtml(node?.nameJa || aq.nodeId)}</span>
+      <span class="quest-overlay__node">${escapeHtml(ti18n("quest.nodeLabel"))}: ${escapeHtml(node?.nameJa || aq.nodeId)}${otherBadge}</span>
       <span class="quest-overlay__status">${escapeHtml(ti18n("quest.inProgress"))} ${pctVal}%</span>
     </div>
     <div class="quest-overlay__bar"><div class="quest-overlay__bar-fill" style="width:${pctVal}%"></div></div>
@@ -3537,12 +4104,19 @@ function closeAndOpenQuestPick() {
 function tryAutoRedeployQuest() {
   const r = state.pendingQuestRedeploy;
   if (!r) return;
-  if (state.activeQuest) return;  // 既に何らかのクエスト中ならスキップ (= 別経由で deploy 済)
+  // Phase β2-3 part 2 fix: 並行スロットでは「全スロット埋まり」 のときだけ待機。
+  //   旧 `if (state.activeQuest) return;` は slot 0 のみ見ており、 slot 1, 2 が
+  //   空なのに redeploy 不能になるバグだった。
+  if (findEmptyQuestSlot() < 0) return;
   // 全員 IDLE 判定
   for (const id of r.team) {
     if (id == null) continue;
     const h = findHero(id);
-    if (!h) return;  // ヒーロー消失 (= 売却等) → 待機を解除
+    if (!h) {
+      // ヒーロー消失 (= 売却 / 解雇) → 待機予約を解除して終了
+      state.pendingQuestRedeploy = null;
+      return;
+    }
     if (h.state !== HERO_STATE.IDLE) return;  // まだ休憩中
   }
   // 全員 IDLE → redeploy
@@ -3556,9 +4130,26 @@ function tryAutoRedeployQuest() {
   state.questPickedDifficulty = r.difficulty;
   state.questNodeType = LAND_NODES.some(n => n.id === r.nodeId) ? "land" : "normal";
   state.questTeam = r.team.slice();
-  // 予約をクリアしてから派遣 (= startActiveQuest 内で activeQuest 設定)
+  // Phase β2-3 part 2 fix: startActiveQuest が rate < 0 等で fail した場合の
+  //   救済処理を仕込む。 起動前後で空きスロット数を比較し、 減っていなければ
+  //   起動失敗とみなし questTeam を reset (= ヒーローの弱 lock を解放)。
+  const emptyBefore = findEmptyQuestSlot();
   state.pendingQuestRedeploy = null;
   startActiveQuest();
+  const emptyAfter = findEmptyQuestSlot();
+  // 空きスロット数が変わっていない (= 起動失敗) ケース: questTeam を reset し、
+  // ヒーローを完全解放する。 通知でユーザーに「失敗したので再編成してください」 を伝える。
+  if (emptyBefore === emptyAfter && state.questTeam.some(id => id != null)) {
+    state.questTeam = state.questTeam.map(_ => null);
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("quest.notif.redeployFailed", "編成 Lv 不足のため自動再派遣できませんでした。 編成し直してください"),
+      element: "ifrit",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+  }
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える)。
@@ -3720,10 +4311,13 @@ function isHeroLocked(heroId, opts = {}) {
   //   ここで opts (ignoreCraftTeam 等) では解除できない強い lock として扱う。
   //   旧バグ: クラフト中ヒーローが休憩に入ると state===RESTING で「Idle 扱い」されて
   //   クエスト編成画面などで選択可能になってしまっていた。
-  if (state.activeCraft && Array.isArray(state.activeCraft.team)
-      && state.activeCraft.team.includes(heroId)) return true;
-  if (state.activeQuest && Array.isArray(state.activeQuest.team)
-      && state.activeQuest.team.includes(heroId)) return true;
+  // Phase β2-3 part 1+2: 並行スロット (slot 0..2) すべてのクラフト/クエストをチェック
+  for (let i = 0; i < 3; i++) {
+    const ac = getActiveCraftSlot(i);
+    if (ac && Array.isArray(ac.team) && ac.team.includes(heroId)) return true;
+    const aq = getActiveQuestSlot(i);
+    if (aq && Array.isArray(aq.team) && aq.team.includes(heroId)) return true;
+  }
   // Phase 1D-42: 自動再派遣予約中のチームは HP 回復待ちでも他作業に組めない強 lock。
   if (state.pendingQuestRedeploy && Array.isArray(state.pendingQuestRedeploy.team)
       && state.pendingQuestRedeploy.team.includes(heroId)) return true;
@@ -3748,8 +4342,8 @@ function _elemDescSort(key) {
  *  「target>0 の色のクラフトパワー合算値」で降順 sort し、上位 5 名を採用。
  *  ext が選ばれていない場合は 4 色全体の合算値で sort (= craft level proxy)。 */
 function autoFormCraftTeam() {
-  // 既にクラフト中ならフォーム変更は不可 (= 既存編成 UI のロックと整合)
-  if (state.activeCraft) {
+  // Phase β2-3: 並行スロットでは「全スロット埋まり」 のみ block
+  if (findEmptyCraftSlot() < 0) {
     maiSays("mai.craftBusy");
     return;
   }
@@ -3799,7 +4393,8 @@ function autoFormCraftTeam() {
 /** クエスト編成: 編成可能ヒーローの中から QL (= heroQuestLevelBreakdown.ql)
  *  が高い順に 3 名を採用。 既存 questTeam 配属を上書き。 */
 function autoFormQuestTeam() {
-  if (state.activeQuest) {
+  // Phase β2-3 part 2: 全スロット埋まりのみ block
+  if (findEmptyQuestSlot() < 0) {
     maiSays("mai.questBusy");
     return;
   }
@@ -4191,23 +4786,78 @@ function openHeroView() {
 function openHeroEnhanceView() {
   pauseTime();
   $("heroEnhanceView")?.classList.remove("hidden");
-  renderHeroEnhanceList();
+  // Phase β2-2: 開いたら必ず「強化」 タブから開始
+  switchHeroManagementTab("enhance");
 }
 function closeHeroEnhanceView() {
   $("heroEnhanceView")?.classList.add("hidden");
   resumeTime();
 }
 
-/** Phase 1D-23: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー */
+/** Phase β2-2: ヒーロー管理画面のタブ切替 (強化 / 雇用 / 解雇) */
+function switchHeroManagementTab(tabName) {
+  if (!tabName) return;
+  document.querySelectorAll(".hero-management__tab").forEach(t => {
+    t.classList.toggle("hero-management__tab--active", t.getAttribute("data-mgmt-tab") === tabName);
+  });
+  document.querySelectorAll(".hero-management__panel").forEach(p => {
+    p.classList.toggle("hidden", p.getAttribute("data-mgmt-panel") !== tabName);
+  });
+  if (tabName === "fire") renderHeroFireList();
+  else if (tabName === "enhance") renderHeroEnhanceList();
+}
+
+/** Phase β2-2: 解雇タブのヒーロー一覧を描画 */
+function renderHeroFireList() {
+  const host = $("heroFireList");
+  if (!host) return;
+  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => annualSalaryOf(b) - annualSalaryOf(a));
+  if (heroes.length === 0) {
+    host.innerHTML = `<p class="hero-management__fire-intro">${escapeHtml(ti18n("hero.management.fire.empty", "現在ヒーローを所持していません。"))}</p>`;
+    return;
+  }
+  host.innerHTML = heroes.map(h => {
+    const name = tHero(h.heroId, h.nameJa);
+    const stars = "★".repeat(h.rank || 0) + "☆".repeat(5 - (h.rank || 0));
+    const rarLbl = ti18n("rarity." + h.rarity, h.rarity);
+    const salary = annualSalaryOf(h);
+    const isIdle = h.state === HERO_STATE.IDLE
+      && !isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true });
+    const blockMsg = !isIdle
+      ? ` <span style="color:var(--muted);font-size:0.65rem">(${escapeHtml(ti18n("hero.lock.busy", "作業中"))})</span>`
+      : "";
+    return `<div class="hero-fire-row" data-rarity="${h.rarity}">
+      <img class="hero-fire-row__portrait" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="hero-fire-row__main">
+        <span class="hero-fire-row__name">${escapeHtml(name)}</span>
+        <span class="hero-fire-row__meta">${escapeHtml(rarLbl)} · ${stars}${blockMsg}</span>
+        <span class="hero-fire-row__salary">${ti18n("hero.salary", "年俸")}: ${salary.toLocaleString()} GUM</span>
+      </div>
+      <button type="button" class="hero-fire-row__btn" data-fire-hero="${h.heroId}" ${isIdle ? "" : "disabled"}>
+        ${escapeHtml(ti18n("fire.fireBtn", "解雇する"))}
+      </button>
+    </div>`;
+  }).join("");
+}
+
+/** Phase 1D-23 + β2-1: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー
+ *  ランクアップ画面の before/after に使用。 craft / quest / merchant Lv 全てに
+ *  rarity 倍率 (= RARITY_CRAFT_MULT) と rank 倍率を統一適用。 これにより
+ *  rank-up 表示と実 gameplay 値 (teamCraftLevelTotal / teamQuestLevel) が一致する。 */
+const _RARITY_PARAM_MULT = {
+  common: 1.0, uncommon: 1.5, rare: 2.5, epic: 4.0, legendary: 6.0,
+};
 function _heroFullHpProjected(hero, rankOverride = null) {
   const rank = rankOverride == null ? (hero.rank || 0) : rankOverride;
   const rMult = 1 + 0.4 * Math.max(0, Math.min(RANK_MAX, rank));
-  // 4 元素値 (ガルーダ重み込み + ランク倍率)
+  const rarMult = _RARITY_PARAM_MULT[(hero.rarity || "common").toLowerCase()] || 1.0;
+  // 4 元素値 (ガルーダ重み込み + ランク倍率 + レアリティ倍率)
   const e = hero.element || {};
-  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * rMult);
-  const ifrit   = Math.round((e.ifrit   || 0) * rMult);
-  const lev     = Math.round((e.leviathan || 0) * rMult);
-  const tia     = Math.round((e.tiamat  || 0) * rMult);
+  const totalMult = rMult * rarMult;
+  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * totalMult);
+  const ifrit   = Math.round((e.ifrit   || 0) * totalMult);
+  const lev     = Math.round((e.leviathan || 0) * totalMult);
+  const tia     = Math.round((e.tiamat  || 0) * totalMult);
   const sum = garudaW + ifrit + lev + tia;
   const hasKo  = Array.isArray(hero.attributes) && hero.attributes.includes("ko");
   const hasNo  = Array.isArray(hero.attributes) && hero.attributes.includes("no");
@@ -4222,15 +4872,32 @@ function _heroFullHpProjected(hero, rankOverride = null) {
 }
 
 /** Phase 1D-20: ヒーロー強化リストを描画
- *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記 */
+ *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記
+ *  Phase β2-2: rarity フィルタ + 任意キーソートに対応 */
 function renderHeroEnhanceList() {
   const host = $("heroEnhanceList");
   if (!host) return;
   const lang = getLang() === "en" ? "en" : "ja";
-  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => {
-    if ((b.rank || 0) !== (a.rank || 0)) return (b.rank || 0) - (a.rank || 0);
-    return craftLevel(b) - craftLevel(a);
-  });
+  const filterEl = $("heroEnhanceFilterRarity");
+  const sortEl   = $("heroEnhanceSortKey");
+  const filter = filterEl?.value || "all";
+  const sortKey = sortEl?.value || "rankDesc";
+  let heroes = (state.ownedHeroes || []).slice();
+  if (filter !== "all") {
+    heroes = heroes.filter(h => (h.rarity || "common").toLowerCase() === filter);
+  }
+  // 並び替え (Phase β2-2)
+  const projOf = (h) => _heroFullHpProjected(h, h.rank || 0);
+  const cmps = {
+    rankDesc:     (a, b) => (b.rank || 0) - (a.rank || 0) || craftLevel(b) - craftLevel(a),
+    paramDesc:    (a, b) => projOf(b).sum - projOf(a).sum,
+    craftDesc:    (a, b) => craftLevel(b) - craftLevel(a),
+    questDesc:    (a, b) => projOf(b).questLv - projOf(a).questLv,
+    merchantDesc: (a, b) => projOf(b).merchantLv - projOf(a).merchantLv,
+    salaryDesc:   (a, b) => annualSalaryOf(b) - annualSalaryOf(a),
+    salaryAsc:    (a, b) => annualSalaryOf(a) - annualSalaryOf(b),
+  };
+  heroes.sort(cmps[sortKey] || cmps.rankDesc);
   host.innerHTML = heroes.map(hero => {
     const name = tHero(hero.heroId, hero.nameJa);
     const rank = hero.rank || 0;
@@ -4760,6 +5427,14 @@ function renderConfirm() {
   const team = currentTeamHeroes();
   const dur = estimateDurationWeeks(extForCalc, team);
   $("confirmDuration").textContent = ti18n("craft.duration.estimate").replace("{n}", dur);
+  // Phase 2A: 完成見込みのスキルプレビュー (打ち直し中は昇格 rarity)
+  const previewEl = $("confirmSkillPreview");
+  if (previewEl) {
+    const previewRarity = isRemake ? remakeTargetRarity : ext.rarity;
+    const skillText = formatSkillSummary(ext, ti18n, previewRarity);
+    previewEl.textContent = skillText ? "✨ " + skillText : "";
+    previewEl.classList.toggle("hidden", !skillText);
+  }
 
   // Targets (icons only — no text label, just dot/icon + value)
   const targets = extElementTargets(ext);
@@ -4804,17 +5479,24 @@ function renderConfirm() {
         </div>`;
     }
   } else {
+    // Phase 2B: matCostReduce — 表示も削減後 qty に揃える (= 不足判定も削減後で再評価)
+    const costPctConfirm = activeEffectPct("matCostReduce");
+    const costMultConfirm = costPctConfirm > 0 ? Math.max(0.3, 1 - costPctConfirm / 100) : 1.0;
     $("confirmMaterials").innerHTML = recipe.map(m => {
       const have = state.materials[m.id] || 0;
-      const short = avail.shortage[m.id] > 0;
+      const reducedQty = Math.max(1, Math.ceil((m.qty || 0) * costMultConfirm));
+      const short = have < reducedQty;
       const rowCls = short ? "craft-confirm__mat-row craft-confirm__mat-row--short" : "craft-confirm__mat-row";
       const qtyText = ti18n("craft.material.qtyHave")
-        .replace("{qty}", m.qty)
+        .replace("{qty}", reducedQty)
         .replace("{have}", have);
+      const discountMark = costPctConfirm > 0 && reducedQty < (m.qty || 0)
+        ? ` <span style="color:var(--accent);font-size:0.65rem">(-${costPctConfirm.toFixed(0)}%)</span>`
+        : "";
       return `<div class="${rowCls}">
         <img src="${materialIcon(m.id)}" alt="" onerror="this.style.opacity='0.2'" />
         <span class="craft-confirm__mat-name">${escapeHtml(materialName(m.id, getLang()))}</span>
-        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}</span>
+        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}${discountMark}</span>
       </div>`;
     }).join("");
   }
@@ -4977,15 +5659,25 @@ function startActiveCraft() {
   const recipe = recipeFor(ext);
 
   // 素材消費 (受注 / 打ち直しはスキップ)
+  // Phase 2B: matCostReduce — 倉庫スキルで要求素材量を軽減 (= 消費量を割り戻す)
   if (!isCommission && !isRemake) {
+    const costPct = activeEffectPct("matCostReduce");
+    const costMult = costPct > 0 ? Math.max(0.3, 1 - costPct / 100) : 1.0;  // 最低 70% は消費
     for (const m of recipe) {
-      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - (m.qty || 0));
+      const consumed = Math.max(1, Math.ceil((m.qty || 0) * costMult));
+      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - consumed);
     }
   }
 
+  // Phase β2-3: 空きスロットを picking。 全埋まりなら開始キャンセル。
+  const slotIdx = findEmptyCraftSlot();
+  if (slotIdx < 0) {
+    maiSays?.("craft.mai.allSlotsFull");  // i18n; fallback はキー文字列表示
+    return;
+  }
   // Phase 1D-32: 受注ID / Phase 1D-45: 打ち直し index を activeCraft に伝播
   const commissionId = state.craftPickedCommissionId;
-  state.activeCraft = {
+  const newActiveCraft = {
     extId: ext.extId,
     team,
     targets,
@@ -4998,9 +5690,14 @@ function startActiveCraft() {
     startedAtTick: state.tickCount,   // 実所要時間 (週) を完成時に算出するため
     durationWeeks: dur,
     timeProgress: 0,                  // Phase 1B 改修: 時間進捗 (0..1)、完成判定の主役
+    slotIdx,                          // Phase β2-3: 自身のスロット番号
   };
+  setActiveCraftSlot(slotIdx, newActiveCraft);
+  state.craftViewSlotIdx = slotIdx;  // 進捗カードでこのスロットを直接表示
   // Phase 1D-45: 打ち直し起動完了 → pickedRemakeIdx は activeCraft に移したのでクリア
   state.craftPickedRemakeIdx = null;
+  // Phase β2-3: 並行スロットでの次回起動用に craftTeam フォームをリセット
+  state.craftTeam = state.craftTeam.map(_ => null);
   // Mark assigned heroes as crafting (state machine — stamina tick comes Phase 1C)
   for (const id of team) {
     if (id == null) continue;
@@ -5032,8 +5729,23 @@ function renderOrderPanel() {
   const icon = $("orderIcon");
   if (!panel) return;
 
-  // 進行中クラフトなし & 完成待ちなし → empty state
-  if (!state.activeCraft && !state.pendingCompletion) {
+  // Phase β2-3: 表示中スロットを decide。 activeCraftSlots[viewIdx] を表示。
+  // Phase β2-3 part 2 fix: 空きスロット (例: 1/2 の slot 1 が空) でもページャを残し、
+  //   その slot に対する「クラフトしていません + クラフトするボタン」 を表示する
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  let viewIdx = state.craftViewSlotIdx || 0;
+  if (viewIdx < 0 || viewIdx >= cap) viewIdx = 0;
+  // ページャは常に最新化 (= 並行 ≥ 2 で表示)
+  renderOrderPager();
+  // 当該スロットの active 表示候補 (進行中 or 完成待ち)
+  const acSlot = getActiveCraftSlot(viewIdx);
+  const pcSlot = state.pendingCompletion && (state.pendingCompletion.craftSlotIdx ?? 0) === viewIdx
+    ? state.pendingCompletion
+    : null;
+  const ac = acSlot || pcSlot;
+
+  if (!ac) {
+    // 表示中スロットが空 → 「クラフトしていません + クラフトするボタン」 を出す
     panel.classList.add("order-panel--empty");
     desc.textContent = ti18n("order.none");
     meta.textContent = "";
@@ -5041,7 +5753,6 @@ function renderOrderPanel() {
     fill.style.width = "0%";
     pct.textContent = "";
     icon.innerHTML = "";
-    // Phase 1D-13: 「クラフトする」遷移ボタンを表示
     const ah = $("orderActionHost");
     if (ah) {
       ah.innerHTML = `
@@ -5059,8 +5770,6 @@ function renderOrderPanel() {
   // 稼働中: アクションボタンは隠す
   const ah = $("orderActionHost");
   if (ah) ah.innerHTML = "";
-  // 進行中 (or 完成 Mai 通知 → 完成画面の間も表示維持)
-  const ac = state.activeCraft || state.pendingCompletion;
   const ext = EXTENSION_BY_ID[String(ac.extId)];
   panel.classList.remove("order-panel--empty");
   icon.innerHTML = `<img src="${extIconUrl(ac.extId)}" alt="" onerror="this.style.opacity='0.2'" />`;
@@ -5092,6 +5801,38 @@ function renderOrderPanel() {
   const pctRaw = (ac.timeProgress || 0) * 100;
   fill.style.width = pctRaw.toFixed(2) + "%";
   pct.textContent = Math.floor(pctRaw) + "%";
+}
+
+/** Phase β2-3: 進捗カードのページャを描画 (並行スロット数に応じて表示) */
+function renderOrderPager() {
+  const pager = $("orderPager");
+  const label = $("orderPagerLabel");
+  const prevBtn = $("orderPagerPrev");
+  const nextBtn = $("orderPagerNext");
+  if (!pager || !label) return;
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  if (cap < 2) { pager.classList.add("hidden"); return; }
+  pager.classList.remove("hidden");
+  const idx = state.craftViewSlotIdx || 0;
+  label.textContent = `${idx + 1} / ${cap}`;
+  if (prevBtn) prevBtn.disabled = idx <= 0;
+  if (nextBtn) nextBtn.disabled = idx >= cap - 1;
+}
+
+/** Phase β2-3 part 2: クエスト進捗カードのページャを描画 */
+function renderQuestCardPager() {
+  const pager = $("questPager");
+  const label = $("questPagerLabel");
+  const prevBtn = $("questPagerPrev");
+  const nextBtn = $("questPagerNext");
+  if (!pager || !label) return;
+  const cap = parallelQuestSlotsFor(state.factoryLevel || 1);
+  if (cap < 2) { pager.classList.add("hidden"); return; }
+  pager.classList.remove("hidden");
+  const idx = state.questViewSlotIdx || 0;
+  label.textContent = `${idx + 1} / ${cap}`;
+  if (prevBtn) prevBtn.disabled = idx <= 0;
+  if (nextBtn) nextBtn.disabled = idx >= cap - 1;
 }
 
 /** activeCraft.startedAt + durationWeeks から完成予定日を計算 */
@@ -5259,6 +6000,8 @@ function renderWorkshop() {
     sprite.classList.add("workshop-hero--bounce");
     setTimeout(() => sprite.classList.remove("workshop-hero--bounce"), 460);
   }
+  // Phase 2B: アクティブ効果ボタンの表示数を更新
+  refreshActiveEffectsBtn();
 }
 
 /** Phase 1D-13: 工房内の 12 固定配置座標 (workshop 領域の % 座標)。
@@ -5301,7 +6044,16 @@ function workshopSlotPosFor(idx, total) {
 function renderQuestCard() {
   const host = $("questCard");
   if (!host) return;
-  const aq = state.activeQuest;
+  // Phase β2-3 part 2 fix: 当該スロットを優先表示し、 空スロットでも他スロットへ
+  //   勝手に切替えない。 「クエスト中ではありません」 + ボタンを当該スロットに表示。
+  //   (旧仕様: 空なら先頭の active スロットへ自動 fall-back していたが、 ▶ で
+  //    空きスロットに移動できなくなる UX 不具合があった)
+  const cap = parallelQuestSlotsFor(state.factoryLevel || 1);
+  let viewIdx = state.questViewSlotIdx || 0;
+  if (viewIdx < 0 || viewIdx >= cap) viewIdx = 0;
+  const aq = getActiveQuestSlot(viewIdx);
+  // ページャ更新
+  renderQuestCardPager();
   if (!aq) {
     // 未稼働: 空メッセージ + 通常 / ランド ボタン
     const heroAvail = countQuestEligibleHeroes();
@@ -5592,13 +6344,14 @@ function _initProgressCarousel() {
     if (menuOpen) closeMenu();
     if (target.hasAttribute("data-craft-go")) {
       // Craft → 新規開発
-      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      // Phase β2-3: 全スロット埋まりのみ block
+      if (findEmptyCraftSlot() < 0) { maiSays("mai.craftBusy"); return; }
       openCraftView();
       return;
     }
     if (target.hasAttribute("data-quest-go")) {
       const filter = target.getAttribute("data-quest-go");
-      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      if (findEmptyQuestSlot() < 0) { maiSays("mai.questBusy"); return; }
       state.questNodeType = (filter === "land") ? "land" : "normal";
       openQuestView();
       return;
@@ -5747,6 +6500,9 @@ function renderHeroDetailPopup() {
       btn.disabled = !isIdle;
     });
   }
+  // Phase β2-2: 解雇ボタンは Idle のみ有効 (= 進行中作業を中断しないため)
+  const fireBtn = $("heroDetailFireBtn");
+  if (fireBtn) fireBtn.disabled = !isIdle;
 }
 function closeHeroDetailPopup() {
   $("heroDetailPopup")?.classList.add("hidden");
@@ -5770,13 +6526,13 @@ function handleHeroQuickAction(hero, action) {
         if (empty >= 0) state.craftTeam[empty] = hid;
       }
       closeHeroDetailPopup();
-      // activeCraft 中なら開けない (既存ガードと整合)
-      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      // Phase β2-3: 全スロット埋まりのみ block
+      if (findEmptyCraftSlot() < 0) { maiSays("mai.craftBusy"); return; }
       openCraftView();
       break;
     }
     case "quest": {
-      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      if (findEmptyQuestSlot() < 0) { maiSays("mai.questBusy"); return; }
       // questTeam に pre-add (空きがあれば)
       if (Array.isArray(state.questTeam) && !state.questTeam.includes(hid)) {
         const empty = state.questTeam.indexOf(null);
@@ -5976,9 +6732,10 @@ function maiSays(messageKey, options = {}) {
   if (!modal || !body) return;
   setMaiBody(ti18n(messageKey));
   modal.classList.remove("hidden");
-  // Phase 1D-47 bug fix: 呼び出し側が pauseTime() 済みのケースで二重 pause
-  //   (= +2 / -1 で flags が 1 ずつリークしフリーズ) を防止。
-  //   既に paused なら自前 pause を skip → close 側の resumeTime と 1:1 に揃う。
+  // Phase 1D-47 fix: 既に paused なら自前 pause を skip (= 二重 pause リーク防止)
+  // close 側は常に resume を 1 回 → 呼出側 pre-pause なら caller の pause を
+  // 消費する形になる (= 呼出側 onClose は paused 前提の操作を行う場合は自分で
+  // pauseTime() を呼び直す必要がある)。
   if (state.pauseFlags === 0) pauseTime();
   _maiNextAction = options.onClose || null;
 }
@@ -6002,11 +6759,7 @@ function closeMaiModal() {
     $("maiModal")?.classList.add("hidden");
     const closeBtn = $("maiModalClose");
     if (closeBtn) closeBtn.textContent = ti18n("btn.close");
-    // Phase 1D-9 バグ修正: 必ず resumeTime して maiSaysSequence の pauseTime と
-    //   ペアにする。次に呼ばれる callback (next) は独立した pause/resume
-    //   ペアを管理する前提 (= 旧設計の「next 側で pauseTime を呼ぶから resume
-    //   しない」 は openCompletionScreen が pauseTime を呼ぶケースで pauseFlags
-    //   が累積するバグの原因だったので撤廃)
+    // 必ず resume を 1 回 (= 呼出側 pre-pause 時はその pause を消費する)
     resumeTime();
     if (seqCb) { seqCb(); return; }
     const next = _maiNextAction;
@@ -6016,7 +6769,6 @@ function closeMaiModal() {
   }
   // ── 通常 (単行 maiSays) の閉じ処理 ──
   $("maiModal")?.classList.add("hidden");
-  // Phase 1D-9 バグ修正: 同上 — 常に resume してから next() を呼ぶ
   resumeTime();
   const next = _maiNextAction;
   _maiNextAction = null;
@@ -6054,7 +6806,7 @@ function maiSaysSequence(messages, options = {}) {
   setMaiBody(_maiSeqQueue[_maiSeqIdx]);
   btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
-  // Phase 1D-47 bug fix: maiSays と同様、呼び出し側が pauseTime() 済みなら skip。
+  // Phase 1D-47 fix: 既に paused なら skip (= maiSays と同じ)
   if (state.pauseFlags === 0) pauseTime();
 }
 
@@ -6132,6 +6884,14 @@ function renderCompletionScreen() {
   $("craftDoneQuality").textContent = ti18n("comp.tier." + pc.qualityTier);
   $("craftDoneQuality").setAttribute("data-tier", pc.qualityTier);
   $("craftDoneMaiSays").textContent = ti18n("comp.maiComment." + pc.qualityTier);
+  // Phase 2A: 完成 ext のスキル表示 (打ち直し時は昇格 rarity でスケール)
+  const skillEl = $("craftDoneSkill");
+  if (skillEl && ext) {
+    const effRarity = pc.remakeTargetRarity || ext.rarity;
+    const skillText = formatSkillSummary(ext, ti18n, effRarity);
+    skillEl.textContent = skillText ? "✨ " + skillText : "";
+    skillEl.classList.toggle("hidden", !skillText);
+  }
 }
 
 function closeCompletionScreen() {
@@ -6362,7 +7122,10 @@ function renderSellModal() {
 
   // 推定価格 + 純収益
   const seller = findHero(_sellPickedSellerId);
-  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const expectedRaw = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 2B: tradePriceBoost プレビューに反映
+  const tpPctPrev = activeEffectPct("tradePriceBoost");
+  const expected = tpPctPrev > 0 ? Math.round(expectedRaw * (1 + tpPctPrev / 100)) : expectedRaw;
   const net = netSaleRevenue(expected);
   $("sellEstPrice").innerHTML = `
     <div class="sell-est__row">
@@ -6398,7 +7161,10 @@ function startSale() {
   // Phase 1D-25: 前回の seller を記録 → 次回 modal 起動時に default 選択
   state.lastSaleSellerId = seller.heroId;
   const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
-  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const expectedRaw = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 2B: tradePriceBoost — 倉庫スキルで売却額を上乗せ
+  const tpPct = activeEffectPct("tradePriceBoost");
+  const expected = tpPct > 0 ? Math.round(expectedRaw * (1 + tpPct / 100)) : expectedRaw;
   // Phase 1D-40: seller が「商」属性持ちなら、 ext rarity に応じて取引期間を短縮
   //   - Rare:      1/2 期間 (= 倍速)
   //   - Epic:      1/3 期間 (= 3 倍速)
@@ -6441,10 +7207,13 @@ function tickActiveSales() {
   //   (= 1D-29 で導入した「他モーダル open 中は settlement を遅延」ガードを撤去)
   // Phase 1D-34: ローラーバフ中は取引時間 1/2 (= elapsed を 2x として判定)
   const rollerMult = isBuffActive("roller") ? 2 : 1;
+  // Phase 2B: tradeSpeedBoost — 倉庫スキルで取引時間を加速
+  const tsPct = activeEffectPct("tradeSpeedBoost");
+  const tsMult = tsPct > 0 ? (1 + tsPct / 100) : 1.0;
   const completed = [];
   for (const s of state.activeSales) {
-    // Phase 1D-40 + 1D-34: 商 seller × rarity 短縮 × ローラーバフ
-    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult;
+    // Phase 1D-40 + 1D-34 + 2B: 商 seller × rarity 短縮 × ローラーバフ × 倉庫スキル
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult * tsMult;
     const total = s.weeks * SECONDS_PER_WEEK;
     if (elapsed >= total && s.status === "listed") {
       // 価格にランダム ±10% 変動
@@ -6747,17 +7516,42 @@ function tickActiveHire() {
   // Phase 1D-29 fix: 他のモーダルが開いている間は候補通知を保留
   //   (= mai 同時呼び出しで pauseFlags 不整合 → フリーズ回避)
   if (state.pauseFlags > 0) return;
-  const elapsed = state.tickCount - ah.startedAtTick;
+  // Phase 2A: 倉庫スキル hireSpeedBoost で経過時間を加速 (= 同じ実時間で N% 多く進行)
+  const skillHirePct = activeEffectPct("hireSpeedBoost");
+  const speedMult = skillHirePct > 0 ? (1 + skillHirePct / 100) : 1.0;
+  const elapsed = (state.tickCount - ah.startedAtTick) * speedMult;
   if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
     const plan = PLAN_BY_ID[ah.planId];
     const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
-    ah.candidates = rollHireCandidates(plan, ownedIds);
-    // Phase 1D-7: Mai 通知 → 「次へ」 押下で雇用画面に直接遷移
-    maiSays("hire.mai.candidatesReady", {
+    // Phase 2B: hireRareBoost を適用
+    ah.candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
+    // Phase β2-3 part 2: ユーザー要望 — いきなり採用画面に遷移すると混乱するため
+    //   先にマイの popup で「候補が決まりました！今回は N 名」 と補足してから
+    //   雇用画面に遷移する。 popup を閉じた後 onClose で開く。
+    const candCount = ah.candidates.length;
+    const lang = getLang() === "en" ? "en" : "ja";
+    const lines = lang === "en"
+      ? [
+          "Hire candidates have been selected!",
+          `There are ${candCount} candidate(s) this time.`,
+        ]
+      : [
+          "採用候補者が決まりました！",
+          `今回は ${candCount} 名の候補者がいるようです。`,
+        ];
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("hire.mai.candidatesReady", "雇用候補が出揃いました！"),
+      element: "tiamat",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+    maiSaysSequence(lines, {
       onClose: () => {
         state.marketTab = "hire";
-        openMarketView();
-        setMarketTab("hire");
+        openMarketView?.();
+        setMarketTab?.("hire");
       },
     });
   }
@@ -7122,6 +7916,11 @@ function renderMarketWarehouse() {
     const remadeMark = w.rarityOverride
       ? `<span class="warehouse-item__remade" title="${escapeHtml(ti18n("remake.remadeTitle", "打ち直し済"))}">★</span>`
       : "";
+    // Phase 2A: スキル一行表示 (= シリーズ共通スキル × rarity スケール)
+    const skillText = ext ? formatSkillSummary(ext, ti18n, effRarity) : "";
+    const skillRow = skillText
+      ? `<div class="warehouse-item__skill" title="${escapeHtml(skillText)}">✨ ${escapeHtml(skillText)}</div>`
+      : "";
     return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${effRarity}">
       <img class="warehouse-item__icon" src="${extIconUrl(w.extId)}" alt="" onerror="this.style.opacity='0.2'" />
       <div class="warehouse-item__main">
@@ -7139,6 +7938,7 @@ function renderMarketWarehouse() {
           <span class="warehouse-item__tier" data-tier="${apr.tier}">${escapeHtml(tierLbl)}</span>
           <span class="warehouse-item__score-num"><strong>${score}</strong> / 50</span>
         </div>` : ""}
+        ${skillRow}
         ${remakeBtn}
       </div>
     </div>`;
@@ -7479,6 +8279,45 @@ async function init() {
 
   // ── Help ──
   $("btnHelpOpen")?.addEventListener("click", openHelp);
+  // Phase β2-3: 進捗カードページャ (並行スロット切替)
+  $("orderPagerPrev")?.addEventListener("click", () => {
+    const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+    let idx = (state.craftViewSlotIdx || 0) - 1;
+    if (idx < 0) idx = 0;
+    state.craftViewSlotIdx = idx;
+    renderOrderPanel();
+  });
+  $("orderPagerNext")?.addEventListener("click", () => {
+    const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+    let idx = (state.craftViewSlotIdx || 0) + 1;
+    if (idx >= cap) idx = cap - 1;
+    state.craftViewSlotIdx = idx;
+    renderOrderPanel();
+  });
+  $("questPagerPrev")?.addEventListener("click", () => {
+    let idx = (state.questViewSlotIdx || 0) - 1;
+    if (idx < 0) idx = 0;
+    state.questViewSlotIdx = idx;
+    renderQuestOverlay();
+    renderQuestCard?.();
+  });
+  $("questPagerNext")?.addEventListener("click", () => {
+    const cap = parallelQuestSlotsFor(state.factoryLevel || 1);
+    let idx = (state.questViewSlotIdx || 0) + 1;
+    if (idx >= cap) idx = cap - 1;
+    state.questViewSlotIdx = idx;
+    renderQuestOverlay();
+    renderQuestCard?.();
+  });
+  // Phase 2B: アクティブ効果モーダル
+  $("workshopActiveEffectsBtn")?.addEventListener("click", openActiveEffectsModal);
+  $("headerActiveEffectsBtn")?.addEventListener("click", openActiveEffectsModal);
+  $("activeEffectsClose")?.addEventListener("click", closeActiveEffectsModal);
+  $("activeEffectsModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "activeEffectsModal") closeActiveEffectsModal();
+  });
+  // Phase β2-3 part 2: ヘッダーからランキング画面を開く
+  $("headerRankingBtn")?.addEventListener("click", openRankingViewer);
   $("btnHelpClose")?.addEventListener("click", closeHelp);
   $("helpOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "helpOverlay") closeHelp();
@@ -7528,11 +8367,13 @@ async function init() {
       hideAllSubmenus();
       closeMenu();
       if (action === "new-dev") {
-        if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+        // Phase β2-3: 全スロット埋まりのみ block
+        if (findEmptyCraftSlot() < 0) { maiSays("mai.craftBusy"); return; }
         openCraftView();
       } else if (action === "commission") {
         // Phase 1D-32: 受注クラフト
-        if (state.activeCraft) { maiSays("commission.busy"); return; }
+        // Phase β2-3: 全スロット埋まりのみ block
+        if (findEmptyCraftSlot() < 0) { maiSays("commission.busy"); return; }
         openCommissionView();
       } else if (action === "factoryLvUp") {
         // Phase 1D-23: 工房レベルアップ画面 (Settings → Craft へ移設)
@@ -7576,7 +8417,7 @@ async function init() {
       const filter = btn.getAttribute("data-quest-filter");
       hideAllSubmenus();
       closeMenu();
-      if (state.activeQuest) { maiSays("mai.questBusy"); return; }
+      if (findEmptyQuestSlot() < 0) { maiSays("mai.questBusy"); return; }
       state.questNodeType = filter;
       // ノードタイプに合わせて picked を初期化 (該当タイプ最初のノード)
       const list = filter === "land" ? LAND_NODES : NORMAL_NODES;
@@ -7680,6 +8521,13 @@ async function init() {
     if (Number.isFinite(id)) openHeroDetailPopup(id);
   });
   $("heroDetailClose")?.addEventListener("click", closeHeroDetailPopup);
+  // Phase β2-2: 解雇ボタン (= 能動的なリストラ)
+  $("heroDetailFireBtn")?.addEventListener("click", () => {
+    const id = state.popupHeroId;
+    if (id == null) return;
+    closeHeroDetailPopup();
+    setTimeout(() => openFireConfirm(id), 100);
+  });
   $("heroDetailPopup")?.addEventListener("click", (e) => {
     if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
@@ -7714,6 +8562,21 @@ async function init() {
   $("contestModalClose")?.addEventListener("click", closeContestResultModal);
   $("contestModal")?.addEventListener("click", (e) => {
     if (e.target.id === "contestModal") closeContestResultModal();
+  });
+  // Phase β2-3 part 2: 年俸支払いレポート modal close
+  $("salaryReportClose")?.addEventListener("click", closeSalaryReportModal);
+  $("salaryReportModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "salaryReportModal") closeSalaryReportModal();
+  });
+  // Phase β2-3 part 2: 行商人マルコ・ポーロ modal
+  $("marcoPoloClose")?.addEventListener("click", closeMarcoPoloModal);
+  $("marcoPoloModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "marcoPoloModal") closeMarcoPoloModal();
+  });
+  $("marcoPoloList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-marco-buy]");
+    if (!btn || btn.disabled) return;
+    purchaseMarcoPoloItem(btn.getAttribute("data-marco-buy"));
   });
 
   // ── Market view: tabs (Phase 1B-5 + 1D-3) ──
@@ -7959,6 +8822,8 @@ async function init() {
     }
   });
   $("questStartBtn")?.addEventListener("click", startActiveQuest);
+  // Phase β2-3 part 2: 体力満タンにして出発 (= 全員 RESTING にして自動再派遣を予約)
+  $("questStartRestBtn")?.addEventListener("click", startActiveQuestAfterRest);
   $("questResultClose")?.addEventListener("click", closeQuestResultScreen);
   // Phase 1D-42: 結果画面の追加ボタン
   $("questResultRedeploy")?.addEventListener("click", closeAndRedeployQuest);
@@ -8020,6 +8885,28 @@ async function init() {
     if (!btn || btn.disabled) return;
     const hid = parseInt(btn.getAttribute("data-enhance-hero"), 10);
     if (Number.isFinite(hid)) rankUpHero(hid);
+  });
+  // Phase β2-2: ソート / フィルタ変更時に再描画
+  $("heroEnhanceFilterRarity")?.addEventListener("change", renderHeroEnhanceList);
+  $("heroEnhanceSortKey")?.addEventListener("change", renderHeroEnhanceList);
+  // Phase β2-2: 管理タブ切替 (強化 / 雇用 / 解雇)
+  document.querySelectorAll(".hero-management__tab").forEach(tab => {
+    tab.addEventListener("click", () => switchHeroManagementTab(tab.getAttribute("data-mgmt-tab")));
+  });
+  $("heroMgmtOpenMarketHire")?.addEventListener("click", () => {
+    closeHeroEnhanceView();
+    setTimeout(() => {
+      state.marketTab = "hire";
+      openMarketView?.();
+      setMarketTab?.("hire");
+    }, 100);
+  });
+  // 解雇リストの delegation
+  $("heroFireList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-fire-hero]");
+    if (!btn || btn.disabled) return;
+    const hid = parseInt(btn.getAttribute("data-fire-hero"), 10);
+    if (Number.isFinite(hid)) openFireConfirm(hid);
   });
   // Phase 1D-12: 編成 view の tab 切替
   document.querySelectorAll(".hero-team-tab").forEach(btn => {
