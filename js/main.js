@@ -256,6 +256,9 @@ const state = {
   pendingContest: /** @type {object | null} */ (null),
   /** Phase β2-3 part 2 年俸支払いレポート popup の表示中データ */
   pendingSalaryReport: /** @type {object | null} */ (null),
+  /** Phase β2-3 part 2 行商人マルコ・ポーロ訪問 popup の表示中データ
+   *  { year, stock: { [itemId]: 1 } (= 全 1 在庫), purchased } */
+  pendingMarcoPolo: /** @type {object | null} */ (null),
   /** Phase 1D-45 打ち直しクラフトの対象倉庫 index (= state.warehouse[idx])。
    *  非 null のときは pickExtForConfirm 経由ではなく remake 専用フローで起動。 */
   craftPickedRemakeIdx: /** @type {number | null} */ (null),
@@ -493,27 +496,31 @@ function factoryLvUpConditions(targetLv) {
 
 /** Lv N → N+1 で解放されること */
 function factoryLvUpUnlocks(targetLv) {
+  // Phase β2-3 part 2: 並行クラフト/クエスト解禁を明記 (= ユーザー要望)
+  // ヒーロー上限は β2-2 で × 1.5 に拡張済 (= 7/14/17/18/23)
   if (targetLv === 2) return [
     "Uncommon エクステンションのレシピが解放対象に",
-    "ヒーロー上限 7 → 9 名",
+    "ヒーロー上限 7 → 14 名",
     "ドラエグプラン (Uncommon〜Rare 雇用) 解禁",
+    "クラフト・クエストが 2 並行で実行可能に",
   ];
   if (targetLv === 3) return [
     "Rare エクステンションのレシピが解放対象に",
-    "ヒーロー上限 9 → 11 名",
+    "ヒーロー上限 14 → 17 名",
     "中級クエスト解禁",
     "ベビドラプラン (Rare〜Epic 雇用) 解禁",
+    "クラフト・クエストが 3 並行で実行可能に",
   ];
   if (targetLv === 4) return [
     "Epic エクステンションのレシピが解放対象に",
-    "ヒーロー上限 11 → 12 名",
+    "ヒーロー上限 17 → 18 名",
     "上級クエスト解禁",
     "ブルドラプラン (Epic〜Legendary 雇用) 解禁",
     "デュエルモード解禁 (将来実装)",
   ];
   if (targetLv === 5) return [
     "Legendary エクステンションのレシピが解放対象に",
-    "ヒーロー上限 12 → 15 名",
+    "ヒーロー上限 18 → 23 名",
     "レッドラプラン (Legendary 雇用) 解禁",
   ];
   return [];
@@ -1378,6 +1385,15 @@ function maybeTriggerMonthlyEvent() {
       setTimeout(triggerRecruitmentEvent, 200);
     }
   }
+  // Phase β2-3 part 2: 5 月 3 週 → 行商人マルコ・ポーロ訪問 (= 半額ショップ、
+  //   全アイテム在庫 1。 ユーザー要望)。 採用イベントと被らない週で発火。
+  if (state.month === 5 && state.week === 3) {
+    const key = `${state.year}-marcopolo`;
+    if (!state.monthlyEventsFired.has(key)) {
+      state.monthlyEventsFired.add(key);
+      setTimeout(triggerMarcoPoloVisit, 200);
+    }
+  }
   // Phase 1D-44: 12/1 直前 (= 11 月 4 週終了) の検知 → エクステンションコンテスト
   //   2 年目から (= startY + 2 以降) 開催。 1 周目 12 月は告知だけにしたいが、
   //   今は単純に skip。 startY 不明のときは保守的に開催 (= 旧 save 互換)。
@@ -1871,6 +1887,102 @@ function refreshActiveEffectsBtn() {
     hCount.textContent = String(n);
     hBtn.classList.toggle("hidden", n === 0);
   }
+}
+
+/** ─── Phase β2-3 part 2: 5 月行商人「マルコ・ポーロ」 訪問 ─── */
+
+/** 行商人イベントのトリガー: 5 月 3 週に発火。 半額・在庫 1 のショップ modal を開く。 */
+function triggerMarcoPoloVisit() {
+  // 在庫マップを構築 (= 全アイテム在庫 1)
+  const stock = {};
+  for (const it of SHOP_ITEMS) stock[it.id] = 1;
+  state.pendingMarcoPolo = {
+    year: state.year,
+    stock,
+    purchased: 0,
+  };
+  openMarcoPoloModal();
+}
+
+function openMarcoPoloModal() {
+  const modal = $("marcoPoloModal");
+  if (!modal) return;
+  pauseTime();
+  modal.classList.remove("hidden");
+  renderMarcoPoloModal();
+}
+
+function renderMarcoPoloModal() {
+  const mp = state.pendingMarcoPolo;
+  if (!mp) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const titleEl = $("marcoPoloTitle");
+  const greetingEl = $("marcoPoloGreeting");
+  const listEl = $("marcoPoloList");
+  if (titleEl) titleEl.textContent = ti18n("marcoPolo.title", "行商人マルコ・ポーロの訪問");
+  if (greetingEl) greetingEl.textContent = ti18n("marcoPolo.greeting",
+    "やぁ！世界各地から珍品を運んできましたよ。今日は半額でお譲りします！");
+  if (!listEl) return;
+  listEl.innerHTML = SHOP_ITEMS.map(it => {
+    const view = shopItemViewData(it, state.factoryLevel);
+    const halfPrice = Math.max(1, Math.floor(view.price / 2));
+    const stockLeft = mp.stock[it.id] ?? 0;
+    const name = lang === "en" ? (it.nameEn || it.nameJa) : it.nameJa;
+    const desc = lang === "en" ? (it.descEn || "") : (it.descJa || "");
+    const descFilled = desc
+      .replace("{lv}", String(view.lv))
+      .replace("{gain}", String(view.gain));
+    const canAfford = state.gum >= halfPrice;
+    const inStock = stockLeft > 0;
+    const disabled = !canAfford || !inStock;
+    const btnLabel = !inStock
+      ? ti18n("marcoPolo.soldOut", "売切")
+      : !canAfford
+        ? ti18n("marcoPolo.noGum", "GUM 不足")
+        : ti18n("shop.buy", "購入");
+    return `<li class="marco-polo__item" data-rarity="${it.category}">
+      <img class="marco-polo__icon" src="${view.iconUrl}" alt="${escapeHtml(name)}" onerror="this.style.opacity='0.2'" />
+      <div class="marco-polo__main">
+        <span class="marco-polo__name">${escapeHtml(name)}</span>
+        <span class="marco-polo__desc">${escapeHtml(descFilled)}</span>
+      </div>
+      <div class="marco-polo__buy">
+        <span class="marco-polo__price">
+          <span class="marco-polo__price-old">${view.price.toLocaleString()}</span>
+          <strong class="marco-polo__price-new">${halfPrice.toLocaleString()} GUM</strong>
+        </span>
+        <button type="button" class="marco-polo__btn" data-marco-buy="${it.id}" ${disabled ? "disabled" : ""}>${escapeHtml(btnLabel)}</button>
+      </div>
+    </li>`;
+  }).join("");
+}
+
+function purchaseMarcoPoloItem(itemId) {
+  const mp = state.pendingMarcoPolo;
+  if (!mp) return;
+  const it = SHOP_ITEM_BY_ID[itemId];
+  if (!it) return;
+  const view = shopItemViewData(it, state.factoryLevel);
+  const halfPrice = Math.max(1, Math.floor(view.price / 2));
+  if ((mp.stock[itemId] ?? 0) <= 0) return;
+  if (state.gum < halfPrice) return;
+  // 効果適用 (= 通常ショップと同じ applyShopItemEffect 経由)
+  const fakeView = { ...view, price: halfPrice };
+  const ok = applyShopItemEffect(it, fakeView);
+  if (!ok) return;
+  state.gum -= halfPrice;
+  mp.stock[itemId] = (mp.stock[itemId] || 0) - 1;
+  mp.purchased++;
+  playSe?.("buttonClick");
+  renderHeader();
+  renderMarcoPoloModal();
+}
+
+function closeMarcoPoloModal() {
+  $("marcoPoloModal")?.classList.add("hidden");
+  state.pendingMarcoPolo = null;
+  resumeTime();
+  renderHeader?.();
 }
 
 /** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
@@ -5618,22 +5730,22 @@ function renderOrderPanel() {
   if (!panel) return;
 
   // Phase β2-3: 表示中スロットを decide。 activeCraftSlots[viewIdx] を表示。
-  //   完成待ち (pendingCompletion) は slot 0 にある場合のみ slot 0 表示で扱う
+  // Phase β2-3 part 2 fix: 空きスロット (例: 1/2 の slot 1 が空) でもページャを残し、
+  //   その slot に対する「クラフトしていません + クラフトするボタン」 を表示する
   const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
   let viewIdx = state.craftViewSlotIdx || 0;
   if (viewIdx < 0 || viewIdx >= cap) viewIdx = 0;
+  // ページャは常に最新化 (= 並行 ≥ 2 で表示)
+  renderOrderPager();
+  // 当該スロットの active 表示候補 (進行中 or 完成待ち)
   const acSlot = getActiveCraftSlot(viewIdx);
-  // 表示するアクティブ entity (= activeCraft 進行中 or pendingCompletion 表示中)
-  const showAc = acSlot
-    || (viewIdx === 0 && state.pendingCompletion ? state.pendingCompletion : null);
+  const pcSlot = state.pendingCompletion && (state.pendingCompletion.craftSlotIdx ?? 0) === viewIdx
+    ? state.pendingCompletion
+    : null;
+  const ac = acSlot || pcSlot;
 
-  // 全スロット空 + pendingCompletion 無 → empty state
-  const anyActive = (function() {
-    if (state.pendingCompletion) return true;
-    for (let i = 0; i < cap; i++) if (getActiveCraftSlot(i)) return true;
-    return false;
-  })();
-  if (!anyActive) {
+  if (!ac) {
+    // 表示中スロットが空 → 「クラフトしていません + クラフトするボタン」 を出す
     panel.classList.add("order-panel--empty");
     desc.textContent = ti18n("order.none");
     meta.textContent = "";
@@ -5641,9 +5753,6 @@ function renderOrderPanel() {
     fill.style.width = "0%";
     pct.textContent = "";
     icon.innerHTML = "";
-    // ページャ非表示
-    const pager = $("orderPager"); if (pager) pager.classList.add("hidden");
-    // Phase 1D-13: 「クラフトする」遷移ボタンを表示
     const ah = $("orderActionHost");
     if (ah) {
       ah.innerHTML = `
@@ -5661,17 +5770,6 @@ function renderOrderPanel() {
   // 稼働中: アクションボタンは隠す
   const ah = $("orderActionHost");
   if (ah) ah.innerHTML = "";
-  // Phase β2-3: ページャ更新 (= 並行スロット数 > 1 のとき表示)
-  renderOrderPager();
-  // 表示するスロットが空かつ pendingCompletion でも無いなら、 別のアクティブスロットへ送る
-  const ac = showAc || (function() {
-    for (let i = 0; i < cap; i++) {
-      const a = getActiveCraftSlot(i);
-      if (a) { state.craftViewSlotIdx = i; return a; }
-    }
-    return state.pendingCompletion;
-  })();
-  if (!ac) return;  // 万が一の保険
   const ext = EXTENSION_BY_ID[String(ac.extId)];
   panel.classList.remove("order-panel--empty");
   icon.innerHTML = `<img src="${extIconUrl(ac.extId)}" alt="" onerror="this.style.opacity='0.2'" />`;
@@ -5946,18 +6044,14 @@ function workshopSlotPosFor(idx, total) {
 function renderQuestCard() {
   const host = $("questCard");
   if (!host) return;
-  // Phase β2-3 part 2: 表示中スロット (questViewSlotIdx) を優先、 該当が空なら先頭スロットへ
+  // Phase β2-3 part 2 fix: 当該スロットを優先表示し、 空スロットでも他スロットへ
+  //   勝手に切替えない。 「クエスト中ではありません」 + ボタンを当該スロットに表示。
+  //   (旧仕様: 空なら先頭の active スロットへ自動 fall-back していたが、 ▶ で
+  //    空きスロットに移動できなくなる UX 不具合があった)
   const cap = parallelQuestSlotsFor(state.factoryLevel || 1);
   let viewIdx = state.questViewSlotIdx || 0;
   if (viewIdx < 0 || viewIdx >= cap) viewIdx = 0;
-  let aq = getActiveQuestSlot(viewIdx);
-  if (!aq) {
-    // 表示中スロットが空 → 他に active があるならそちらを表示
-    forEachQuestSlot((idx, q) => {
-      if (q && !aq) { aq = q; viewIdx = idx; }
-    });
-    if (aq) state.questViewSlotIdx = viewIdx;
-  }
+  const aq = getActiveQuestSlot(viewIdx);
   // ページャ更新
   renderQuestCardPager();
   if (!aq) {
@@ -8473,6 +8567,16 @@ async function init() {
   $("salaryReportClose")?.addEventListener("click", closeSalaryReportModal);
   $("salaryReportModal")?.addEventListener("click", (e) => {
     if (e.target.id === "salaryReportModal") closeSalaryReportModal();
+  });
+  // Phase β2-3 part 2: 行商人マルコ・ポーロ modal
+  $("marcoPoloClose")?.addEventListener("click", closeMarcoPoloModal);
+  $("marcoPoloModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "marcoPoloModal") closeMarcoPoloModal();
+  });
+  $("marcoPoloList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-marco-buy]");
+    if (!btn || btn.disabled) return;
+    purchaseMarcoPoloItem(btn.getAttribute("data-marco-buy"));
   });
 
   // ── Market view: tabs (Phase 1B-5 + 1D-3) ──

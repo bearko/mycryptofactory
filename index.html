@@ -3915,6 +3915,113 @@
       letter-spacing: 0.06em;
     }
 
+    /* Phase β2-3 part 2: 行商人マルコ・ポーロ modal */
+    .marco-polo {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .marco-polo.hidden { display: none !important; }
+    .marco-polo__card {
+      max-width: 560px; width: 100%;
+      max-height: 92vh; overflow-y: auto;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 0.9rem 1rem 0.8rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .marco-polo__head {
+      display: grid; grid-template-columns: 64px 1fr; gap: 0.7rem;
+      align-items: center;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .marco-polo__portrait {
+      width: 64px; height: 64px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 6px;
+      border: 1.5px solid var(--accent);
+    }
+    .marco-polo__title {
+      margin: 0; font-size: 1.05rem; color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .marco-polo__greeting {
+      margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--muted);
+      line-height: 1.4;
+    }
+    .marco-polo__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.35rem;
+      max-height: 60vh; overflow-y: auto;
+    }
+    .marco-polo__item {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 0.5rem; align-items: center;
+      padding: 0.45rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+    }
+    .marco-polo__icon {
+      width: 40px; height: 40px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .marco-polo__main {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+    }
+    .marco-polo__name {
+      font-size: 0.88rem; font-weight: 700;
+    }
+    .marco-polo__desc {
+      font-size: 0.7rem; color: var(--muted);
+      line-height: 1.3;
+      white-space: normal;
+    }
+    .marco-polo__buy {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      align-items: flex-end;
+    }
+    .marco-polo__price {
+      display: flex; align-items: baseline; gap: 0.3rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .marco-polo__price-old {
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-decoration: line-through;
+    }
+    .marco-polo__price-new {
+      color: var(--accent);
+      font-size: 0.92rem;
+    }
+    .marco-polo__btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer;
+    }
+    .marco-polo__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .marco-polo__close {
+      align-self: stretch;
+      appearance: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-weight: 700; font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+    }
+    .marco-polo__close:hover { background: var(--accent); color: #1a1420; }
+
     /* Phase 1D-44: 12 月エクステンションコンテスト結果モーダル */
     .contest-modal {
       position: fixed; inset: 0; z-index: 295;
@@ -6407,6 +6514,21 @@
         <ol class="salary-report__list" id="salaryReportList"></ol>
       </div>
       <button type="button" class="salary-report__close" id="salaryReportClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Phase β2-3 part 2: 5 月行商人マルコ・ポーロ訪問 modal -->
+  <div class="marco-polo hidden" id="marcoPoloModal" role="dialog" aria-modal="true" aria-labelledby="marcoPoloTitle">
+    <div class="marco-polo__card">
+      <header class="marco-polo__head">
+        <img class="marco-polo__portrait" src="https://raw.githubusercontent.com/bearko/mycryptoheroes/main/Image/Heroes/4008.png" alt="Marco Polo" onerror="this.style.opacity='0.2'" />
+        <div class="marco-polo__head-text">
+          <h2 class="marco-polo__title" id="marcoPoloTitle">行商人マルコ・ポーロの訪問</h2>
+          <p class="marco-polo__greeting" id="marcoPoloGreeting">やぁ！世界各地から珍品を運んできましたよ。今日は半額でお譲りします！</p>
+        </div>
+      </header>
+      <ul class="marco-polo__list" id="marcoPoloList"></ul>
+      <button type="button" class="marco-polo__close" id="marcoPoloClose" data-i18n="marcoPolo.bye">ありがとう、また来てね</button>
     </div>
   </div>
 

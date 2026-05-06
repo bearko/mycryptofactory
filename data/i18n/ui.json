@@ -237,6 +237,11 @@
   "quest.notif.restThenDeploy":{ "ja": "ヒーローの体力を満タンにしてから出発します", "en": "Resting heroes to full HP before departure" },
   "quest.notif.redeployFailed":{ "ja": "編成 Lv 不足のため自動再派遣できませんでした。 編成し直してください", "en": "Auto-redeploy failed (team Lv too low). Please re-form the team." },
   "quest.mai.redeployBusy":    { "ja": "別のクエストが再派遣待ちです。", "en": "Another quest is awaiting redeploy." },
+  "marcoPolo.title":           { "ja": "行商人マルコ・ポーロの訪問", "en": "Marco Polo, the Wandering Merchant" },
+  "marcoPolo.greeting":        { "ja": "やぁ！世界各地から珍品を運んできましたよ。今日は半額でお譲りします！", "en": "Hello! I've brought rare goods from around the world. Half price today!" },
+  "marcoPolo.bye":             { "ja": "ありがとう、また来てね", "en": "Thanks, come again!" },
+  "marcoPolo.soldOut":         { "ja": "売切", "en": "Sold out" },
+  "marcoPolo.noGum":           { "ja": "GUM 不足", "en": "Not enough GUM" },
 
   "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Workshop Lv: {n}" },
 
