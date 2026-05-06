@@ -153,13 +153,15 @@ const BASE_PRICE_BY_RARITY = {
 
 /** 査定 tier ごとの価格倍率
  *  Phase 1D-36: great / masterpiece の伸びを大きくし、 ヒーローランクアップの
- *  リターン (= 高 tier ヒット率向上) が金額として明確に効くように調整。 */
+ *  リターン (= 高 tier ヒット率向上) が金額として明確に効くように調整。
+ *  Phase 1D-39: 傑作 (masterpiece) を更に ×1.2 し、 究極品質に振り切ったときの
+ *  リターンを際立たせる (2.20 → 2.65)。 */
 const TIER_MULTIPLIER = {
   poor:        0.55,  // unchanged
   decent:      0.80,  // unchanged
   fine:        1.00,  // unchanged
-  great:       1.45,  // 旧 1.30 → 1.45 (+11.5%)
-  masterpiece: 2.20,  // 旧 1.80 → 2.20 (+22%)
+  great:       1.45,  // unchanged from 1D-36
+  masterpiece: 2.65,  // 1D-36: 1.80 → 2.20、 1D-39: 2.20 → 2.65 (= ×1.2 buff)
 };
 
 /**
