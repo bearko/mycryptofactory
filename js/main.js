@@ -233,6 +233,9 @@ const state = {
   pendingAppraisal: /** @type {object | null} */ (null),
   /** Phase 1D-44 12 月コンテスト結果の表示中データ (4 部門 winner + 大賞 + 賞金合計) */
   pendingContest: /** @type {object | null} */ (null),
+  /** Phase 1D-45 打ち直しクラフトの対象倉庫 index (= state.warehouse[idx])。
+   *  非 null のときは pickExtForConfirm 経由ではなく remake 専用フローで起動。 */
+  craftPickedRemakeIdx: /** @type {number | null} */ (null),
   /** Phase 1D-3 ファクトリーレベル (Phase 1D-3 では 1 固定。
    *  level-up フローは別 PR で実装予定) */
   factoryLevel: 1,
@@ -1377,6 +1380,63 @@ function triggerRecruitmentEvent() {
   });
 }
 
+/** ─── Phase 1D-45: 打ち直しクラフト (rarity アップ + 査定やり直し) ───────── */
+
+/** rarity の昇順ランク (内部比較用)。 0=common .. 4=legendary */
+const RARITY_TIER_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
+
+/** 倉庫アイテムの実効 rarity (= 打ち直し済みの rarityOverride を優先)。 */
+function effectiveRarityOf(w) {
+  if (!w) return "common";
+  if (w.rarityOverride) return w.rarityOverride;
+  const ext = EXTENSION_BY_ID[String(w.extId)];
+  return ext?.rarity || "common";
+}
+
+/** 現工房 Lv の上限内で「次の rarity」を返す。 上限なら null。
+ *  Lv1 → max common (常に null)、 Lv2 → uncommon まで、 Lv5 → legendary まで。 */
+function nextRarityForRemake(currentRarity, factoryLevel) {
+  const cur = (currentRarity || "common").toLowerCase();
+  const idx = RARITY_TIER_ORDER.indexOf(cur);
+  if (idx < 0 || idx >= RARITY_TIER_ORDER.length - 1) return null;  // legendary は上が無い
+  const next = RARITY_TIER_ORDER[idx + 1];
+  if (!rarityAllowedAtFactoryLevel(next, factoryLevel || 1)) return null;
+  return next;
+}
+
+/** 倉庫アイテムが打ち直し可能かを返す。
+ *  - rarityOverride 込みで現実効 rarity が legendary 未満
+ *  - 次の rarity が現工房 Lv 上限内
+ *  - 進行中クラフト / 完成待ちが無い
+ */
+function isRemakeEligible(w) {
+  if (!w) return false;
+  if (state.activeCraft || state.pendingCompletion) return false;
+  const cur = effectiveRarityOf(w);
+  const nxt = nextRarityForRemake(cur, state.factoryLevel || 1);
+  return nxt != null;
+}
+
+/** ext の浅いコピーに rarity を上書きしたものを返す (= 期間計算 / 必要 Lv 計算用)。 */
+function makeRemakeExtShim(ext, targetRarity) {
+  if (!ext) return null;
+  return Object.assign({}, ext, { rarity: targetRarity });
+}
+
+/** 倉庫アイテムから「打ち直し」を起動する。 craft view を開いて confirm 画面へ直行。 */
+function startRemakeFromWarehouse(idx) {
+  const w = state.warehouse?.[idx];
+  if (!w || !isRemakeEligible(w)) return;
+  state.craftPickedRemakeIdx = idx;
+  state.craftPickedExtId = String(w.extId);
+  state.craftPickedCommissionId = null;
+  state.craftTeam = state.craftTeam.map(_ => null);  // reset team for clean pick
+  closeMarketView?.();
+  openCraftView?.();
+  setCraftScreen("confirm");
+  renderConfirm?.();
+}
+
 /** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
 
 /** 部門賞 (各クラフトパワー部門の最高ホルダー) と大賞 (4 色合計最高ホルダー) の
@@ -2072,8 +2132,10 @@ function tickActiveCraft() {
     // 人数ボーナス: 追加 1 人ごとに +10% (1 人 = +0% / 5 人 = +40%)
     const heroBonus  = (activeWorkers - 1) * 0.10;
     // Phase 1D-40 + 1D-34: クラフトLv 短縮 (rarity 要求基準) × 潤滑油バフ
+    // Phase 1D-45: 打ち直しクラフト中は昇格 rarity の要求値を使う
     const ext = EXTENSION_BY_ID[String(ac.extId)];
-    const required = REQUIRED_CRAFT_LV_BY_RARITY[ext?.rarity] || 50;
+    const effRarity = ac.remakeTargetRarity || ext?.rarity;
+    const required = REQUIRED_CRAFT_LV_BY_RARITY[effRarity] || 50;
     const lvMult   = craftLvSpeedMultiplier(totalCraftLv, required);
     const lubeFactor = isBuffActive("lubricant") ? 2 : 1;
     const factor   = (1 + heroBonus) * lvMult * lubeFactor;
@@ -2412,6 +2474,9 @@ function triggerCraftCompletion(ac) {
     durationEstimateWeeks: ac.durationWeeks,
     qualityRatio,
     qualityTier,
+    // Phase 1D-45: 打ち直しクラフトのコンテキストを完成画面 → 倉庫まで伝播
+    remakeFromWarehouseIdx: ac.remakeFromWarehouseIdx ?? null,
+    remakeTargetRarity:     ac.remakeTargetRarity     ?? null,
   };
   state.activeCraft = null;
 
@@ -4508,11 +4573,23 @@ function currentTeamHeroes() {
 function renderConfirm() {
   const ext = EXTENSION_BY_ID[String(state.craftPickedExtId)];
   if (!ext) return;
+  // Phase 1D-45: 打ち直しクラフト中は ext.rarity を昇格 rarity に差し替えた shim を使う
+  const remakeIdx = state.craftPickedRemakeIdx;
+  const remakeW   = remakeIdx != null ? state.warehouse?.[remakeIdx] : null;
+  const remakeFromRarity = remakeW ? effectiveRarityOf(remakeW) : null;
+  const remakeTargetRarity = remakeW
+    ? nextRarityForRemake(remakeFromRarity, state.factoryLevel || 1)
+    : null;
+  const isRemake = remakeW != null && remakeTargetRarity != null;
+  const extForCalc = isRemake ? makeRemakeExtShim(ext, remakeTargetRarity) : ext;
   $("confirmExtIcon").src = extIconUrl(ext.extId);
-  $("confirmExtName").textContent = ext.nameJa;
-  $("confirmExtSeries").textContent = (ext.series || "") + " · " + ti18n("rarity." + ext.rarity, ext.rarity);
+  $("confirmExtName").textContent = (isRemake ? `[${ti18n("remake.label", "打ち直し")}] ` : "") + ext.nameJa;
+  $("confirmExtSeries").textContent = (ext.series || "") + " · " +
+    (isRemake
+      ? `${ti18n("rarity." + remakeFromRarity, remakeFromRarity)} → ${ti18n("rarity." + remakeTargetRarity, remakeTargetRarity)}`
+      : ti18n("rarity." + ext.rarity, ext.rarity));
   const team = currentTeamHeroes();
-  const dur = estimateDurationWeeks(ext, team);
+  const dur = estimateDurationWeeks(extForCalc, team);
   $("confirmDuration").textContent = ti18n("craft.duration.estimate").replace("{n}", dur);
 
   // Targets (icons only — no text label, just dot/icon + value)
@@ -4527,9 +4604,18 @@ function renderConfirm() {
 
   // Materials (赤字 if shortage; 表示形式 = "×4 (在庫:10)")
   // Phase 1D-32: 受注クラフトは素材不要 → 期限/報酬の表示に差し替え
+  // Phase 1D-45: 打ち直しクラフトも素材不要 → "素材不要 (打ち直し)" 案内
   const recipe = recipeFor(ext);
   const avail = craftAvailability(ext, team, state.materials);
-  if (state.craftPickedCommissionId != null) {
+  if (isRemake) {
+    $("confirmMaterials").innerHTML = `
+      <div class="craft-confirm__mat-row" style="background: rgba(196,163,90,0.12); border-radius: 4px; padding: 0.5rem;">
+        <strong style="color: var(--accent);">${escapeHtml(ti18n("remake.confirmTitle", "打ち直しクラフト"))}</strong>
+      </div>
+      <div class="craft-confirm__mat-row" style="font-size: 0.8rem; color: var(--muted);">
+        <span>${escapeHtml(ti18n("remake.noMatNoGum", "素材・GUM 不要 / 査定もやり直し"))}</span>
+      </div>`;
+  } else if (state.craftPickedCommissionId != null) {
     const c = (state.commissions || []).find(x => x.id === state.craftPickedCommissionId);
     if (c) {
       const remainTicks = Math.max(0, c.deadlineTick - state.tickCount);
@@ -4609,15 +4695,16 @@ function renderConfirm() {
   //  - level 不足:    開始は許可。マイのアドバイスで品質低下の見込みを案内
   //  - filled === 0: 開始不可 (チーム編成が必要)
   // Phase 1D-32: 受注クラフト (= state.craftPickedCommissionId 設定中) は素材不要
+  // Phase 1D-45: 打ち直しクラフトも素材不要 (= isRemake で同様にスキップ)
   const isCommission = state.craftPickedCommissionId != null;
   const filled = state.craftTeam.filter(id => id != null).length;
   const warn = $("confirmWarning");
   const startBtn = $("confirmStartBtn");
   let warnMsg = "";
   let warnMode = "error";
-  const canStart = filled > 0 && (isCommission || avail.materialOk);
+  const canStart = filled > 0 && (isCommission || isRemake || avail.materialOk);
   if (filled === 0) warnMsg = ti18n("craft.warn.noTeam");
-  else if (!isCommission && !avail.materialOk) warnMsg = ti18n("craft.warn.noMaterial");
+  else if (!isCommission && !isRemake && !avail.materialOk) warnMsg = ti18n("craft.warn.noMaterial");
   else if (!avail.levelOk) {
     // Phase 1D-24: Mai のアドバイス文に切替 (赤字エラーではなく warning 風)
     warnMode = "advice";
@@ -4649,6 +4736,12 @@ function renderConfirm() {
 
 function openCraftView() {
   pauseTime();
+  // Phase 1D-45: 打ち直し起動経由 (state.craftPickedRemakeIdx 設定済) なら
+  //   ext picker を skip し confirm 画面の状態を保つ。 それ以外は通常 select。
+  if (state.craftPickedRemakeIdx != null) {
+    setCraftScreen("confirm");
+    return;
+  }
   state.craftScreen = "select";
   state.craftPickedExtId = null;
   // Phase 1D-32: 通常 craft view を開いた時点で commission picker を解除する
@@ -4667,6 +4760,9 @@ function closeCraftView() {
   $("craftView")?.classList.add("hidden");
   // Phase 1D-32: confirm を閉じた時点で commission 状態もクリア
   state.craftPickedCommissionId = null;
+  // Phase 1D-45: 打ち直し picker 状態もクリア (= キャンセル時に倉庫アイテムが残る)
+  //   ただし activeCraft が remakeFromWarehouseIdx を保持中の場合はそちらが進行中なのでクリアして問題なし
+  state.craftPickedRemakeIdx = null;
   resumeTime();
 }
 
@@ -4692,29 +4788,41 @@ function startActiveCraft() {
   const teamHeroes = currentTeamHeroes();
   // 安全チェック (ボタンが disabled でも念のため)
   // Phase 1D-32: 受注クラフトは素材不要なので materialOk をスキップ
+  // Phase 1D-45: 打ち直しクラフトも素材不要
   const isCommission = state.craftPickedCommissionId != null;
+  const remakeIdx = state.craftPickedRemakeIdx;
+  const remakeW   = remakeIdx != null ? state.warehouse?.[remakeIdx] : null;
+  const remakeFromRarity = remakeW ? effectiveRarityOf(remakeW) : null;
+  const remakeTargetRarity = remakeW
+    ? nextRarityForRemake(remakeFromRarity, state.factoryLevel || 1)
+    : null;
+  const isRemake = remakeW != null && remakeTargetRarity != null;
   const avail = craftAvailability(ext, teamHeroes, state.materials);
-  if (!isCommission && !avail.materialOk) return;
+  if (!isCommission && !isRemake && !avail.materialOk) return;
   // Phase 1D-6: クラフト開始 SE
   playSe("craftStart");
   const targets = extElementTargets(ext);
-  const dur = estimateDurationWeeks(ext, teamHeroes);
+  // 期間計算は打ち直しなら昇格 rarity の shim ext を使う (= 高レア相当の長さ)
+  const extForCalc = isRemake ? makeRemakeExtShim(ext, remakeTargetRarity) : ext;
+  const dur = estimateDurationWeeks(extForCalc, teamHeroes);
   const recipe = recipeFor(ext);
 
-  // 素材消費 (受注クラフトはスキップ)
-  if (!isCommission) {
+  // 素材消費 (受注 / 打ち直しはスキップ)
+  if (!isCommission && !isRemake) {
     for (const m of recipe) {
       state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - (m.qty || 0));
     }
   }
 
-  // Phase 1D-32: 受注ID を activeCraft に伝播
+  // Phase 1D-32: 受注ID / Phase 1D-45: 打ち直し index を activeCraft に伝播
   const commissionId = state.craftPickedCommissionId;
   state.activeCraft = {
     extId: ext.extId,
     team,
     targets,
     commissionId: commissionId != null ? commissionId : null,
+    remakeFromWarehouseIdx: isRemake ? remakeIdx : null,
+    remakeTargetRarity:     isRemake ? remakeTargetRarity : null,
     progress: { garuda: 0, ifrit: 0, leviathan: 0, tiamat: 0 },
     recipe,
     startedAt: { year: state.year, month: state.month, week: state.week },
@@ -4722,6 +4830,8 @@ function startActiveCraft() {
     durationWeeks: dur,
     timeProgress: 0,                  // Phase 1B 改修: 時間進捗 (0..1)、完成判定の主役
   };
+  // Phase 1D-45: 打ち直し起動完了 → pickedRemakeIdx は activeCraft に移したのでクリア
+  state.craftPickedRemakeIdx = null;
   // Mark assigned heroes as crafting (state machine — stamina tick comes Phase 1C)
   for (const id of team) {
     if (id == null) continue;
@@ -5989,13 +6099,17 @@ function renderSellModal() {
   if (idx < 0) return;
   const w = state.warehouse[idx];
   if (!w) return;
-  const ext = EXTENSION_BY_ID[String(w.extId)];
+  // Phase 1D-45: 打ち直し済みアイテムは rarity を上書きした shim ext を使う
+  //   (= 売却価格・取引速度・売主要件すべて昇格 rarity に基づく)
+  const baseExt = EXTENSION_BY_ID[String(w.extId)];
+  const effRarity = effectiveRarityOf(w);
+  const ext = (baseExt && w.rarityOverride) ? makeRemakeExtShim(baseExt, effRarity) : baseExt;
 
   // ext 情報
   $("sellExtIcon").src = extIconUrl(w.extId);
   $("sellExtName").textContent = ext?.nameJa || "—";
-  $("sellExtRarity").textContent = ti18n("rarity." + (ext?.rarity || "common"));
-  $("sellExtRarity").setAttribute("data-rarity", ext?.rarity || "common");
+  $("sellExtRarity").textContent = ti18n("rarity." + effRarity);
+  $("sellExtRarity").setAttribute("data-rarity", effRarity);
   if (w.appraisal) {
     $("sellExtTier").textContent = ti18n("appraisal.tier." + w.appraisal.tier);
     $("sellExtTier").setAttribute("data-tier", w.appraisal.tier);
@@ -6793,11 +6907,18 @@ function renderMarketWarehouse() {
     return;
   }
   // 新しい順に表示
-  const items = state.warehouse.slice().reverse();
-  host.innerHTML = items.map((w, i) => {
+  // Phase 1D-45: state.warehouse は元配列なので reverse 用に「元 index → 新 index」マップを作る
+  const totalLen = state.warehouse.length;
+  const items = state.warehouse.slice().reverse().map((w, viewIdx) => ({
+    w,
+    origIdx: totalLen - 1 - viewIdx,  // splice で参照する元配列の index
+  }));
+  host.innerHTML = items.map(({ w, origIdx }) => {
     const ext = EXTENSION_BY_ID[String(w.extId)];
     const name = ext ? ext.nameJa : `ext ${w.extId}`;
-    const rarityLbl = ext ? ti18n("rarity." + ext.rarity, ext.rarity) : "";
+    // Phase 1D-45: 打ち直し済みは rarityOverride を表示
+    const effRarity = effectiveRarityOf(w);
+    const rarityLbl = ti18n("rarity." + effRarity, effRarity);
     const dateLbl = formatGameDate(w.achievedAt || { year: 2018, month: 12, week: 1 });
     const apr  = w.appraisal;
     const tierLbl = apr ? ti18n("appraisal.tier." + apr.tier) : "—";
@@ -6807,12 +6928,20 @@ function renderMarketWarehouse() {
     const winBadge = wins.length > 0
       ? `<span class="warehouse-item__contest" title="${escapeHtml(ti18n("contest.badge.title", "コンテスト受賞"))}">🏆 ×${wins.length}</span>`
       : "";
-    return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${ext ? ext.rarity : "common"}">
+    // Phase 1D-45: 打ち直し可能なら「打ち直し」ボタンを併設
+    const remakeBtn = isRemakeEligible(w)
+      ? `<button type="button" class="warehouse-item__remake-btn" data-remake="${origIdx}">${escapeHtml(ti18n("remake.btn", "打ち直し"))}</button>`
+      : "";
+    // 打ち直し済み (rarityOverride) には目印を出す
+    const remadeMark = w.rarityOverride
+      ? `<span class="warehouse-item__remade" title="${escapeHtml(ti18n("remake.remadeTitle", "打ち直し済"))}">★</span>`
+      : "";
+    return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${effRarity}">
       <img class="warehouse-item__icon" src="${extIconUrl(w.extId)}" alt="" onerror="this.style.opacity='0.2'" />
       <div class="warehouse-item__main">
         <div class="warehouse-item__name-row">
-          <span class="warehouse-item__name">${escapeHtml(name)}</span>
-          <span class="warehouse-item__rarity" data-rarity="${ext ? ext.rarity : "common"}">${escapeHtml(rarityLbl)}</span>
+          <span class="warehouse-item__name">${escapeHtml(name)}${remadeMark}</span>
+          <span class="warehouse-item__rarity" data-rarity="${effRarity}">${escapeHtml(rarityLbl)}</span>
         </div>
         <div class="warehouse-item__meta">
           <span class="warehouse-item__date">${escapeHtml(dateLbl)}</span>
@@ -6824,6 +6953,7 @@ function renderMarketWarehouse() {
           <span class="warehouse-item__tier" data-tier="${apr.tier}">${escapeHtml(tierLbl)}</span>
           <span class="warehouse-item__score-num"><strong>${score}</strong> / 50</span>
         </div>` : ""}
+        ${remakeBtn}
       </div>
     </div>`;
   }).join("");
@@ -7003,6 +7133,15 @@ function finalizeCraftCleanup() {
   const pc = state.pendingCompletion;
   const pa = state.pendingAppraisal;
   if (pc) {
+    // Phase 1D-45: 打ち直しクラフト完了時は元の倉庫アイテムを除去してから新規エントリ追加
+    //   - splice で詰めるので push の前に処理
+    //   - 受賞 contestWins フラグは新エントリには引き継がず、 リセットする
+    if (pc.remakeFromWarehouseIdx != null) {
+      const idx = pc.remakeFromWarehouseIdx;
+      if (idx >= 0 && idx < state.warehouse.length) {
+        state.warehouse.splice(idx, 1);
+      }
+    }
     state.warehouse.push({
       extId: pc.extId,
       achievedAt: pc.achievedAt,
@@ -7019,12 +7158,15 @@ function finalizeCraftCleanup() {
             tier: pa.tier,
           }
         : null,
+      // Phase 1D-45: 打ち直しなら rarityOverride を載せて表示用 rarity を昇格
+      rarityOverride: pc.remakeTargetRarity || null,
     });
     // Phase 1D-23: クラフト完了統計 + 査定スコアの最大値を更新 (工房レベルアップ条件で参照)
     state.craftCompletedCount = (state.craftCompletedCount || 0) + 1;
     if (pa && pa.totalScore != null) {
       const ext = EXTENSION_BY_ID[String(pc.extId)];
-      const r = ext?.rarity || "common";
+      // Phase 1D-45: 打ち直しなら昇格後の rarity でベストスコアを集計
+      const r = pc.remakeTargetRarity || ext?.rarity || "common";
       state.appraisalBest = state.appraisalBest || {};
       state.appraisalBest[r] = Math.max(state.appraisalBest[r] || 0, pa.totalScore);
     }
@@ -7389,6 +7531,14 @@ async function init() {
   $("marketViewBack")?.addEventListener("click", closeMarketView);
   document.querySelectorAll("[data-market-tab]").forEach(btn => {
     btn.addEventListener("click", () => setMarketTab(btn.getAttribute("data-market-tab")));
+  });
+  // Phase 1D-45: 倉庫リスト「打ち直し」ボタン (event delegation)
+  $("warehouseList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-remake]");
+    if (!btn) return;
+    ev.stopPropagation();
+    const idx = parseInt(btn.getAttribute("data-remake"), 10);
+    if (Number.isFinite(idx)) startRemakeFromWarehouse(idx);
   });
   // 雇用タブ: プラン選択 → 採用担当者 → 開始
   $("hirePlanList")?.addEventListener("click", (ev) => {
