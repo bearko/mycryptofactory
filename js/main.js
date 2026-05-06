@@ -4330,11 +4330,58 @@ function openHeroView() {
 function openHeroEnhanceView() {
   pauseTime();
   $("heroEnhanceView")?.classList.remove("hidden");
-  renderHeroEnhanceList();
+  // Phase β2-2: 開いたら必ず「強化」 タブから開始
+  switchHeroManagementTab("enhance");
 }
 function closeHeroEnhanceView() {
   $("heroEnhanceView")?.classList.add("hidden");
   resumeTime();
+}
+
+/** Phase β2-2: ヒーロー管理画面のタブ切替 (強化 / 雇用 / 解雇) */
+function switchHeroManagementTab(tabName) {
+  if (!tabName) return;
+  document.querySelectorAll(".hero-management__tab").forEach(t => {
+    t.classList.toggle("hero-management__tab--active", t.getAttribute("data-mgmt-tab") === tabName);
+  });
+  document.querySelectorAll(".hero-management__panel").forEach(p => {
+    p.classList.toggle("hidden", p.getAttribute("data-mgmt-panel") !== tabName);
+  });
+  if (tabName === "fire") renderHeroFireList();
+  else if (tabName === "enhance") renderHeroEnhanceList();
+}
+
+/** Phase β2-2: 解雇タブのヒーロー一覧を描画 */
+function renderHeroFireList() {
+  const host = $("heroFireList");
+  if (!host) return;
+  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => annualSalaryOf(b) - annualSalaryOf(a));
+  if (heroes.length === 0) {
+    host.innerHTML = `<p class="hero-management__fire-intro">${escapeHtml(ti18n("hero.management.fire.empty", "現在ヒーローを所持していません。"))}</p>`;
+    return;
+  }
+  host.innerHTML = heroes.map(h => {
+    const name = tHero(h.heroId, h.nameJa);
+    const stars = "★".repeat(h.rank || 0) + "☆".repeat(5 - (h.rank || 0));
+    const rarLbl = ti18n("rarity." + h.rarity, h.rarity);
+    const salary = annualSalaryOf(h);
+    const isIdle = h.state === HERO_STATE.IDLE
+      && !isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true });
+    const blockMsg = !isIdle
+      ? ` <span style="color:var(--muted);font-size:0.65rem">(${escapeHtml(ti18n("hero.lock.busy", "作業中"))})</span>`
+      : "";
+    return `<div class="hero-fire-row" data-rarity="${h.rarity}">
+      <img class="hero-fire-row__portrait" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="hero-fire-row__main">
+        <span class="hero-fire-row__name">${escapeHtml(name)}</span>
+        <span class="hero-fire-row__meta">${escapeHtml(rarLbl)} · ${stars}${blockMsg}</span>
+        <span class="hero-fire-row__salary">${ti18n("hero.salary", "年俸")}: ${salary.toLocaleString()} GUM</span>
+      </div>
+      <button type="button" class="hero-fire-row__btn" data-fire-hero="${h.heroId}" ${isIdle ? "" : "disabled"}>
+        ${escapeHtml(ti18n("fire.fireBtn", "解雇する"))}
+      </button>
+    </div>`;
+  }).join("");
 }
 
 /** Phase 1D-23 + β2-1: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー
@@ -4369,15 +4416,32 @@ function _heroFullHpProjected(hero, rankOverride = null) {
 }
 
 /** Phase 1D-20: ヒーロー強化リストを描画
- *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記 */
+ *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記
+ *  Phase β2-2: rarity フィルタ + 任意キーソートに対応 */
 function renderHeroEnhanceList() {
   const host = $("heroEnhanceList");
   if (!host) return;
   const lang = getLang() === "en" ? "en" : "ja";
-  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => {
-    if ((b.rank || 0) !== (a.rank || 0)) return (b.rank || 0) - (a.rank || 0);
-    return craftLevel(b) - craftLevel(a);
-  });
+  const filterEl = $("heroEnhanceFilterRarity");
+  const sortEl   = $("heroEnhanceSortKey");
+  const filter = filterEl?.value || "all";
+  const sortKey = sortEl?.value || "rankDesc";
+  let heroes = (state.ownedHeroes || []).slice();
+  if (filter !== "all") {
+    heroes = heroes.filter(h => (h.rarity || "common").toLowerCase() === filter);
+  }
+  // 並び替え (Phase β2-2)
+  const projOf = (h) => _heroFullHpProjected(h, h.rank || 0);
+  const cmps = {
+    rankDesc:     (a, b) => (b.rank || 0) - (a.rank || 0) || craftLevel(b) - craftLevel(a),
+    paramDesc:    (a, b) => projOf(b).sum - projOf(a).sum,
+    craftDesc:    (a, b) => craftLevel(b) - craftLevel(a),
+    questDesc:    (a, b) => projOf(b).questLv - projOf(a).questLv,
+    merchantDesc: (a, b) => projOf(b).merchantLv - projOf(a).merchantLv,
+    salaryDesc:   (a, b) => annualSalaryOf(b) - annualSalaryOf(a),
+    salaryAsc:    (a, b) => annualSalaryOf(a) - annualSalaryOf(b),
+  };
+  heroes.sort(cmps[sortKey] || cmps.rankDesc);
   host.innerHTML = heroes.map(hero => {
     const name = tHero(hero.heroId, hero.nameJa);
     const rank = hero.rank || 0;
@@ -5915,6 +5979,9 @@ function renderHeroDetailPopup() {
       btn.disabled = !isIdle;
     });
   }
+  // Phase β2-2: 解雇ボタンは Idle のみ有効 (= 進行中作業を中断しないため)
+  const fireBtn = $("heroDetailFireBtn");
+  if (fireBtn) fireBtn.disabled = !isIdle;
 }
 function closeHeroDetailPopup() {
   $("heroDetailPopup")?.classList.add("hidden");
@@ -7881,6 +7948,13 @@ async function init() {
     if (Number.isFinite(id)) openHeroDetailPopup(id);
   });
   $("heroDetailClose")?.addEventListener("click", closeHeroDetailPopup);
+  // Phase β2-2: 解雇ボタン (= 能動的なリストラ)
+  $("heroDetailFireBtn")?.addEventListener("click", () => {
+    const id = state.popupHeroId;
+    if (id == null) return;
+    closeHeroDetailPopup();
+    setTimeout(() => openFireConfirm(id), 100);
+  });
   $("heroDetailPopup")?.addEventListener("click", (e) => {
     if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
@@ -8221,6 +8295,28 @@ async function init() {
     if (!btn || btn.disabled) return;
     const hid = parseInt(btn.getAttribute("data-enhance-hero"), 10);
     if (Number.isFinite(hid)) rankUpHero(hid);
+  });
+  // Phase β2-2: ソート / フィルタ変更時に再描画
+  $("heroEnhanceFilterRarity")?.addEventListener("change", renderHeroEnhanceList);
+  $("heroEnhanceSortKey")?.addEventListener("change", renderHeroEnhanceList);
+  // Phase β2-2: 管理タブ切替 (強化 / 雇用 / 解雇)
+  document.querySelectorAll(".hero-management__tab").forEach(tab => {
+    tab.addEventListener("click", () => switchHeroManagementTab(tab.getAttribute("data-mgmt-tab")));
+  });
+  $("heroMgmtOpenMarketHire")?.addEventListener("click", () => {
+    closeHeroEnhanceView();
+    setTimeout(() => {
+      state.marketTab = "hire";
+      openMarketView?.();
+      setMarketTab?.("hire");
+    }, 100);
+  });
+  // 解雇リストの delegation
+  $("heroFireList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-fire-hero]");
+    if (!btn || btn.disabled) return;
+    const hid = parseInt(btn.getAttribute("data-fire-hero"), 10);
+    if (Number.isFinite(hid)) openFireConfirm(hid);
   });
   // Phase 1D-12: 編成 view の tab 切替
   document.querySelectorAll(".hero-team-tab").forEach(btn => {
