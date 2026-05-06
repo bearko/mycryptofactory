@@ -64,6 +64,8 @@ import {
   rarityAllowedAtFactoryLevel,
   maxRarityForFactoryLevel,
   lockedSeriesList,
+  REQUIRED_CRAFT_LV_BY_RARITY,
+  craftLvSpeedMultiplier,
 } from "./factory-craft.js";
 import {
   MATERIALS,
@@ -1309,9 +1311,13 @@ function tickActiveCraft() {
     const baseDelta  = 1 / totalTicks;
     // 人数ボーナス: 追加 1 人ごとに +10% (1 人 = +0% / 5 人 = +40%)
     const heroBonus  = (activeWorkers - 1) * 0.10;
-    // クラフトLv ボーナス: 1000 で +50% 上限
-    const lvBonus    = Math.min(0.5, totalCraftLv / 2000);
-    const factor     = 1 + heroBonus + lvBonus;
+    // Phase 1D-40: クラフトLv 短縮を rarity 要求基準で計算 (= 1.0〜3.0 倍)。
+    //   旧 lvBonus = Math.min(0.5, total / 2000) を置き換え。 ratio が高いほど
+    //   進行が速くなり、 工房 / ヒーローランクアップの効用が明確化。
+    const ext = EXTENSION_BY_ID[String(ac.extId)];
+    const required = REQUIRED_CRAFT_LV_BY_RARITY[ext?.rarity] || 50;
+    const lvMult   = craftLvSpeedMultiplier(totalCraftLv, required);
+    const factor   = (1 + heroBonus) * lvMult;
     const before = ac.timeProgress || 0;
     ac.timeProgress = Math.min(1, before + baseDelta * factor);
     // Phase 1D-27: 進捗 40% / 80% でクラフト中の介入イベント (魂注入 / オーラ付与) を起動
@@ -1739,12 +1745,50 @@ function tickActiveQuest() {
   //   (同 tick での mai 重複呼び出しによる pauseFlags 不整合を回避)
   if (state.pauseFlags > 0) return;
   // 進捗 = elapsed ticks / total ticks
-  const elapsed = state.tickCount - aq.startedAtTick;
+  // Phase 1D-40: パーティ QL がベース QL を上回るほど進行が速くなる。
+  //   速度倍率 (qlMult): teamLv / baseLv を 1.0〜3.0 の範囲でクランプ。
+  //   2x 超え → 2x、 3x 超え → 3x で頭打ち。 ratio 1.0〜2.0 は線形補間で
+  //   1x → 2x。 つまり baseLv の倍以上で 2x、 3 倍以上で 3x。
+  const qlMult = aq.qlSpeedMult || 1;
+  const elapsed = (state.tickCount - aq.startedAtTick) * qlMult;
   const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
   aq.progress = Math.min(1, elapsed / totalTicks);
   if (aq.progress >= 1) {
     triggerQuestComplete(aq);
   }
+}
+
+/** Phase 1D-40: パーティ QL / ベース QL → 進行速度倍率
+ *  - ratio < 1.0: 1.0x (= 速度ボーナス無し)
+ *  - ratio 1.0 〜 2.0: 線形に 1.0x → 2.0x
+ *  - ratio 2.0 〜 3.0: 線形に 2.0x → 3.0x
+ *  - ratio >= 3.0: 3.0x で頭打ち
+ *  クエストでは スクロールバフが別に 2x かかる場合があるが、 そちらは
+ *  tickActiveQuest 側で別途 isBuffActive("scroll") で再度乗算される (= 重複可)。
+ */
+function questLvSpeedMultiplier(teamLv, baseLv) {
+  if (!baseLv || baseLv <= 0) return 1;
+  const ratio = teamLv / baseLv;
+  if (ratio < 1.0) return 1.0;
+  if (ratio < 2.0) return 1 + (ratio - 1);            // 1.0 → 2.0
+  if (ratio < 3.0) return 2 + (ratio - 2);            // 2.0 → 3.0
+  return 3.0;
+}
+
+/** Phase 1D-40: 商 (sho) 属性持ち seller が高 rarity を出品したときの取引期間短縮倍率
+ *  - Common / Uncommon: 1.0 (= 短縮なし)
+ *  - Rare:      2.0 (= 期間 1/2)
+ *  - Epic:      3.0 (= 期間 1/3)
+ *  - Legendary: 8.0 (= 期間 1/8)
+ *  非 商 seller は常に 1.0。 */
+function computeShoSpeedMult(seller, ext) {
+  if (!seller || !Array.isArray(seller.attributes)) return 1;
+  if (!seller.attributes.includes("sho")) return 1;
+  const r = (ext?.rarity || "common").toLowerCase();
+  if (r === "rare")      return 2;
+  if (r === "epic")      return 3;
+  if (r === "legendary") return 8;
+  return 1;
 }
 
 function triggerQuestComplete(aq) {
@@ -2206,6 +2250,8 @@ function startActiveQuest() {
     if (h) h.state = HERO_STATE.QUESTING;
   }
 
+  // Phase 1D-40: パーティ QL がベース QL を上回るほど進行速度がアップ
+  const qlSpeedMult = questLvSpeedMultiplier(teamLv, baseLv);
   state.activeQuest = {
     nodeId: node.id,
     difficulty: diff,
@@ -2213,6 +2259,7 @@ function startActiveQuest() {
     successRate: rate,
     startedAtTick: state.tickCount,
     durationWeeks: QUEST_DURATION_WEEKS[diff],
+    qlSpeedMult,
     progress: 0,
   };
   closeQuestView();
@@ -4086,7 +4133,8 @@ function renderMarketCard() {
     const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
     const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
     const iconUrl = ext ? extIconUrl(ext.extId) : "";
-    const elapsed = state.tickCount - s.listedAtTick;
+    // Phase 1D-40: 商 seller × rarity 短縮を progress 表示にも反映
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
     const totalTicks = s.weeks * SECONDS_PER_WEEK;
     const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
     const speedDef = SALE_SPEED_BY_ID?.[s.speedId];
@@ -4858,7 +4906,8 @@ function renderMarketSell() {
         const w = state.warehouse[s.warehouseIdx];
         const ext = EXTENSION_BY_ID[String(w?.extId)];
         const seller = findHero(s.sellerId);
-        const elapsed = state.tickCount - s.listedAtTick;
+        // Phase 1D-40: 商 seller × rarity 短縮を progress に反映
+        const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
         const total = s.weeks * SECONDS_PER_WEEK;
         const pct = Math.min(100, Math.floor(elapsed / total * 100));
         return `<div class="active-sale">
@@ -5058,6 +5107,13 @@ function startSale() {
   state.lastSaleSellerId = seller.heroId;
   const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
   const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 1D-40: seller が「商」属性持ちなら、 ext rarity に応じて取引期間を短縮
+  //   - Rare:      1/2 期間 (= 倍速)
+  //   - Epic:      1/3 期間 (= 3 倍速)
+  //   - Legendary: 1/8 期間 (= 8 倍速)
+  //   - Common / Uncommon: 短縮無し (= 通常 sho 効果は価格 +10% のみ)
+  //  ロジックは listedAtTick からの elapsed に倍率を乗じて評価する。
+  const shoSpeedMult = computeShoSpeedMult(seller, ext);
   state.activeSales.push({
     id: ++_saleId,
     warehouseIdx: idx,
@@ -5066,6 +5122,7 @@ function startSale() {
     listedAtTick: state.tickCount,
     weeks: speed.weeks,
     expectedPrice: expected,
+    shoSpeedMult,            // 1, 2, 3, 8 のいずれか
     status: "listed",
   });
   // Phase 1D-19: 出品担当ヒーローの「いってくる！」「稼ぐぞー」系セリフ
@@ -5092,7 +5149,8 @@ function tickActiveSales() {
   //   (= 1D-29 で導入した「他モーダル open 中は settlement を遅延」ガードを撤去)
   const completed = [];
   for (const s of state.activeSales) {
-    const elapsed = state.tickCount - s.listedAtTick;
+    // Phase 1D-40: 商 seller × rarity → 取引期間が 1/2 〜 1/8 に短縮 (= 倍速)
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
     const total = s.weeks * SECONDS_PER_WEEK;
     if (elapsed >= total && s.status === "listed") {
       // 価格にランダム ±10% 変動
@@ -5712,11 +5770,12 @@ function renderSaleOverlay() {
     const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
     const seller = findHero(s.sellerId);
     const sellerName = seller ? tHero(seller.heroId, seller.nameJa) : "—";
-    const elapsed = state.tickCount - s.listedAtTick;
+    // Phase 1D-40: 商 seller × rarity 短縮を progress / 残り週数に反映
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
     const totalTicks = s.weeks * SECONDS_PER_WEEK;
     const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
     const remainTicks = Math.max(0, totalTicks - elapsed);
-    const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK);
+    const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK / (s.shoSpeedMult || 1));
     const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
     const iconUrl = ext ? extIconUrl(ext.extId) : "";
     return `<div class="sale-overlay__row">
