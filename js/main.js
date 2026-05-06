@@ -172,6 +172,8 @@ const state = {
   heroSort: "cl-desc",
   /** Phase 1D-27: ヒーロー一覧のレアリティフィルタ ("all" | "common" | ...) */
   heroFilterRarity: "all",
+  /** Phase 1D-39: クラフト選択画面のレアリティフィルタ ("all" | "common" | ...) */
+  craftFilterRarity: "all",
   /** Where the hero view should return to when the player taps ←戻る.
    *  "home"  — close hero view and resume on the workshop
    *  "craft" — close hero view and re-open the craft confirmation screen
@@ -1746,7 +1748,13 @@ function tickActiveQuest() {
 }
 
 function triggerQuestComplete(aq) {
-  const success = Math.random() <= aq.successRate;
+  // Phase 1D-39: 成功率 100% を保証する。 浮動小数誤差や将来のバランス変更で
+  //   aq.successRate が ~0.999 になっても 100% 表示されたなら必ず成功させる。
+  //   (ユーザー報告: 100% 表示でクエスト失敗が発生)
+  //   尚、 アクティブクエスト中は HP が減少しないため successRate は出立時の値で
+  //   固定されている (= 道中で動的に下がることは無い)。
+  const r = aq.successRate;
+  const success = (r >= 1.0) ? true : (Math.random() <= r);
   const node = NODE_BY_ID[aq.nodeId];
   let rewards = {};
   if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
@@ -3241,7 +3249,13 @@ const ELEMENT_OF_STAT = { hp: "garuda", phy: "ifrit", int: "leviathan", agi: "ti
 function commonExtensions() {
   // Phase 1D-22: 「シリーズ解放済み + 工房 Lv 上限以下の rarity」を全件返す。
   // (関数名は legacy だが「現在クラフトできる ext 全件」の意味で使い続ける)
-  return EXTENSIONS.filter(e => isExtUnlocked(e, state.unlockedSeries, state.factoryLevel));
+  let arr = EXTENSIONS.filter(e => isExtUnlocked(e, state.unlockedSeries, state.factoryLevel));
+  // Phase 1D-39: rarity フィルタ chip
+  const rf = state.craftFilterRarity || "all";
+  if (rf !== "all") {
+    arr = arr.filter(e => (e.rarity || "common") === rf);
+  }
+  return arr;
 }
 
 /** Phase 1D-22: シリーズレシピを獲得する。
@@ -3351,6 +3365,40 @@ function renderCraftMatStrip() {
   }).join("");
 }
 
+/** Phase 1D-39: クラフト選択画面のレアリティフィルタ chips を描画する。
+ *  All + 5 rarity の chip を並べ、 active = state.craftFilterRarity と一致するもの。
+ *  解放済 ext のみカウントするので、 工房 Lv によって自動で 0 件タブはグレー表示。 */
+function renderCraftRarityFilter() {
+  const host = $("craftRarityFilter");
+  if (!host) return;
+  // 解放済み ext を rarity ごとに集計
+  const counts = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+  for (const e of EXTENSIONS) {
+    if (!isExtUnlocked(e, state.unlockedSeries, state.factoryLevel)) continue;
+    const r = (e.rarity || "common");
+    if (counts[r] != null) counts[r]++;
+  }
+  const cur = state.craftFilterRarity || "all";
+  const lang = getLang() === "en" ? "en" : "ja";
+  const allLabel = lang === "en" ? "All" : "全部";
+  const chips = [
+    { key: "all",       label: allLabel, count: Object.values(counts).reduce((a,b)=>a+b,0) },
+    { key: "common",    label: ti18n("rarity.common"),    count: counts.common },
+    { key: "uncommon",  label: ti18n("rarity.uncommon"),  count: counts.uncommon },
+    { key: "rare",      label: ti18n("rarity.rare"),      count: counts.rare },
+    { key: "epic",      label: ti18n("rarity.epic"),      count: counts.epic },
+    { key: "legendary", label: ti18n("rarity.legendary"), count: counts.legendary },
+  ];
+  host.innerHTML = chips.map(c => {
+    const sel = c.key === cur ? " hero-filter__chip--active" : "";
+    const dim = (c.key !== "all" && c.count === 0) ? " hero-filter__chip--zero" : "";
+    return `<button type="button" class="hero-filter__chip${sel}${dim}" data-craft-rarity-filter="${c.key}" data-rarity="${c.key}">
+      <span class="hero-filter__chip-label">${escapeHtml(c.label)}</span>
+      <span class="hero-filter__chip-count">${c.count}</span>
+    </button>`;
+  }).join("");
+}
+
 function renderExtList() {
   const host = $("extList");
   if (!host) return;
@@ -3358,6 +3406,7 @@ function renderExtList() {
   const list = sortedExtensions();
   $("craftSelectCount").textContent = ti18n("craft.select.count").replace("{n}", list.length);
   renderCraftMatStrip();
+  renderCraftRarityFilter();
   host.innerHTML = list.map(ext => {
     const targets = extElementTargets(ext);
     const dur = estimateDurationWeeks(ext, team);
@@ -3386,7 +3435,7 @@ function renderExtList() {
     //   (Lv 不足は確認画面でマイがアドバイスする方針)
     const displayStatus = avail.status === "level" ? "ok" : avail.status;
     const availLabel = ti18n("craft.avail." + displayStatus);
-    return `<div class="ext-row" data-ext-id="${ext.extId}">
+    return `<div class="ext-row" data-ext-id="${ext.extId}" data-rarity="${ext.rarity || "common"}">
       <div class="ext-row__icon-col">
         <img class="ext-row__icon" src="${extIconUrl(ext.extId)}" alt="" onerror="this.style.opacity='0.2'" />
         <span class="ext-row__avail ext-row__avail--${displayStatus}" title="${escapeHtml(availLabel)}">${escapeHtml(availLabel)}</span>
@@ -5110,11 +5159,15 @@ function renderMarketHire() {
   $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
     const lang = getLang() === "en" ? "en" : "ja";
     // 採用担当者として就任可能なヒーローが居るか?
+    // Phase 1D-39: クエスト編成 / クラフト編成 (= roster) に居るだけのヒーローは
+    //   実働しているわけではないので採用担当に就任可能。 ignoreCraftTeam /
+    //   ignoreQuestTeam を渡して roster の lock を無視。
+    //   (= 旧バグ: クエスト編成にいる Idle ヒーローが「担当者がいない」になる)
     const eligibleRecruiters = state.ownedHeroes.filter(h => {
       if (!canBeRecruiter(h, p)) return false;
       if (h.state === HERO_STATE.CRAFTING) return false;
       if (h.state === HERO_STATE.QUESTING) return false;
-      if (isHeroLocked(h.heroId)) return false;
+      if (isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true })) return false;
       return true;
     });
     let blockReason = null;
@@ -5166,13 +5219,15 @@ function renderRecruiterPicker(planId) {
   $("hireRecruitTitle").textContent = ti18n("hire.recruiterPickTitle")
     .replace("{plan}", getLang() === "en" ? plan.nameEn : plan.nameJa);
 
-  // 採用担当者として配属可能なヒーロー (rarity 要件 + idle/resting/(crafting? questing? 配属外限定))
-  // Phase 1D-24: トレード/クエスト/クラフト/別雇用 に既に割当済みのヒーローを除外
+  // 採用担当者として配属可能なヒーロー (rarity 要件 + 実働中以外)
+  // Phase 1D-39: roster (= craftTeam / questTeam) に登録されているだけの Idle
+  //   ヒーローは採用担当に就任可能。 active craft / quest 中 (= state CRAFTING /
+  //   QUESTING または activeCraft.team / activeQuest.team) のヒーローは除外。
   const eligible = state.ownedHeroes.filter(h => {
     if (!canBeRecruiter(h, plan)) return false;
     if (h.state === HERO_STATE.CRAFTING) return false;
     if (h.state === HERO_STATE.QUESTING) return false;
-    if (isHeroLocked(h.heroId)) return false;
+    if (isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true })) return false;
     return true;
   });
 
@@ -6421,6 +6476,13 @@ async function init() {
     if (!btn) return;
     state.heroFilterRarity = btn.getAttribute("data-rarity-filter") || "all";
     renderHeroList();
+  });
+  // Phase 1D-39: クラフト選択画面のレアリティフィルタ chips
+  $("craftRarityFilter")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-craft-rarity-filter]");
+    if (!btn) return;
+    state.craftFilterRarity = btn.getAttribute("data-craft-rarity-filter") || "all";
+    renderExtList();
   });
   // Phase 1D-27: クラフト中介入イベント picker
   $("craftEventElements")?.addEventListener("click", (ev) => {

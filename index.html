@@ -100,11 +100,15 @@
       font-size: 0.68rem; color: #8c7fb0; letter-spacing: 0.16em;
       pointer-events: none;
     }
-    /* Phase α: ホームヘッダーに表示する α バッジ (常時表示) */
-    .home-alpha-badge {
-      position: fixed; top: 0.5rem; left: 0.5rem;
-      z-index: 110;
+    /* Phase α (1D-39 改): ヘッダー先頭に置く小型バッジ (= 旧 fixed top-left は date と
+       被ってモバイルで日付が読めなくなっていた) */
+    .alpha-badge--header {
+      padding: 0.18rem 0.5rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      flex-shrink: 0;
       pointer-events: none;
+      align-self: center;
     }
     .lang-toggle {
       position: fixed; bottom: 1.5rem; left: 50%;
@@ -835,14 +839,14 @@
     .order-panel__rarity {
       padding: 0.08rem 0.4rem;
       border-radius: 999px;
-      background: #5b6b8a;
+      background: #4a90d6;
       color: #fff;
       font-size: 0.62rem; font-weight: 700;
       letter-spacing: 0.05em;
     }
     .order-panel__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .order-panel__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .order-panel__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .order-panel__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .order-panel__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .order-panel__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .order-panel__eta { color: #1a1420; font-weight: 600; }
     .order-panel__elements {
@@ -1099,11 +1103,11 @@
       border-radius: 999px;
       font-size: 0.62rem; font-weight: 700;
       letter-spacing: 0.05em;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .hero-detail__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .hero-detail__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .hero-detail__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hero-detail__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .hero-detail__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .hero-detail__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .hero-detail__state {
       font-size: 0.72rem; color: var(--muted);
@@ -1272,11 +1276,11 @@
       border-radius: 999px;
       font-size: 0.62rem; font-weight: 700;
       letter-spacing: 0.05em;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .craft-done__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .craft-done__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .craft-done__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .craft-done__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .craft-done__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .craft-done__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .craft-done__quality {
       padding: 0.08rem 0.4rem;
@@ -1628,12 +1632,12 @@
       padding: 0.06rem 0.32rem;
       border-radius: 999px;
       font-size: 0.58rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
       flex-shrink: 0;
     }
     .warehouse-item__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .warehouse-item__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .warehouse-item__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .warehouse-item__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .warehouse-item__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .warehouse-item__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .warehouse-item__meta {
       display: flex; gap: 0.5rem;
@@ -2835,11 +2839,11 @@
       padding: 0.1rem 0.5rem;
       border-radius: 999px;
       font-size: 0.65rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .recipe-popup__ext-rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .recipe-popup__ext-rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .recipe-popup__ext-rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .recipe-popup__ext-rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .recipe-popup__ext-rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .recipe-popup__ext-rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .recipe-popup__future-note {
       margin: 0.3rem 0 0;
@@ -3298,11 +3302,11 @@
       padding: 0.06rem 0.4rem;
       border-radius: 999px;
       font-size: 0.62rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .hire-recruit__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .hire-recruit__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .hire-recruit__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-recruit__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .hire-recruit__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .hire-recruit__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .hire-recruit__empty { color: var(--muted); padding: 1rem; text-align: center; font-size: 0.85rem; }
 
@@ -3355,11 +3359,11 @@
       padding: 0.06rem 0.4rem;
       border-radius: 999px;
       font-size: 0.62rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .hire-cand__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .hire-cand__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .hire-cand__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-cand__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .hire-cand__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .hire-cand__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .hire-cand-skip {
       appearance: none;
@@ -3383,8 +3387,8 @@
       display: flex; flex-direction: column; gap: 0.45rem;
     }
     .hire-cand-card[data-rarity="legendary"] { border-color: #c45c6a; }
-    .hire-cand-card[data-rarity="epic"]      { border-color: #c4a35a; }
-    .hire-cand-card[data-rarity="rare"]      { border-color: #5ab4c4; }
+    .hire-cand-card[data-rarity="epic"]      { border-color: #e88a6b; }
+    .hire-cand-card[data-rarity="rare"]      { border-color: #f0c14b; }
     .hire-cand-card[data-rarity="uncommon"]  { border-color: #5ecf8a; }
     .hire-cand-card__head { display: flex; gap: 0.5rem; align-items: center; }
     .hire-cand-card__portrait {
@@ -3403,11 +3407,11 @@
       border-radius: 999px;
       font-size: 0.62rem; font-weight: 700;
       align-self: flex-start;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .hire-cand-card__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .hire-cand-card__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .hire-cand-card__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-cand-card__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .hire-cand-card__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .hire-cand-card__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .hire-cand-card__elements {
       display: grid; grid-template-columns: repeat(4, 1fr);
@@ -3531,11 +3535,11 @@
       padding: 0.06rem 0.5rem;
       border-radius: 999px;
       font-size: 0.7rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .hire-success__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .hire-success__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .hire-success__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .hire-success__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .hire-success__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .hire-success__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .hire-success__msg { margin: 0; font-size: 0.85rem; color: var(--muted); text-align: center; }
     .hire-success__close {
@@ -3679,11 +3683,11 @@
       padding: 0.06rem 0.4rem;
       border-radius: 999px;
       font-size: 0.6rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .fire-cand__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .fire-cand__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .fire-cand__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .fire-cand__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .fire-cand__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .fire-cand__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .fire-cand__cl { font-size: 0.7rem; color: var(--muted); }
     .fire-cand__lock {
@@ -3768,10 +3772,10 @@
       border-radius: 999px;
       font-size: 0.62rem; font-weight: 700;
     }
-    .sellable__rarity[data-rarity="common"]    { background: #5b6b8a; color: #fff; }
+    .sellable__rarity[data-rarity="common"]    { background: #4a90d6; color: #fff; }
     .sellable__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
-    .sellable__rarity[data-rarity="rare"]      { background: #5ab4c4; color: #fff; }
-    .sellable__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
+    .sellable__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
+    .sellable__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
     .sellable__rarity[data-rarity="legendary"] { background: #c45c6a; color: #fff; }
     .sellable__tier[data-tier="poor"]        { background: #4a4458; color: #d8d2e6; }
     .sellable__tier[data-tier="decent"]      { background: #2f6b3e; color: #d8f5d8; }
@@ -3815,10 +3819,10 @@
       font-size: 0.62rem; font-weight: 700;
     }
     .sell-modal__rarity[data-rarity="legendary"] { background: #c45c6a; color: #fff; }
-    .sell-modal__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .sell-modal__rarity[data-rarity="rare"]      { background: #5ab4c4; color: #fff; }
+    .sell-modal__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .sell-modal__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .sell-modal__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
-    .sell-modal__rarity[data-rarity="common"]    { background: #5b6b8a; color: #fff; }
+    .sell-modal__rarity[data-rarity="common"]    { background: #4a90d6; color: #fff; }
     .sell-modal__tier[data-tier="great"]       { background: var(--accent); color: #1a1420; }
     .sell-modal__tier[data-tier="masterpiece"] { background: linear-gradient(90deg, #c45c6a, var(--accent), #5ecf8a); color: #1a1420; }
 
@@ -3880,11 +3884,11 @@
       padding: 0.06rem 0.32rem;
       border-radius: 999px;
       font-size: 0.6rem; font-weight: 700;
-      background: #5b6b8a; color: #fff;
+      background: #4a90d6; color: #fff;
     }
     .sell-seller__rarity[data-rarity="legendary"] { background: #c45c6a; }
-    .sell-seller__rarity[data-rarity="epic"]      { background: #c4a35a; color: #1a1420; }
-    .sell-seller__rarity[data-rarity="rare"]      { background: #5ab4c4; }
+    .sell-seller__rarity[data-rarity="epic"]      { background: #e88a6b; color: #fff; }
+    .sell-seller__rarity[data-rarity="rare"]      { background: #f0c14b; color: #1a1420; }
     .sell-seller__rarity[data-rarity="uncommon"]  { background: #5ecf8a; color: #1a1420; }
     .sell-seller .attr-badge--sho {
       position: absolute; top: 4px; right: 4px;
@@ -4087,8 +4091,8 @@
       font-size: 0.75rem;
     }
     .hero-card[data-rarity="legendary"] { border-color: #c45c6a; }
-    .hero-card[data-rarity="epic"]      { border-color: #c4a35a; }
-    .hero-card[data-rarity="rare"]      { border-color: #5ab4c4; }
+    .hero-card[data-rarity="epic"]      { border-color: #e88a6b; }
+    .hero-card[data-rarity="rare"]      { border-color: #f0c14b; }
     .hero-card[data-rarity="uncommon"]  { border-color: #5ecf8a; }
     /* 配属中 = 既にチームに入っているヒーロー: フレームごとグレーアウト */
     .hero-card--assigned {
@@ -4204,9 +4208,10 @@
       background: var(--accent); color: #1a1420; border-color: var(--accent);
     }
     .hero-filter__chip[data-rarity="legendary"]:not(.hero-filter__chip--active) { border-color: #c45c6a; color: #ffb8c0; }
-    .hero-filter__chip[data-rarity="epic"]:not(.hero-filter__chip--active)      { border-color: #c4a35a; color: #f0d590; }
-    .hero-filter__chip[data-rarity="rare"]:not(.hero-filter__chip--active)      { border-color: #5ab4c4; color: #a0d6e0; }
+    .hero-filter__chip[data-rarity="epic"]:not(.hero-filter__chip--active)      { border-color: #e88a6b; color: #f5b8a3; }
+    .hero-filter__chip[data-rarity="rare"]:not(.hero-filter__chip--active)      { border-color: #f0c14b; color: #f5dc8a; }
     .hero-filter__chip[data-rarity="uncommon"]:not(.hero-filter__chip--active)  { border-color: #5ecf8a; color: #a8e0bf; }
+    .hero-filter__chip[data-rarity="common"]:not(.hero-filter__chip--active)    { border-color: #4a90d6; color: #a8c8ed; }
     .hero-filter__chip--zero { opacity: 0.45; }
     .hero-filter__chip-count {
       background: rgba(0,0,0,0.35);
@@ -4294,13 +4299,19 @@
       gap: 0.45rem 0.55rem;
       padding: 0.55rem;
       background: var(--panel);
-      border: 1px solid var(--border);
+      border: 2px solid var(--border);
       border-radius: 6px;
       cursor: pointer;
-      transition: border-color 0.12s;
+      transition: border-color 0.12s, box-shadow 0.12s;
       min-width: 0;
     }
-    .ext-row:hover { border-color: var(--accent); }
+    /* Phase 1D-39: MCT 風レアリティ枠 (= レアリティ色のボーダー + 軽いグロー) */
+    .ext-row[data-rarity="common"]    { border-color: #4a90d6; }
+    .ext-row[data-rarity="uncommon"]  { border-color: #5ecf8a; }
+    .ext-row[data-rarity="rare"]      { border-color: #f0c14b; }
+    .ext-row[data-rarity="epic"]      { border-color: #e88a6b; }
+    .ext-row[data-rarity="legendary"] { border-color: #c45c6a; box-shadow: 0 0 8px rgba(196,92,106,0.35); }
+    .ext-row:hover { box-shadow: 0 0 10px rgba(196,163,90,0.4); }
     .ext-row__icon-col {
       grid-column: 1; grid-row: 1 / span 2;
       display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
@@ -4349,7 +4360,7 @@
       color: #ece6d6;
       flex-shrink: 0;
     }
-    .ext-row__rarity[data-rarity="common"] { background: #5b6b8a; color: #fff; }
+    .ext-row__rarity[data-rarity="common"] { background: #4a90d6; color: #fff; }
     .ext-row__series {
       font-size: 0.68rem; color: var(--muted);
     }
@@ -4731,7 +4742,7 @@
     .attr-badge--shi { background: #c14a4a; }   /* 士 (赤) */
     .attr-badge--no  { background: #4ea96d; }   /* 農 (緑) */
     .attr-badge--ko  { background: #4f95a5; }   /* 工 (青) */
-    .attr-badge--sho { background: #c4a35a; color: #1a1420; }   /* 商 (金) */
+    .attr-badge--sho { background: #e88a6b; color: #fff; }   /* 商 (金) */
 
     /* Phase 1D-20: ランク表示 (☆/★) — accent gold で塗り分け */
     .hero-rank {
@@ -4769,8 +4780,8 @@
       align-items: center;
     }
     .hero-enhance-row[data-rarity="legendary"] { border-color: #c45c6a; }
-    .hero-enhance-row[data-rarity="epic"]      { border-color: #c4a35a; }
-    .hero-enhance-row[data-rarity="rare"]      { border-color: #5ab4c4; }
+    .hero-enhance-row[data-rarity="epic"]      { border-color: #e88a6b; }
+    .hero-enhance-row[data-rarity="rare"]      { border-color: #f0c14b; }
     .hero-enhance-row[data-rarity="uncommon"]  { border-color: #5ecf8a; }
     .hero-enhance-row__portrait {
       width: 56px; height: 56px;
@@ -4933,14 +4944,14 @@
     <p class="title-version">© bearko / unofficial fan project</p>
   </div>
 
-  <!-- Phase α: ホーム画面でも α 版であることが分かるよう、左上に常時バッジを出す -->
-  <span class="home-alpha-badge alpha-badge" data-i18n="alpha.badge">α 版 / ALPHA</span>
-
   <!-- ── Factory App ── -->
   <div class="factory-app" id="factoryApp">
 
     <!-- Header (always visible) -->
     <div class="factory-header">
+      <!-- Phase α (1D-39 改): ホームでも α 版であることが分かるよう header 先頭に
+           小さめのバッジを置く (= 旧 fixed top-left は date と被るため改善) -->
+      <span class="alpha-badge alpha-badge--header" data-i18n="alpha.badge">α 版 / ALPHA</span>
       <div class="factory-header__date">
         <span id="factoryDate">2018年 12月 1週</span>
         <svg class="week-gauge" viewBox="0 0 32 32" aria-hidden="true">
@@ -5608,6 +5619,8 @@
       <div data-craft-section="select">
         <!-- Phase 1D-5: 所有素材インベントリ (アイコン + 名前 + 個数) -->
         <div class="craft-mat-strip" id="craftMatStrip"></div>
+        <!-- Phase 1D-39: レアリティフィルタ chips (All + 5 rarities) -->
+        <div class="hero-rarity-filter" id="craftRarityFilter"></div>
         <div class="craft-filter-bar">
           <label>
             <span data-i18n="craft.sort">並び順:</span>
