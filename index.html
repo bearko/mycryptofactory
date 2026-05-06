@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MyCryptoFactory — α version</title>
+  <title>MyCryptoFactory — β version</title>
   <meta name="description" content="My Crypto Heroes 経済圏モチーフの工房経営シム。GUM を稼いで世界一の工房を目指そう。" />
 
   <!-- favicon -->
@@ -11,13 +11,13 @@
 
   <!-- Open Graph / Twitter Card -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="MyCryptoFactory — α version" />
+  <meta property="og:title" content="MyCryptoFactory — β version" />
   <meta property="og:description" content="MCH 経済圏ベースの工房経営シム。クラフト受注・クエストで素材調達・GUM を稼ぐサイクルを楽しもう。" />
   <meta property="og:url" content="https://mycryptofactory.vercel.app/" />
   <meta property="og:image" content="https://mycryptofactory.vercel.app/og-image.png" />
   <meta property="og:site_name" content="MyCryptoFactory" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="MyCryptoFactory — α version" />
+  <meta name="twitter:title" content="MyCryptoFactory — β version" />
   <meta name="twitter:description" content="MCH 経済圏ベースの工房経営シム。" />
   <meta name="twitter:image" content="https://mycryptofactory.vercel.app/og-image.png" />
 
@@ -99,6 +99,26 @@
       transform: translateX(-50%); margin: 0;
       font-size: 0.68rem; color: #8c7fb0; letter-spacing: 0.16em;
       pointer-events: none;
+    }
+    /* Phase 1D-46: タイトル画面のランキング閲覧ボタン (ロゴ - 言語トグル の中央位置) */
+    .title-ranking-btn {
+      position: fixed; bottom: 6rem; left: 50%;
+      transform: translateX(-50%);
+      appearance: none;
+      padding: 0.55rem 1.4rem;
+      background: rgba(15, 12, 22, 0.86);
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+      border-radius: 999px;
+      font-size: 0.85rem; font-weight: 800;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      z-index: 5;
+      transition: background 0.15s, color 0.15s;
+    }
+    .title-ranking-btn:hover {
+      background: var(--accent);
+      color: #1a1420;
     }
     /* Phase α (1D-39 改): ヘッダー先頭に置く小型バッジ (= 旧 fixed top-left は date と
        被ってモバイルで日付が読めなくなっていた) */
@@ -720,6 +740,9 @@
     .workshop-hero--questing .workshop-hero__img { filter: grayscale(0.85) brightness(0.7); }
     /* クラフト中ヒーローは薄い輝き */
     .workshop-hero--crafting .workshop-hero__img { filter: drop-shadow(0 0 4px rgba(196,163,90,0.55)); }
+    /* Phase 1D-47: 雇用担当 / 出品中はクエスト中と同様にグレーアウト */
+    .workshop-hero--hiring  .workshop-hero__img,
+    .workshop-hero--selling .workshop-hero__img { filter: grayscale(0.85) brightness(0.7); }
     .workshop-hero__stam {
       position: absolute;
       /* Phase 1D-16: 2x sprite に合わせて HP バーを少し下 + 太く
@@ -1078,6 +1101,39 @@
     .hero-detail__head {
       display: flex; gap: 0.7rem; align-items: center;
     }
+    /* Phase 1D-41: 右上にランク表示 + インラインランクアップボタン */
+    .hero-detail__rank-block {
+      margin-left: auto;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.32rem;
+      flex-shrink: 0;
+    }
+    .hero-detail__rank-stars {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .hero-detail__rank-up-btn {
+      appearance: none;
+      background: linear-gradient(135deg, var(--accent) 0%, #e0c178 100%);
+      color: #1a1420;
+      border: 1.5px solid #1a1420;
+      border-radius: 6px;
+      padding: 0.28rem 0.6rem;
+      font-size: 0.7rem; font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.18);
+      white-space: nowrap;
+    }
+    .hero-detail__rank-up-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #d6b873 0%, #ecd197 100%);
+    }
+    .hero-detail__rank-up-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .hero-detail__rank-up-btn.hidden { display: none !important; }
+    .hero-detail__rank-up-cost { font-variant-numeric: tabular-nums; }
     .hero-detail__portrait {
       width: 64px; height: 64px;
       border-radius: 6px;
@@ -1658,6 +1714,39 @@
     .warehouse-item__meta {
       display: flex; gap: 0.5rem;
       font-size: 0.7rem; color: var(--muted);
+      align-items: center;
+    }
+    /* Phase 1D-44: コンテスト受賞バッジ */
+    .warehouse-item__contest {
+      display: inline-flex; align-items: center; gap: 0.15rem;
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.03em;
+      margin-left: auto;
+    }
+    /* Phase 1D-45: 打ち直しボタン + 打ち直し済マーク */
+    .warehouse-item__remake-btn {
+      align-self: flex-start;
+      appearance: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.72rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      margin-top: 0.3rem;
+    }
+    .warehouse-item__remake-btn:hover {
+      background: var(--accent);
+      color: #1a1420;
+    }
+    .warehouse-item__remade {
+      display: inline-block;
+      margin-left: 0.25rem;
+      color: var(--accent);
+      font-size: 0.78rem;
     }
     .warehouse-item__score {
       display: flex; align-items: center; gap: 0.5rem;
@@ -1871,6 +1960,29 @@
     }
 
     /* Phase 1D-11: ノードカード (背景画像 + 名前 + 素材アイコン + 選択ボタン) */
+    /* Phase 1D-41: クエスト選択画面の通常/ランドタブ切替 */
+    .quest-node-tabs {
+      display: flex; gap: 0.32rem;
+      margin-bottom: 0.4rem;
+    }
+    .quest-node-tab {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 6px 6px 0 0;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .quest-node-tab:hover { border-color: var(--accent); }
+    .quest-node-tab--active {
+      background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
     .quest-node-cards {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -2325,6 +2437,169 @@
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
     }
+    /* Phase 1D-46: ランキング閲覧モーダル */
+    .ranking-viewer {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.94);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .ranking-viewer.hidden { display: none !important; }
+    .ranking-viewer__card {
+      max-width: 560px; width: 100%;
+      max-height: 92vh;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.0rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      box-shadow: 0 0 24px rgba(196,163,90,0.4);
+      overflow-y: auto;
+    }
+    .ranking-viewer__head {
+      display: flex; align-items: center;
+      gap: 0.5rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .ranking-viewer__title {
+      margin: 0; font-size: 1.1rem;
+      color: var(--accent); flex: 1;
+      letter-spacing: 0.04em;
+    }
+    .ranking-viewer__close-x {
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      width: 28px; height: 28px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ranking-viewer__close-x:hover { color: var(--accent); border-color: var(--accent); }
+    .ranking-viewer__toolbar {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .ranking-viewer__refresh {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 4px;
+      padding: 0.4rem 0.7rem;
+      font-weight: 700; font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .ranking-viewer__status {
+      flex: 1;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .ranking-viewer__list-wrap {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 50vh;
+    }
+    .ranking-viewer__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column;
+      gap: 0.25rem;
+      counter-reset: rank-counter;
+    }
+    .ranking-viewer__list li {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.45rem 0.5rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .ranking-viewer__list li[data-rank="1"] { background: linear-gradient(90deg, rgba(255,215,0,0.18), var(--panel-2)); border-left: 3px solid #ffd700; }
+    .ranking-viewer__list li[data-rank="2"] { background: linear-gradient(90deg, rgba(192,192,192,0.18), var(--panel-2)); border-left: 3px solid #c0c0c0; }
+    .ranking-viewer__list li[data-rank="3"] { background: linear-gradient(90deg, rgba(205,127,50,0.18), var(--panel-2)); border-left: 3px solid #cd7f32; }
+    .ranking-viewer__rank {
+      font-weight: 800; font-size: 0.95rem;
+      color: var(--accent);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .ranking-viewer__entry-name {
+      font-weight: 700;
+    }
+    .ranking-viewer__entry-meta {
+      font-size: 0.68rem; color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .ranking-viewer__entry-score {
+      font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.95rem;
+    }
+    .ranking-viewer__empty {
+      text-align: center; color: var(--muted);
+      font-size: 0.85rem;
+      padding: 1rem 0.5rem;
+    }
+    .ranking-viewer__empty.hidden { display: none; }
+    .ranking-viewer__settings {
+      margin-top: 0.4rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+    .ranking-viewer__settings summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .ranking-viewer__settings[open] summary { color: var(--accent); margin-bottom: 0.4rem; }
+    .ranking-viewer__settings-help {
+      margin: 0.3rem 0 0.4rem;
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .ranking-viewer__settings-row {
+      display: flex; flex-direction: column; gap: 0.2rem;
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .ranking-viewer__settings-row input {
+      appearance: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.8rem;
+    }
+    .ranking-viewer__settings-actions {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-top: 0.45rem;
+    }
+    .ranking-viewer__url-save {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 4px;
+      padding: 0.35rem 0.7rem;
+      font-weight: 700; font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .ranking-viewer__url-status {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .ranking-score-view__view-btn {
+      appearance: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.45rem;
+      font-weight: 700; font-size: 0.84rem;
+      cursor: pointer;
+      margin-top: 0.4rem;
+    }
+    .ranking-score-view__view-btn:hover { background: var(--accent); color: #1a1420; }
+
     .ranking-score-view.hidden, .activity-report-view.hidden { display: none !important; }
     .ranking-score-view__card, .activity-report-view__card {
       max-width: 520px; width: 100%;
@@ -2661,6 +2936,134 @@
     .craft-event-anim__total-row strong {
       font-size: 1.5rem; color: var(--accent); font-variant-numeric: tabular-nums;
     }
+
+    /* Phase 1D-34: ショップ view (= マーケット > ショップ) */
+    .shop-view {
+      position: fixed; inset: 0; z-index: 296;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .shop-view.hidden { display: none !important; }
+    .shop-view__card {
+      max-width: 640px; width: 100%;
+      max-height: 92vh;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.1rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      overflow: hidden;
+    }
+    .shop-view__head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.5rem;
+    }
+    .shop-view__title {
+      margin: 0; font-size: 1.15rem;
+      color: var(--accent); letter-spacing: 0.05em;
+    }
+    .shop-view__back {
+      appearance: none;
+      background: var(--panel-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .shop-tabs {
+      display: flex; gap: 0.32rem; flex-wrap: wrap;
+    }
+    .shop-tab {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.78rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .shop-tab:hover { border-color: var(--accent); }
+    .shop-tab--sel {
+      background: linear-gradient(135deg, #2f2740, #3a2f4a);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .shop-list {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      overflow-y: auto;
+      padding-right: 4px;
+      min-height: 0;
+      flex: 1;
+    }
+    .shop-list::-webkit-scrollbar { width: 6px; }
+    .shop-list::-webkit-scrollbar-thumb { background: rgba(196,163,90,0.35); border-radius: 3px; }
+    .shop-empty {
+      text-align: center; color: var(--muted);
+      padding: 2rem; font-size: 0.85rem;
+    }
+    .shop-item {
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem;
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 0.55rem;
+      align-items: center;
+    }
+    .shop-item--disabled {
+      opacity: 0.55;
+    }
+    .shop-item__icon {
+      width: 64px; height: 64px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+    }
+    .shop-item__info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+    .shop-item__head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.5rem;
+    }
+    .shop-item__name {
+      font-weight: 800; font-size: 0.92rem;
+      color: var(--text);
+    }
+    .shop-item__stock {
+      font-size: 0.7rem; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .shop-item__desc {
+      margin: 0; font-size: 0.74rem;
+      color: var(--muted); line-height: 1.35;
+    }
+    .shop-item__reason {
+      margin: 0; font-size: 0.7rem;
+      color: var(--ifrit); font-weight: 700;
+    }
+    .shop-item__buy-col {
+      display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end;
+    }
+    .shop-item__price {
+      font-size: 0.85rem; font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .shop-item__btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.4rem 0.85rem;
+      font-weight: 800; font-size: 0.8rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .shop-item__btn:hover:not(:disabled) { background: #d6b873; }
+    .shop-item__btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* Phase 1D-22: シリーズレシピ獲得ポップアップ */
     /* Phase 1D-32: 受注クラフト picker view */
@@ -3090,6 +3493,20 @@
     }
     .quest-hero-pick > button:disabled { opacity: 0.4; cursor: not-allowed; }
     .quest-hero-pick > button:hover:not(:disabled) { border-color: var(--accent); }
+    /* Phase 1D-41: 編成できないヒーローの表示切替トグル */
+    .quest-pick-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.4rem;
+    }
+    .quest-show-disabled-toggle {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.74rem; color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+      margin-left: auto;
+    }
+    .quest-show-disabled-toggle input { accent-color: var(--accent); }
     .quest-hero-pick--in {
       border-color: var(--accent) !important;
       background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%) !important;
@@ -3199,7 +3616,136 @@
       image-rendering: pixelated;
     }
     .quest-result__hero-hp { color: var(--ifrit); font-variant-numeric: tabular-nums; }
-    .quest-result__close {
+    /* Phase 1D-42: 結果画面の 3 ボタン (再出発 / クエストへ / 閉じる) */
+    .quest-result__actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
+      align-self: stretch;
+    }
+    .quest-result__redeploy {
+      grid-column: 1 / -1;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+    .quest-result__back, .quest-result__close {
+      appearance: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-weight: 700; font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .quest-result__back:hover, .quest-result__close:hover {
+      border-color: var(--accent);
+    }
+
+    /* Phase 1D-44: 12 月エクステンションコンテスト結果モーダル */
+    .contest-modal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .contest-modal.hidden { display: none !important; }
+    .contest-modal__card {
+      max-width: 460px; width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+    }
+    .contest-modal__title {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: 0.06em;
+      text-align: center;
+      color: var(--accent);
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .contest-modal__lead {
+      margin: 0; text-align: center;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    .contest-modal__body {
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .contest-modal__panel {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 0.25rem 0.5rem;
+      align-items: center;
+    }
+    .contest-modal__panel--grand {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,140,0,0.05));
+    }
+    .contest-modal__panel--empty {
+      grid-template-columns: 1fr auto;
+      color: var(--muted);
+    }
+    .contest-modal__dept {
+      grid-column: 1 / -1;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .contest-modal__panel--grand .contest-modal__dept {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .contest-modal__noentry { font-size: 0.78rem; }
+    .contest-modal__winner {
+      display: contents;
+    }
+    .contest-modal__icon {
+      width: 36px; height: 36px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .contest-modal__winner-info {
+      display: flex; flex-direction: column; gap: 0.1rem;
+    }
+    .contest-modal__name {
+      font-size: 0.86rem; font-weight: 700;
+    }
+    .contest-modal__value {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .contest-modal__value strong { color: var(--text); }
+    .contest-modal__prize {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .contest-modal__total {
+      margin: 0;
+      text-align: center;
+      font-size: 0.92rem; font-weight: 800;
+      color: var(--accent);
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border);
+    }
+    .contest-modal__close {
       align-self: stretch;
       appearance: none;
       background: var(--accent); color: #1a1420;
@@ -3208,6 +3754,30 @@
       font-weight: 800; font-size: 0.95rem;
       cursor: pointer;
       letter-spacing: 0.06em;
+    }
+
+    /* Phase 1D-44: 傑作紙吹雪エフェクト */
+    .confetti-layer {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      overflow: hidden;
+    }
+    .confetti-layer.hidden { display: none !important; }
+    .confetti-piece {
+      position: absolute;
+      top: -10px;
+      width: 8px; height: 14px;
+      opacity: 0.95;
+      transform-origin: center;
+      animation-name: confettiFall;
+      animation-iteration-count: 1;
+      animation-fill-mode: forwards;
+      animation-timing-function: cubic-bezier(0.18, 0.45, 0.55, 1);
+    }
+    @keyframes confettiFall {
+      0%   { transform: translate(0, -10vh) rotate(0deg);    opacity: 1; }
+      100% { transform: translate(var(--cx, 0), 110vh) rotate(720deg); opacity: 0; }
     }
 
     /* Market 雇用タブ (Phase 1D-3) */
@@ -4875,6 +5445,17 @@
     .ench-row--lv .ench-row__label {
       color: var(--text); font-weight: 700;
     }
+    /* Phase 1D-47: クラフトパワーは アイコン + 値 のみ (テキストラベル省略) */
+    .ench-row--icon-only {
+      gap: 0.4rem;
+    }
+    /* Phase 1D-47: 年俸行 (rank で変動 / GUM 単位を末尾に表示) */
+    .ench-row--salary { color: var(--accent); }
+    .ench-row--salary .ench-row__label { color: var(--accent); }
+    .ench-row__unit {
+      color: var(--muted); font-size: 0.66rem;
+      letter-spacing: 0.05em;
+    }
     .ench-cmp {
       display: inline-flex; align-items: center; gap: 0.25rem;
     }
@@ -4950,8 +5531,8 @@
   <div id="titleView" class="title-screen" role="button" aria-label="Start the game" data-i18n-attr-aria-label="title.aria" tabindex="0">
     <img class="title-logo" src="./Image/Factory/title-logo.jpg" alt="MyCryptoFactory" />
     <div class="title-alpha-stack">
-      <span class="alpha-badge" data-i18n="alpha.badge">α 版 / ALPHA</span>
-      <p class="title-alpha-note" data-i18n="alpha.note">フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。</p>
+      <span class="alpha-badge" data-i18n="alpha.badge">β 版 / BETA</span>
+      <p class="title-alpha-note" data-i18n="alpha.note">β 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。</p>
     </div>
     <p class="title-press" data-i18n="title.press">Press to Start</p>
     <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
@@ -4961,6 +5542,8 @@
         <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN：English</button>
       </div>
     </div>
+    <!-- Phase 1D-46: タイトル画面からランキング閲覧 (= 開始前にトップ 50 を覗ける) -->
+    <button type="button" class="title-ranking-btn" id="titleRankingBtn" data-i18n="ranking.viewer.openBtn">🏆 ランキング</button>
     <p class="title-version">© bearko / unofficial fan project</p>
   </div>
 
@@ -4969,9 +5552,10 @@
 
     <!-- Header (always visible) -->
     <div class="factory-header">
-      <!-- Phase α (1D-39 改): ホームでも α 版であることが分かるよう header 先頭に
-           小さめのバッジを置く (= 旧 fixed top-left は date と被るため改善) -->
-      <span class="alpha-badge alpha-badge--header" data-i18n="alpha.badge">α 版 / ALPHA</span>
+      <!-- Phase β (1D-45 改): ホームでも β 版であることが分かるよう header 先頭に
+           小さめのバッジを置く (= 旧 fixed top-left は date と被るため改善)。
+           1D-39 で導入した classname (.alpha-badge) は安定のため据置。 -->
+      <span class="alpha-badge alpha-badge--header" data-i18n="alpha.badge">β 版 / BETA</span>
       <div class="factory-header__date">
         <span id="factoryDate">2018年 12月 1週</span>
         <svg class="week-gauge" viewBox="0 0 32 32" aria-hidden="true">
@@ -5083,7 +5667,7 @@
 
     <!-- 各メニューのサブメニュー (画面右側に展開) -->
     <div class="menu-card hidden" id="craftSubmenu" aria-label="Craft submenu">
-      <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規開発</button>
+      <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規クラフト</button>
       <!-- Phase 1D-32: 受注クラフト (素材不要、報酬は通常販売価格の 60% / 期限あり) -->
       <button type="button" class="menu-item" data-craft-action="commission" data-i18n="menu.craft.commission">受注クラフト</button>
       <button type="button" class="menu-item" data-craft-action="factoryLvUp" data-i18n="menu.craft.factoryLvUp">工房レベルアップ</button>
@@ -5100,6 +5684,8 @@
     <div class="menu-card hidden" id="marketSubmenu" aria-label="Market submenu">
       <button type="button" class="menu-item" data-market-tab-direct="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
       <button type="button" class="menu-item" data-market-tab-direct="sell" data-i18n="market.tab.sell">出品</button>
+      <!-- Phase 1D-34: ショップ (= GUM 使い道拡張) -->
+      <button type="button" class="menu-item" data-market-action="shop" data-i18n="menu.market.shop">ショップ</button>
     </div>
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
       <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
@@ -5232,6 +5818,13 @@
             <span id="heroDetailAttrs"></span>
           </div>
         </div>
+        <!-- Phase 1D-41: 右上にランク表示 + インラインランクアップボタン -->
+        <div class="hero-detail__rank-block">
+          <span class="hero-detail__rank-stars" id="heroDetailRankStars" title="ランク">—</span>
+          <button type="button" class="hero-detail__rank-up-btn hidden" id="heroDetailRankUpBtn" title="ランクアップ">
+            <span class="hero-detail__rank-up-cost" id="heroDetailRankUpCost">— GUM</span>
+          </button>
+        </div>
       </div>
       <div class="hero-detail__row">
         <span class="hero-detail__row-label" data-i18n="hero.stamina">体力 (HP)</span>
@@ -5241,6 +5834,11 @@
       <div class="hero-detail__row">
         <span class="hero-detail__row-label" data-i18n="hero.craftLevel">クラフトLV</span>
         <strong class="hero-detail__row-val" id="heroDetailCl">—</strong>
+      </div>
+      <!-- Phase 1D-47: 年俸表示 (rank によって変動) -->
+      <div class="hero-detail__row">
+        <span class="hero-detail__row-label" data-i18n="hero.salary">年俸</span>
+        <strong class="hero-detail__row-val" id="heroDetailSalary">—</strong>
       </div>
       <div class="hero-detail__elements" id="heroDetailElements"></div>
       <div class="hero-detail__passive hidden" id="heroDetailPassive"></div>
@@ -5322,6 +5920,11 @@
       <!-- 1. クエスト選択 (Phase 1D-11: bg image + materials + 選択 ボタンのカード) -->
       <section class="quest-section">
         <h3 class="quest-section__title" data-i18n="quest.section.pick">1. クエストを選択</h3>
+        <!-- Phase 1D-41: 通常 / ランドノードのタブ切替 (= state.questNodeType と連動) -->
+        <div class="quest-node-tabs">
+          <button type="button" class="quest-node-tab quest-node-tab--active" data-node-type="normal" data-i18n="menu.quest.normal">通常node</button>
+          <button type="button" class="quest-node-tab" data-node-type="land" data-i18n="menu.quest.land">ランドnode</button>
+        </div>
         <div class="quest-node-cards" id="questNodeCards"></div>
       </section>
 
@@ -5347,7 +5950,14 @@
               <div class="quest-team-slots" id="questTeamSlots"></div>
             </section>
             <section class="quest-section quest-section--pick">
-              <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
+              <div class="quest-pick-header">
+                <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
+                <!-- Phase 1D-41: 編成不可ヒーローの表示切替 (デフォルト OFF) -->
+                <label class="quest-show-disabled-toggle">
+                  <input type="checkbox" id="questShowDisabledToggle" />
+                  <span data-i18n="quest.showDisabled">編成できないヒーローも表示</span>
+                </label>
+              </div>
               <div class="quest-hero-pick" id="questHeroPick"></div>
             </section>
           </div>
@@ -5367,6 +5977,20 @@
     </div>
   </div>
 
+  <!-- Phase 1D-44: 紙吹雪レイヤー (傑作査定 / 大賞受賞時にスポーン) -->
+  <div class="confetti-layer hidden" id="confettiLayer" aria-hidden="true"></div>
+
+  <!-- Phase 1D-44: 12 月エクステンションコンテスト結果モーダル -->
+  <div class="contest-modal hidden" id="contestModal" role="dialog" aria-modal="true" aria-labelledby="contestModalTitle">
+    <div class="contest-modal__card">
+      <h2 class="contest-modal__title" id="contestModalTitle" data-i18n="contest.title">エクステンションコンテスト</h2>
+      <p class="contest-modal__lead" data-i18n="contest.lead">今年の最高傑作を表彰します！</p>
+      <div class="contest-modal__body" id="contestModalBody"></div>
+      <p class="contest-modal__total" id="contestModalTotal">—</p>
+      <button type="button" class="contest-modal__close" id="contestModalClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
   <!-- Quest result modal (Phase 1C-1) -->
   <div class="quest-result hidden" id="questResultModal" role="dialog" aria-modal="true" aria-labelledby="questResultTitle">
     <div class="quest-result__card">
@@ -5380,7 +6004,11 @@
         <p class="quest-result__sec-title" data-i18n="quest.result.team">出撃メンバー</p>
         <div class="quest-result__team" id="questResultTeam"></div>
       </div>
-      <button type="button" class="quest-result__close" id="questResultClose" data-i18n="quest.result.close">OK</button>
+      <div class="quest-result__actions">
+        <button type="button" class="quest-result__redeploy" id="questResultRedeploy" data-i18n="quest.result.redeploy">休憩後、再出発</button>
+        <button type="button" class="quest-result__back" id="questResultBack" data-i18n="quest.result.back">クエストへ</button>
+        <button type="button" class="quest-result__close" id="questResultClose" data-i18n="quest.result.close">閉じる</button>
+      </div>
     </div>
   </div>
 
@@ -5518,6 +6146,36 @@
     </div>
   </div>
 
+  <!-- Phase 1D-46: ランキング閲覧モーダル (タイトル画面 / スコア登録後から開く) -->
+  <div class="ranking-viewer hidden" id="rankingViewer" role="dialog" aria-modal="true" aria-labelledby="rankingViewerTitle">
+    <div class="ranking-viewer__card">
+      <header class="ranking-viewer__head">
+        <h2 class="ranking-viewer__title" id="rankingViewerTitle" data-i18n="ranking.viewer.title">🏆 ランキング</h2>
+        <button type="button" class="ranking-viewer__close-x" id="rankingViewerCloseBtn" aria-label="Close">×</button>
+      </header>
+      <div class="ranking-viewer__toolbar">
+        <button type="button" class="ranking-viewer__refresh" id="rankingViewerRefresh" data-i18n="ranking.viewer.refresh">最新を取得</button>
+        <span class="ranking-viewer__status" id="rankingViewerStatus"></span>
+      </div>
+      <div class="ranking-viewer__list-wrap">
+        <ol class="ranking-viewer__list" id="rankingViewerList"></ol>
+        <p class="ranking-viewer__empty hidden" id="rankingViewerEmpty" data-i18n="ranking.viewer.empty">まだランキング登録がありません。最新を取得 ボタンで再読み込みできます。</p>
+      </div>
+      <details class="ranking-viewer__settings">
+        <summary data-i18n="ranking.viewer.advancedTitle">上級設定: 別のランキングサーバーを使う</summary>
+        <p class="ranking-viewer__settings-help" data-i18n="ranking.viewer.advancedHelp">独自に GAS をデプロイした場合のみ利用してください。空欄で「保存」を押すと既定 URL に戻ります。</p>
+        <label class="ranking-viewer__settings-row">
+          <span data-i18n="ranking.viewer.urlLabel">Apps Script URL</span>
+          <input type="url" id="rankingApiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+        </label>
+        <div class="ranking-viewer__settings-actions">
+          <button type="button" class="ranking-viewer__url-save" id="rankingApiUrlSaveBtn" data-i18n="ranking.viewer.urlSave">保存</button>
+          <span class="ranking-viewer__url-status" id="rankingApiUrlStatus"></span>
+        </div>
+      </details>
+    </div>
+  </div>
+
   <!-- Phase 1D-26: 10 年エンディング — スコア結果 + ランキング登録 view -->
   <div class="ranking-score-view hidden" id="rankingScoreView" role="dialog" aria-modal="true">
     <div class="ranking-score-view__card">
@@ -5536,6 +6194,7 @@
         </label>
         <button type="button" class="ranking-score-view__submit-btn" id="rankingSubmitBtn" data-i18n="ranking.submitBtn">ランキングに登録</button>
         <p class="ranking-score-view__status" id="rankingStatus"></p>
+        <button type="button" class="ranking-score-view__view-btn" id="rankingScoreViewLeaderboardBtn" data-i18n="ranking.viewer.openBtn">🏆 ランキングを見る</button>
       </div>
       <button type="button" class="ranking-score-view__next-btn" id="rankingScoreNext" data-i18n="ranking.proceedReport">活動レポートを見る</button>
     </div>
@@ -5597,6 +6256,18 @@
       <p class="commission-view__intro" data-i18n="commission.intro">素材なしで請けられますが、報酬は通常の 6 割。期限までに基準値を満たす必要があります。</p>
       <div class="commission-view__list" id="commissionList"></div>
       <button type="button" class="commission-view__close" id="commissionViewClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Phase 1D-34: ショップ view (= マーケット > ショップ) -->
+  <div class="shop-view hidden" id="shopView" role="dialog" aria-modal="true" aria-labelledby="shopViewTitle">
+    <div class="shop-view__card">
+      <header class="shop-view__head">
+        <h2 class="shop-view__title" id="shopViewTitle" data-i18n="shop.title">ショップ</h2>
+        <button type="button" class="shop-view__back" id="shopViewClose" data-i18n="btn.close">閉じる</button>
+      </header>
+      <div class="shop-tabs" id="shopTabs"></div>
+      <div class="shop-list" id="shopList"></div>
     </div>
   </div>
 
@@ -5727,7 +6398,7 @@
   </div>
 
   <footer>
-    <span class="footer-meta" data-i18n="footer.meta">MyCryptoFactory α version · 非営利のファン制作</span>
+    <span class="footer-meta" data-i18n="footer.meta">MyCryptoFactory β version · 非営利のファン制作</span>
     <br />
     <span class="footer-credit" data-i18n-html="footer.credit.full">
       キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は
