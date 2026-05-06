@@ -3951,12 +3951,19 @@ function closeAndOpenQuestPick() {
 function tryAutoRedeployQuest() {
   const r = state.pendingQuestRedeploy;
   if (!r) return;
-  if (state.activeQuest) return;  // 既に何らかのクエスト中ならスキップ (= 別経由で deploy 済)
+  // Phase β2-3 part 2 fix: 並行スロットでは「全スロット埋まり」 のときだけ待機。
+  //   旧 `if (state.activeQuest) return;` は slot 0 のみ見ており、 slot 1, 2 が
+  //   空なのに redeploy 不能になるバグだった。
+  if (findEmptyQuestSlot() < 0) return;
   // 全員 IDLE 判定
   for (const id of r.team) {
     if (id == null) continue;
     const h = findHero(id);
-    if (!h) return;  // ヒーロー消失 (= 売却等) → 待機を解除
+    if (!h) {
+      // ヒーロー消失 (= 売却 / 解雇) → 待機予約を解除して終了
+      state.pendingQuestRedeploy = null;
+      return;
+    }
     if (h.state !== HERO_STATE.IDLE) return;  // まだ休憩中
   }
   // 全員 IDLE → redeploy
@@ -3970,9 +3977,26 @@ function tryAutoRedeployQuest() {
   state.questPickedDifficulty = r.difficulty;
   state.questNodeType = LAND_NODES.some(n => n.id === r.nodeId) ? "land" : "normal";
   state.questTeam = r.team.slice();
-  // 予約をクリアしてから派遣 (= startActiveQuest 内で activeQuest 設定)
+  // Phase β2-3 part 2 fix: startActiveQuest が rate < 0 等で fail した場合の
+  //   救済処理を仕込む。 起動前後で空きスロット数を比較し、 減っていなければ
+  //   起動失敗とみなし questTeam を reset (= ヒーローの弱 lock を解放)。
+  const emptyBefore = findEmptyQuestSlot();
   state.pendingQuestRedeploy = null;
   startActiveQuest();
+  const emptyAfter = findEmptyQuestSlot();
+  // 空きスロット数が変わっていない (= 起動失敗) ケース: questTeam を reset し、
+  // ヒーローを完全解放する。 通知でユーザーに「失敗したので再編成してください」 を伝える。
+  if (emptyBefore === emptyAfter && state.questTeam.some(id => id != null)) {
+    state.questTeam = state.questTeam.map(_ => null);
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("quest.notif.redeployFailed", "編成 Lv 不足のため自動再派遣できませんでした。 編成し直してください"),
+      element: "ifrit",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+  }
 }
 
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える)。
