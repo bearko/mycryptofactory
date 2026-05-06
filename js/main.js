@@ -254,6 +254,8 @@ const state = {
   pendingAppraisal: /** @type {object | null} */ (null),
   /** Phase 1D-44 12 月コンテスト結果の表示中データ (4 部門 winner + 大賞 + 賞金合計) */
   pendingContest: /** @type {object | null} */ (null),
+  /** Phase β2-3 part 2 年俸支払いレポート popup の表示中データ */
+  pendingSalaryReport: /** @type {object | null} */ (null),
   /** Phase 1D-45 打ち直しクラフトの対象倉庫 index (= state.warehouse[idx])。
    *  非 null のときは pickExtForConfirm 経由ではなく remake 専用フローで起動。 */
   craftPickedRemakeIdx: /** @type {number | null} */ (null),
@@ -1455,57 +1457,96 @@ function triggerAnnualSalary() {
   if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) {
     return;
   }
-  pauseTime();
-  const lang = getLang() === "en" ? "en" : "ja";
   const items = state.ownedHeroes.map(h => ({ hero: h, salary: annualSalaryOf(h) }));
   const total = items.reduce((s, it) => s + it.salary, 0);
   // GUM 控除 (= 赤字突入を許容)
   state.gum -= total;
-  // 内訳テキスト (上位 5 名 + 残りは集約)
+  // 高い順にソートして popup へ
   items.sort((a, b) => b.salary - a.salary);
-  const topN = 5;
-  const top = items.slice(0, topN);
-  const rest = items.slice(topN);
-  const restTotal = rest.reduce((s, it) => s + it.salary, 0);
-  const linesJa = [
-    "年度末にヒーローの給与を支払います。",
-    `${state.year} 年の年俸支払い時期です！`,
-    `総額 ${total.toLocaleString()} GUM をお支払いしました。`,
-  ];
-  if (top.length > 0) {
-    linesJa.push("内訳 (高い順):");
-    for (const it of top) {
-      const name = tHero(it.hero.heroId, it.hero.nameJa);
-      const stars = "★".repeat(it.hero.rank || 0);
-      linesJa.push(`  ${name}${stars ? " " + stars : ""} … ${it.salary.toLocaleString()} GUM`);
-    }
-    if (rest.length > 0) {
-      linesJa.push(`  他 ${rest.length} 名 … ${restTotal.toLocaleString()} GUM`);
-    }
-  }
-  if ((state.gum || 0) < 0) {
-    linesJa.push(`現在所持金: ${state.gum.toLocaleString()} GUM (赤字)。 クラフトしてエクステンションを売りましょう！`);
-  } else {
-    linesJa.push(`現在所持金: ${state.gum.toLocaleString()} GUM`);
-  }
-  const linesEn = lang === "en"
-    ? [
-        "Year-end. Time to pay your heroes' annual salaries.",
-        `${state.year} annual salary payment.`,
-        `Total: ${total.toLocaleString()} GUM paid.`,
-        ...top.map(it => `  ${tHero(it.hero.heroId, it.hero.nameEn || it.hero.nameJa)} ${"★".repeat(it.hero.rank || 0)} … ${it.salary.toLocaleString()}`),
-        rest.length > 0 ? `  +${rest.length} more … ${restTotal.toLocaleString()}` : "",
-        (state.gum || 0) < 0
-          ? `Current GUM: ${state.gum.toLocaleString()} (deficit). Sell extensions to recover!`
-          : `Current GUM: ${state.gum.toLocaleString()}`,
-      ].filter(Boolean)
-    : null;
-  const lines = lang === "en" ? linesEn : linesJa;
-  maiSaysSequence(lines, { onClose: () => {
+  // Phase β2-3 part 2: マイの逐次セリフから、 ヒーローアイコン + 名前 + 年俸の
+  //   一覧 popup に変更 (ユーザー要望: 「マイのメッセージを 1 つ 1 つ送るのが面倒
+  //   + 頭に入ってこない」)。
+  state.pendingSalaryReport = {
+    year: state.year,
+    items: items.map(it => ({
+      heroId: it.hero.heroId,
+      nameJa: it.hero.nameJa,
+      rarity: it.hero.rarity,
+      rank: it.hero.rank || 0,
+      salary: it.salary,
+      img: typeof it.hero.img === "function" ? it.hero.img() : "",
+    })),
+    total,
+    gumAfter: state.gum,
+  };
+  openSalaryReportModal();
+}
+
+/** Phase β2-3 part 2: 年俸支払いレポート popup */
+function openSalaryReportModal() {
+  const sr = state.pendingSalaryReport;
+  if (!sr) return;
+  const modal = $("salaryReportModal");
+  if (!modal) {
+    // フォールバック: modal が無ければ通知タイルだけ残す
+    state.notifications.push({
+      id: ++_notifId,
+      text: `${sr.year}年 年俸 ${sr.total.toLocaleString()} GUM 支払い`,
+      element: "garuda", value: 0, createdTick: state.tickCount,
+    });
+    state.pendingSalaryReport = null;
     renderHeader?.();
-    // 赤字突入を検知 (= マイの初回助言の予約フラグ等)
     checkDeficitTransition?.();
-  }});
+    return;
+  }
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  // タイトル + サマリ
+  const titleEl = $("salaryReportTitle");
+  const summaryEl = $("salaryReportSummary");
+  if (titleEl) titleEl.textContent = lang === "en"
+    ? `${sr.year} Annual Salary Report`
+    : `${sr.year} 年 年俸支払いレポート`;
+  if (summaryEl) {
+    const totalLine = lang === "en"
+      ? `Total paid: <strong>${sr.total.toLocaleString()} GUM</strong>`
+      : `総額 <strong>${sr.total.toLocaleString()} GUM</strong> をお支払いしました`;
+    const balanceLine = (sr.gumAfter || 0) < 0
+      ? (lang === "en"
+          ? `Balance: <strong style="color:var(--ifrit)">${sr.gumAfter.toLocaleString()} GUM (deficit)</strong>`
+          : `現在所持金: <strong style="color:var(--ifrit)">${sr.gumAfter.toLocaleString()} GUM (赤字)</strong>`)
+      : (lang === "en"
+          ? `Balance: <strong>${sr.gumAfter.toLocaleString()} GUM</strong>`
+          : `現在所持金: <strong>${sr.gumAfter.toLocaleString()} GUM</strong>`);
+    summaryEl.innerHTML = `${totalLine}<br>${balanceLine}`;
+  }
+  // ヒーロー一覧
+  const listEl = $("salaryReportList");
+  if (listEl) {
+    listEl.innerHTML = sr.items.map(it => {
+      const name = tHero(it.heroId, it.nameJa);
+      const stars = "★".repeat(it.rank) + "☆".repeat(5 - it.rank);
+      const rarLbl = ti18n("rarity." + it.rarity, it.rarity);
+      return `<li class="salary-report__row" data-rarity="${it.rarity}">
+        <img class="salary-report__portrait" src="${it.img}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="salary-report__main">
+          <span class="salary-report__name">${escapeHtml(name)}</span>
+          <span class="salary-report__meta">${escapeHtml(rarLbl)} · ${stars}</span>
+        </div>
+        <strong class="salary-report__salary">${it.salary.toLocaleString()} GUM</strong>
+      </li>`;
+    }).join("");
+  }
+  modal.classList.remove("hidden");
+}
+
+function closeSalaryReportModal() {
+  $("salaryReportModal")?.classList.add("hidden");
+  state.pendingSalaryReport = null;
+  resumeTime();
+  renderHeader?.();
+  // 赤字突入を検知 (= マイの初回助言の予約フラグ等)
+  checkDeficitTransition?.();
 }
 
 /** 4 月採用イベント: 手持ちヒーローの最高 rarity と同じ rarity で雇用候補を 1 set
@@ -8427,6 +8468,11 @@ async function init() {
   $("contestModalClose")?.addEventListener("click", closeContestResultModal);
   $("contestModal")?.addEventListener("click", (e) => {
     if (e.target.id === "contestModal") closeContestResultModal();
+  });
+  // Phase β2-3 part 2: 年俸支払いレポート modal close
+  $("salaryReportClose")?.addEventListener("click", closeSalaryReportModal);
+  $("salaryReportModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "salaryReportModal") closeSalaryReportModal();
   });
 
   // ── Market view: tabs (Phase 1B-5 + 1D-3) ──
