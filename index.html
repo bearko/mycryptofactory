@@ -3836,6 +3836,85 @@
       border-color: var(--accent);
     }
 
+    /* Phase β2-3 part 2: 年俸支払いレポート popup */
+    .salary-report {
+      position: fixed; inset: 0; z-index: 320;
+      background: rgba(15, 12, 22, 0.94);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .salary-report.hidden { display: none !important; }
+    .salary-report__card {
+      max-width: 520px; width: 100%;
+      max-height: 90vh; overflow-y: auto;
+      background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .salary-report__head {
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .salary-report__title {
+      margin: 0; font-size: 1.1rem; color: var(--accent);
+      letter-spacing: 0.04em; text-align: center;
+    }
+    .salary-report__summary {
+      margin: 0; font-size: 0.85rem;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .salary-report__summary strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .salary-report__list-wrap {
+      max-height: 50vh; overflow-y: auto;
+    }
+    .salary-report__list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.3rem;
+    }
+    .salary-report__row {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 0.5rem; align-items: center;
+      padding: 0.4rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 4px;
+    }
+    .salary-report__portrait {
+      width: 40px; height: 40px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .salary-report__main {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      min-width: 0;
+    }
+    .salary-report__name {
+      font-size: 0.88rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .salary-report__meta {
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .salary-report__salary {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.92rem;
+    }
+    .salary-report__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+
     /* Phase 1D-44: 12 月エクステンションコンテスト結果モーダル */
     .contest-modal {
       position: fixed; inset: 0; z-index: 295;
@@ -6316,6 +6395,20 @@
 
   <!-- Phase 1D-44: 紙吹雪レイヤー (傑作査定 / 大賞受賞時にスポーン) -->
   <div class="confetti-layer hidden" id="confettiLayer" aria-hidden="true"></div>
+
+  <!-- Phase β2-3 part 2: 年俸支払いレポート popup -->
+  <div class="salary-report hidden" id="salaryReportModal" role="dialog" aria-modal="true" aria-labelledby="salaryReportTitle">
+    <div class="salary-report__card">
+      <header class="salary-report__head">
+        <h2 class="salary-report__title" id="salaryReportTitle">年俸支払いレポート</h2>
+      </header>
+      <p class="salary-report__summary" id="salaryReportSummary"></p>
+      <div class="salary-report__list-wrap">
+        <ol class="salary-report__list" id="salaryReportList"></ol>
+      </div>
+      <button type="button" class="salary-report__close" id="salaryReportClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
 
   <!-- Phase 1D-44: 12 月エクステンションコンテスト結果モーダル -->
   <div class="contest-modal hidden" id="contestModal" role="dialog" aria-modal="true" aria-labelledby="contestModalTitle">
