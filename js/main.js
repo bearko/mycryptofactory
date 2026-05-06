@@ -176,8 +176,20 @@ const state = {
   gum: 1000,
   // Active craft (Phase 1B). Set when player taps クラフト開始.
   // { extId, team: [heroId|null × 5], targets: {...}, progress: {...},
-  //   recipe: [{id, qty}], startedAtWeek: <int>, durationWeeks: <int> }
+  //   recipe: [{id, qty}], startedAtWeek: <int>, durationWeeks: <int>,
+  //   slotIdx: 0 (= Phase β2-3 で追加。 並行スロット index) }
   activeCraft: null,
+  /** Phase β2-3: 並行クラフトスロット (slot 1, 2)。 工房 Lv 2 で slot 1
+   *  が解放、 Lv 3 で slot 2 が解放。 slot 0 は既存の state.activeCraft。
+   *  各要素は activeCraft と同じ shape + slotIdx スタンプ。 */
+  activeCraftExtra: /** @type {Array<object|null>} */ ([null, null]),
+  /** Phase β2-3: 並行クラフトの完成画面待ち (slot 1, 2 用)。 ただし完成画面の
+   *  modal 表示は同時 1 件のみのため、 slot 0 が完成画面表示中は他スロットの
+   *  triggerCraftCompletion は次 tick まで待機する。 */
+  pendingCompletionExtra: /** @type {Array<object|null>} */ ([null, null]),
+  pendingAppraisalExtra:  /** @type {Array<object|null>} */ ([null, null]),
+  /** Phase β2-3: 進捗カードでどのスロットを表示中か (= ページ送り index) */
+  craftViewSlotIdx: 0,
   // Pause flags (any !==0 means time is paused)
   pauseFlags: 0,
   // Phase 1D-9: 設定 > 時間2倍速 トグル (1 tick = 500ms)
@@ -1609,6 +1621,79 @@ function startRemakeFromWarehouse(idx) {
   renderConfirm?.();
 }
 
+/** ─── Phase β2-3: 並行クラフトスロット (slot 0..2) のヘルパー ─── */
+
+/** factoryLevel に応じた利用可能スロット数 (1/2/3)。 Lv4-5 も 3 で頭打ち。 */
+function parallelCraftSlotsFor(factoryLevel) {
+  if ((factoryLevel || 1) >= 3) return 3;
+  if ((factoryLevel || 1) >= 2) return 2;
+  return 1;
+}
+
+/** 指定スロットの activeCraft を取得 */
+function getActiveCraftSlot(idx) {
+  if (idx === 0) return state.activeCraft || null;
+  if (idx === 1 || idx === 2) {
+    return (state.activeCraftExtra && state.activeCraftExtra[idx - 1]) || null;
+  }
+  return null;
+}
+
+/** 指定スロットの activeCraft を設定 (null で空にする) */
+function setActiveCraftSlot(idx, ac) {
+  if (idx === 0) { state.activeCraft = ac; return; }
+  if (!Array.isArray(state.activeCraftExtra)) state.activeCraftExtra = [null, null];
+  if (idx === 1 || idx === 2) {
+    state.activeCraftExtra[idx - 1] = ac;
+  }
+}
+
+/** 利用可能スロット範囲 [0..cap-1] で iter する。 stop に true を返すと break。 */
+function forEachCraftSlot(fn) {
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  for (let i = 0; i < cap; i++) {
+    if (fn(i, getActiveCraftSlot(i)) === true) return;
+  }
+}
+
+/** 空きスロット index を返す (利用可能範囲内)。 全埋まりなら -1。 */
+function findEmptyCraftSlot() {
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  for (let i = 0; i < cap; i++) {
+    if (getActiveCraftSlot(i) == null) return i;
+  }
+  return -1;
+}
+
+/** 現在ある active craft の数 (= 進行中本数) */
+function activeCraftCount() {
+  let n = 0;
+  forEachCraftSlot((_, ac) => { if (ac) n++; });
+  return n;
+}
+
+/** 指定スロットの pendingCompletion を取得 / 設定 */
+function getPendingCompletionSlot(idx) {
+  if (idx === 0) return state.pendingCompletion || null;
+  return (state.pendingCompletionExtra && state.pendingCompletionExtra[idx - 1]) || null;
+}
+function setPendingCompletionSlot(idx, pc) {
+  if (idx === 0) { state.pendingCompletion = pc; return; }
+  if (!Array.isArray(state.pendingCompletionExtra)) state.pendingCompletionExtra = [null, null];
+  if (idx === 1 || idx === 2) state.pendingCompletionExtra[idx - 1] = pc;
+}
+
+/** Phase β2-3: 表示中スロットを正規化 (= 範囲外 / 空スロットなら最初の active へ) */
+function normalizeCraftViewSlot() {
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  let idx = state.craftViewSlotIdx || 0;
+  if (idx < 0 || idx >= cap) idx = 0;
+  // active がある最初のスロットを優先表示 (空スロットでも index は許容して空表示にする)
+  // ただしユーザーがページ送りで明示的に空スロットを選ぶ可能性もあるためそのまま採用
+  state.craftViewSlotIdx = idx;
+  return idx;
+}
+
 /** ─── Phase 2A/2B: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
 
 /** Phase 2B: hireRareBoost を適用した plan の clone を返す。
@@ -2235,7 +2320,8 @@ function renderCommissionView() {
 /** picker で commission を選択 → 既存 craftView の confirm 画面に流し込む。
  *  craft.commissionId フラグを保持してその後の処理 (材料免除 / 完了処理) で参照。 */
 function pickCommission(commissionId) {
-  if (state.activeCraft) {
+  // Phase β2-3: 全スロット埋まりの場合のみ block
+  if (findEmptyCraftSlot() < 0) {
     maiSays("commission.busy");
     return;
   }
@@ -2260,10 +2346,10 @@ function onTick() {
   if (state.weekProgress >= SECONDS_PER_WEEK) {
     advanceWeek();
   }
-  // Phase 1B-2: クラフト中の per-tick simulation (4色獲得 / HP消費 / 睡眠 / パッシブ)
-  if (state.activeCraft) {
-    tickActiveCraft();
-  }
+  // Phase 1B-2 + β2-3: クラフト中の per-tick simulation (slot 0..2 並行)
+  forEachCraftSlot((idx, ac) => {
+    if (ac) tickActiveCraft(idx);
+  });
   // Phase 1C-1: アクティブクエストの 1 tick 進行
   if (state.activeQuest) {
     tickActiveQuest();
@@ -2333,14 +2419,16 @@ function onTick() {
  *   - 起きているヒーローはパッシブ発動をロール
  *   - 稼働中ヒーローが居れば timeProgress を加算
  *   - timeProgress >= 1 で triggerCraftCompletion */
-function tickActiveCraft() {
-  const ac = state.activeCraft;
+/** Phase β2-3: tickActiveCraft が並行スロットに対応。 craftSlotIdx を受け取り、
+ *  指定スロットの activeCraft を進行させる。 craftSlotIdx 省略時は slot 0 (= 後方互換)。 */
+function tickActiveCraft(craftSlotIdx = 0) {
+  const ac = getActiveCraftSlot(craftSlotIdx);
   if (!ac) return;
   let activeWorkers = 0;
   // Phase 1D-42: 工房クラフト経験値の Lv ボーナスを基底加算
   let totalCraftLv = craftLvBonusForCraft();
-  for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
-    const heroId = ac.team[slotIdx];
+  for (let heroIdx = 0; heroIdx < ac.team.length; heroIdx++) {
+    const heroId = ac.team[heroIdx];
     if (heroId == null) continue;
     const hero = findHero(heroId);
     if (!hero) continue;
@@ -2422,7 +2510,10 @@ function tickActiveCraft() {
   }
   // 5. 完了判定 (時間進捗 100%)
   if ((ac.timeProgress || 0) >= 1) {
-    triggerCraftCompletion(ac);
+    // Phase β2-3: 完成画面の modal 表示は同時 1 件のみ。 既に他スロットの
+    //   pendingCompletion / pendingAppraisal が flow 中なら次 tick まで待機。
+    if (state.pendingCompletion || state.pendingAppraisal) return;
+    triggerCraftCompletion(ac, craftSlotIdx);
   }
 }
 
@@ -2688,8 +2779,9 @@ function finishCraftEventAnim(hero, elKey, total, lang) {
 }
 
 /** 完成判定発火 ─ activeCraft を pendingCompletion に移し、
- *  Mai の通知 → 完成画面を順に表示する。 */
-function triggerCraftCompletion(ac) {
+ *  Mai の通知 → 完成画面を順に表示する。
+ *  Phase β2-3: craftSlotIdx を受け取り、 該当スロットの activeCraft を null に。 */
+function triggerCraftCompletion(ac, craftSlotIdx = 0) {
   // 実所要週数 (timeProgress 0 → 1 までの実時間)
   const elapsedTicks = state.tickCount - (ac.startedAtTick || 0);
   const actualWeeks  = Math.max(1, Math.ceil(elapsedTicks / SECONDS_PER_WEEK));
@@ -2748,8 +2840,11 @@ function triggerCraftCompletion(ac) {
     // Phase 1D-45: 打ち直しクラフトのコンテキストを完成画面 → 倉庫まで伝播
     remakeFromWarehouseIdx: ac.remakeFromWarehouseIdx ?? null,
     remakeTargetRarity:     ac.remakeTargetRarity     ?? null,
+    // Phase β2-3: どのスロットからの完成かを記録
+    craftSlotIdx,
   };
-  state.activeCraft = null;
+  // Phase β2-3: 該当スロットを空に (slot 0 = state.activeCraft / slot 1,2 = activeCraftExtra)
+  setActiveCraftSlot(craftSlotIdx, null);
 
   // 配属ヒーローはまず CRAFTING を解除 (RESTING のままなら回復継続するので、
   // ここでは触らず → 完成画面 close 時に IDLE に戻す)
@@ -3876,8 +3971,11 @@ function isHeroLocked(heroId, opts = {}) {
   //   ここで opts (ignoreCraftTeam 等) では解除できない強い lock として扱う。
   //   旧バグ: クラフト中ヒーローが休憩に入ると state===RESTING で「Idle 扱い」されて
   //   クエスト編成画面などで選択可能になってしまっていた。
-  if (state.activeCraft && Array.isArray(state.activeCraft.team)
-      && state.activeCraft.team.includes(heroId)) return true;
+  // Phase β2-3: 並行スロット (slot 0..2) すべてのチームをチェック
+  for (let i = 0; i < 3; i++) {
+    const ac = getActiveCraftSlot(i);
+    if (ac && Array.isArray(ac.team) && ac.team.includes(heroId)) return true;
+  }
   if (state.activeQuest && Array.isArray(state.activeQuest.team)
       && state.activeQuest.team.includes(heroId)) return true;
   // Phase 1D-42: 自動再派遣予約中のチームは HP 回復待ちでも他作業に組めない強 lock。
@@ -3904,8 +4002,8 @@ function _elemDescSort(key) {
  *  「target>0 の色のクラフトパワー合算値」で降順 sort し、上位 5 名を採用。
  *  ext が選ばれていない場合は 4 色全体の合算値で sort (= craft level proxy)。 */
 function autoFormCraftTeam() {
-  // 既にクラフト中ならフォーム変更は不可 (= 既存編成 UI のロックと整合)
-  if (state.activeCraft) {
+  // Phase β2-3: 並行スロットでは「全スロット埋まり」 のみ block
+  if (findEmptyCraftSlot() < 0) {
     maiSays("mai.craftBusy");
     return;
   }
@@ -5230,9 +5328,15 @@ function startActiveCraft() {
     }
   }
 
+  // Phase β2-3: 空きスロットを picking。 全埋まりなら開始キャンセル。
+  const slotIdx = findEmptyCraftSlot();
+  if (slotIdx < 0) {
+    maiSays?.("craft.mai.allSlotsFull");  // i18n; fallback はキー文字列表示
+    return;
+  }
   // Phase 1D-32: 受注ID / Phase 1D-45: 打ち直し index を activeCraft に伝播
   const commissionId = state.craftPickedCommissionId;
-  state.activeCraft = {
+  const newActiveCraft = {
     extId: ext.extId,
     team,
     targets,
@@ -5245,9 +5349,14 @@ function startActiveCraft() {
     startedAtTick: state.tickCount,   // 実所要時間 (週) を完成時に算出するため
     durationWeeks: dur,
     timeProgress: 0,                  // Phase 1B 改修: 時間進捗 (0..1)、完成判定の主役
+    slotIdx,                          // Phase β2-3: 自身のスロット番号
   };
+  setActiveCraftSlot(slotIdx, newActiveCraft);
+  state.craftViewSlotIdx = slotIdx;  // 進捗カードでこのスロットを直接表示
   // Phase 1D-45: 打ち直し起動完了 → pickedRemakeIdx は activeCraft に移したのでクリア
   state.craftPickedRemakeIdx = null;
+  // Phase β2-3: 並行スロットでの次回起動用に craftTeam フォームをリセット
+  state.craftTeam = state.craftTeam.map(_ => null);
   // Mark assigned heroes as crafting (state machine — stamina tick comes Phase 1C)
   for (const id of team) {
     if (id == null) continue;
@@ -5279,8 +5388,23 @@ function renderOrderPanel() {
   const icon = $("orderIcon");
   if (!panel) return;
 
-  // 進行中クラフトなし & 完成待ちなし → empty state
-  if (!state.activeCraft && !state.pendingCompletion) {
+  // Phase β2-3: 表示中スロットを decide。 activeCraftSlots[viewIdx] を表示。
+  //   完成待ち (pendingCompletion) は slot 0 にある場合のみ slot 0 表示で扱う
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  let viewIdx = state.craftViewSlotIdx || 0;
+  if (viewIdx < 0 || viewIdx >= cap) viewIdx = 0;
+  const acSlot = getActiveCraftSlot(viewIdx);
+  // 表示するアクティブ entity (= activeCraft 進行中 or pendingCompletion 表示中)
+  const showAc = acSlot
+    || (viewIdx === 0 && state.pendingCompletion ? state.pendingCompletion : null);
+
+  // 全スロット空 + pendingCompletion 無 → empty state
+  const anyActive = (function() {
+    if (state.pendingCompletion) return true;
+    for (let i = 0; i < cap; i++) if (getActiveCraftSlot(i)) return true;
+    return false;
+  })();
+  if (!anyActive) {
     panel.classList.add("order-panel--empty");
     desc.textContent = ti18n("order.none");
     meta.textContent = "";
@@ -5288,6 +5412,8 @@ function renderOrderPanel() {
     fill.style.width = "0%";
     pct.textContent = "";
     icon.innerHTML = "";
+    // ページャ非表示
+    const pager = $("orderPager"); if (pager) pager.classList.add("hidden");
     // Phase 1D-13: 「クラフトする」遷移ボタンを表示
     const ah = $("orderActionHost");
     if (ah) {
@@ -5306,8 +5432,17 @@ function renderOrderPanel() {
   // 稼働中: アクションボタンは隠す
   const ah = $("orderActionHost");
   if (ah) ah.innerHTML = "";
-  // 進行中 (or 完成 Mai 通知 → 完成画面の間も表示維持)
-  const ac = state.activeCraft || state.pendingCompletion;
+  // Phase β2-3: ページャ更新 (= 並行スロット数 > 1 のとき表示)
+  renderOrderPager();
+  // 表示するスロットが空かつ pendingCompletion でも無いなら、 別のアクティブスロットへ送る
+  const ac = showAc || (function() {
+    for (let i = 0; i < cap; i++) {
+      const a = getActiveCraftSlot(i);
+      if (a) { state.craftViewSlotIdx = i; return a; }
+    }
+    return state.pendingCompletion;
+  })();
+  if (!ac) return;  // 万が一の保険
   const ext = EXTENSION_BY_ID[String(ac.extId)];
   panel.classList.remove("order-panel--empty");
   icon.innerHTML = `<img src="${extIconUrl(ac.extId)}" alt="" onerror="this.style.opacity='0.2'" />`;
@@ -5339,6 +5474,22 @@ function renderOrderPanel() {
   const pctRaw = (ac.timeProgress || 0) * 100;
   fill.style.width = pctRaw.toFixed(2) + "%";
   pct.textContent = Math.floor(pctRaw) + "%";
+}
+
+/** Phase β2-3: 進捗カードのページャを描画 (並行スロット数に応じて表示) */
+function renderOrderPager() {
+  const pager = $("orderPager");
+  const label = $("orderPagerLabel");
+  const prevBtn = $("orderPagerPrev");
+  const nextBtn = $("orderPagerNext");
+  if (!pager || !label) return;
+  const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+  if (cap < 2) { pager.classList.add("hidden"); return; }
+  pager.classList.remove("hidden");
+  const idx = state.craftViewSlotIdx || 0;
+  label.textContent = `${idx + 1} / ${cap}`;
+  if (prevBtn) prevBtn.disabled = idx <= 0;
+  if (nextBtn) nextBtn.disabled = idx >= cap - 1;
 }
 
 /** activeCraft.startedAt + durationWeeks から完成予定日を計算 */
@@ -5841,7 +5992,8 @@ function _initProgressCarousel() {
     if (menuOpen) closeMenu();
     if (target.hasAttribute("data-craft-go")) {
       // Craft → 新規開発
-      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      // Phase β2-3: 全スロット埋まりのみ block
+      if (findEmptyCraftSlot() < 0) { maiSays("mai.craftBusy"); return; }
       openCraftView();
       return;
     }
@@ -6022,8 +6174,8 @@ function handleHeroQuickAction(hero, action) {
         if (empty >= 0) state.craftTeam[empty] = hid;
       }
       closeHeroDetailPopup();
-      // activeCraft 中なら開けない (既存ガードと整合)
-      if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+      // Phase β2-3: 全スロット埋まりのみ block
+      if (findEmptyCraftSlot() < 0) { maiSays("mai.craftBusy"); return; }
       openCraftView();
       break;
     }
@@ -7761,6 +7913,21 @@ async function init() {
 
   // ── Help ──
   $("btnHelpOpen")?.addEventListener("click", openHelp);
+  // Phase β2-3: 進捗カードページャ (並行スロット切替)
+  $("orderPagerPrev")?.addEventListener("click", () => {
+    const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+    let idx = (state.craftViewSlotIdx || 0) - 1;
+    if (idx < 0) idx = 0;
+    state.craftViewSlotIdx = idx;
+    renderOrderPanel();
+  });
+  $("orderPagerNext")?.addEventListener("click", () => {
+    const cap = parallelCraftSlotsFor(state.factoryLevel || 1);
+    let idx = (state.craftViewSlotIdx || 0) + 1;
+    if (idx >= cap) idx = cap - 1;
+    state.craftViewSlotIdx = idx;
+    renderOrderPanel();
+  });
   // Phase 2B: アクティブ効果モーダル
   $("workshopActiveEffectsBtn")?.addEventListener("click", openActiveEffectsModal);
   $("activeEffectsClose")?.addEventListener("click", closeActiveEffectsModal);
@@ -7816,11 +7983,13 @@ async function init() {
       hideAllSubmenus();
       closeMenu();
       if (action === "new-dev") {
-        if (state.activeCraft) { maiSays("mai.craftBusy"); return; }
+        // Phase β2-3: 全スロット埋まりのみ block
+        if (findEmptyCraftSlot() < 0) { maiSays("mai.craftBusy"); return; }
         openCraftView();
       } else if (action === "commission") {
         // Phase 1D-32: 受注クラフト
-        if (state.activeCraft) { maiSays("commission.busy"); return; }
+        // Phase β2-3: 全スロット埋まりのみ block
+        if (findEmptyCraftSlot() < 0) { maiSays("commission.busy"); return; }
         openCommissionView();
       } else if (action === "factoryLvUp") {
         // Phase 1D-23: 工房レベルアップ画面 (Settings → Craft へ移設)

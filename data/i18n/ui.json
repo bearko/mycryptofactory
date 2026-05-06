@@ -226,7 +226,8 @@
 
   "mai.name":                  { "ja": "マイ", "en": "Mai" },
   "mai.next":                  { "ja": "次へ", "en": "Next" },
-  "mai.craftBusy":             { "ja": "他のエクステンションのクラフトが進行中です。まずは今のクラフトを終わらせましょう。", "en": "Another extension is being crafted. Let's finish the current craft first." },
+  "mai.craftBusy":             { "ja": "クラフトラインが全て埋まっています。 完成を待つか工房を Lv アップしましょう。", "en": "All craft lines are full. Wait for completion or level up the workshop." },
+  "craft.mai.allSlotsFull":    { "ja": "クラフトラインが全て埋まっています。", "en": "All craft lines are full." },
 
   "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Workshop Lv: {n}" },
 
