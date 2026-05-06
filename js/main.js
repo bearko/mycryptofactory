@@ -1492,6 +1492,19 @@ function triggerAnnualSalary() {
  *  ノーコストで生成し、 既存の hire candidates 経路に流す。 */
 function triggerRecruitmentEvent() {
   if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) return;
+  // Phase β2 hotfix: 既存の雇用が進行中 (= プラン進行中 / 候補出揃い済) なら
+  //   今年の採用イベントは上書きせず skip。 通知のみ残す。
+  if (state.activeHire) {
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("recruit.notif.skipped", "今年の採用イベントは雇用進行中のため見送りました"),
+      element: "garuda",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+    return;
+  }
   // 手持ち最高 rarity 判定
   const ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
   let maxRarityIdx = 0;
@@ -2432,6 +2445,10 @@ function triggerCraftEvent(type) {
 }
 
 function openCraftEventPicker(type) {
+  // Phase β2 hotfix: maiSaysSequence の close で caller (tickActiveCraft) の
+  //   pause が消費されてしまうため、 picker 自身が pauseTime() で固定する。
+  //   finishCraftEventAnim の resumeTime とペアになる。
+  pauseTime();
   const view = $("craftEventPicker");
   if (!view) {
     // フォールバック: 自動で適当な要素 + チームの先頭で実行
@@ -6211,9 +6228,10 @@ function maiSays(messageKey, options = {}) {
   if (!modal || !body) return;
   setMaiBody(ti18n(messageKey));
   modal.classList.remove("hidden");
-  // Phase 1D-47 bug fix: 呼び出し側が pauseTime() 済みのケースで二重 pause
-  //   (= +2 / -1 で flags が 1 ずつリークしフリーズ) を防止。
-  //   既に paused なら自前 pause を skip → close 側の resumeTime と 1:1 に揃う。
+  // Phase 1D-47 fix: 既に paused なら自前 pause を skip (= 二重 pause リーク防止)
+  // close 側は常に resume を 1 回 → 呼出側 pre-pause なら caller の pause を
+  // 消費する形になる (= 呼出側 onClose は paused 前提の操作を行う場合は自分で
+  // pauseTime() を呼び直す必要がある)。
   if (state.pauseFlags === 0) pauseTime();
   _maiNextAction = options.onClose || null;
 }
@@ -6237,11 +6255,7 @@ function closeMaiModal() {
     $("maiModal")?.classList.add("hidden");
     const closeBtn = $("maiModalClose");
     if (closeBtn) closeBtn.textContent = ti18n("btn.close");
-    // Phase 1D-9 バグ修正: 必ず resumeTime して maiSaysSequence の pauseTime と
-    //   ペアにする。次に呼ばれる callback (next) は独立した pause/resume
-    //   ペアを管理する前提 (= 旧設計の「next 側で pauseTime を呼ぶから resume
-    //   しない」 は openCompletionScreen が pauseTime を呼ぶケースで pauseFlags
-    //   が累積するバグの原因だったので撤廃)
+    // 必ず resume を 1 回 (= 呼出側 pre-pause 時はその pause を消費する)
     resumeTime();
     if (seqCb) { seqCb(); return; }
     const next = _maiNextAction;
@@ -6251,7 +6265,6 @@ function closeMaiModal() {
   }
   // ── 通常 (単行 maiSays) の閉じ処理 ──
   $("maiModal")?.classList.add("hidden");
-  // Phase 1D-9 バグ修正: 同上 — 常に resume してから next() を呼ぶ
   resumeTime();
   const next = _maiNextAction;
   _maiNextAction = null;
@@ -6289,7 +6302,7 @@ function maiSaysSequence(messages, options = {}) {
   setMaiBody(_maiSeqQueue[_maiSeqIdx]);
   btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
-  // Phase 1D-47 bug fix: maiSays と同様、呼び出し側が pauseTime() 済みなら skip。
+  // Phase 1D-47 fix: 既に paused なら skip (= maiSays と同じ)
   if (state.pauseFlags === 0) pauseTime();
 }
 
@@ -7008,14 +7021,21 @@ function tickActiveHire() {
     const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
     // Phase 2B: hireRareBoost を適用
     ah.candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
-    // Phase 1D-7: Mai 通知 → 「次へ」 押下で雇用画面に直接遷移
-    maiSays("hire.mai.candidatesReady", {
-      onClose: () => {
-        state.marketTab = "hire";
-        openMarketView();
-        setMarketTab("hire");
-      },
+    // Phase β2 hotfix: 旧 maiSays 通知は他イベント (年俸 / 採用イベント) と
+    //   重なって候補が見えなくなる事故が発生したため、 候補が出揃ったら
+    //   即座に雇用画面 (= マーケットの雇用タブ) を開く。 保留はできない仕様。
+    state.marketTab = "hire";
+    openMarketView();
+    setMarketTab("hire");
+    // 通知タイルにだけ「候補が出揃いました」 を残す
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("hire.mai.candidatesReady", "雇用候補が出揃いました！"),
+      element: "tiamat",
+      value: 0,
+      createdTick: state.tickCount,
     });
+    renderNotifications?.();
   }
   renderHireOverlay();
   renderSaleOverlay();
