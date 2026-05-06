@@ -262,6 +262,10 @@ const state = {
   heroTeamTab: "craft",  // "craft" | "quest"
   /** Phase 1D-12: クエスト画面で表示中のノードタイプ ("normal" / "land") */
   questNodeType: "normal",
+  /** Phase 1D-41: クエスト編成画面で「編成できないヒーローを表示」フラグ。
+   *  デフォルト OFF (= 編成可能ヒーローのみ表示) で、 大量のヒーローを抱える
+   *  プレイヤーでも見やすい。 ON にすると disabled 含む全員表示。 */
+  questShowDisabled: /** @type {boolean} */ (false),
   /** Phase 1D-12: 所有ランドセクター通行証 (id Set)。
    *  最初に選んだランドが home land (無料)。それ以外は 500 GUM で購入。 */
   landPasses: /** @type {Set<string>} */ (new Set()),
@@ -444,18 +448,18 @@ function factoryLvUpUnlocks(targetLv) {
   if (targetLv === 2) return [
     "Uncommon エクステンションのレシピが解放対象に",
     "ヒーロー上限 7 → 9 名",
-    "中級クエスト解禁",
     "ドラエグプラン (Uncommon〜Rare 雇用) 解禁",
   ];
   if (targetLv === 3) return [
     "Rare エクステンションのレシピが解放対象に",
     "ヒーロー上限 9 → 11 名",
-    "上級クエスト解禁",
+    "中級クエスト解禁",
     "ベビドラプラン (Rare〜Epic 雇用) 解禁",
   ];
   if (targetLv === 4) return [
     "Epic エクステンションのレシピが解放対象に",
     "ヒーロー上限 11 → 12 名",
+    "上級クエスト解禁",
     "ブルドラプラン (Epic〜Legendary 雇用) 解禁",
     "デュエルモード解禁 (将来実装)",
   ];
@@ -832,13 +836,13 @@ function tryFactoryLevelUp(targetLv) {
   const unlocks = factoryLvUpUnlocks(state.factoryLevel);
   const congrats = `工房 Lv ${state.factoryLevel} に到達！\n` +
     "解放: " + unlocks.join(" / ");
-  // Phase 1D-30: 工房レベルアップ時の「評判」によるスポット雇用 (1 つ上の rarity)。
-  //   雇用プランの最低 recruiter 要件 (例: Uncommon 雇用には Uncommon 必須) に
-  //   引っかかって詰まないよう、レベルアップを節目に rarity を 1 段引き上げて
-  //   無償で 1 名加入させる。
+  // Phase 1D-30 → 1D-41: 工房レベルアップ時のスポット雇用は「その Lv で新たに
+  //   解放された rarity」(= ベース) のみを加入させる。 旧仕様 (= 現在所有の最高
+  //   rarity の 1 段上) では 既に Epic を持っている状態で Lv3 アップすると更に
+  //   Legendary が出るなど上振れするため、 1D-41 で「base rarity 固定」に修正。
   //   レベルアップの Mai シーケンス閉じてから (onClose で) 連鎖的に発火させる
   //   ことで、modal 重複や maiSays のボディ上書きによるフリーズを防ぐ。
-  const targetRarity = nextRarityAboveOwned();
+  const targetRarity = maxRarityForFactoryLevel(state.factoryLevel);
   maiSaysSequence([
     `工房 Lv ${state.factoryLevel} に到達しました！おめでとうございます♪`,
     "解放: " + unlocks.join(" / "),
@@ -1759,9 +1763,19 @@ function renderCraftEventPicker() {
   }).join("");
 
   // 2. クラフト編成ヒーローの中から担当を選ぶ
-  const teamHeroes = (ac.team || []).filter(id => id != null).map(id => findHero(id)).filter(Boolean);
+  // Phase 1D-41: オーラ付与時は ソウル注入を担当した hero を除外
+  const soulHeroId = ac.soulHeroId || null;
+  const isAura = type === "aura";
+  const allTeamHeroes = (ac.team || []).filter(id => id != null).map(id => findHero(id)).filter(Boolean);
+  const teamHeroes = isAura && soulHeroId != null
+    ? allTeamHeroes.filter(h => h.heroId !== soulHeroId)
+    : allTeamHeroes;
   $("craftEventHeroes").innerHTML = teamHeroes.length === 0
-    ? `<p class="craft-event__empty">${escapeHtml(lang === "en" ? "No team heroes available." : "編成中のヒーローが居ません。")}</p>`
+    ? `<p class="craft-event__empty">${escapeHtml(
+        isAura && soulHeroId != null
+          ? (lang === "en" ? "Soul injection hero cannot also bestow aura. No other heroes available." : "ソウル注入と同じヒーローは選べません。他に編成ヒーローが居ません。")
+          : (lang === "en" ? "No team heroes available." : "編成中のヒーローが居ません。")
+      )}</p>`
     : teamHeroes.map(h => {
         const sel = h.heroId === state.craftEventPickedHeroId ? " craft-event__hero--sel" : "";
         const cl = craftLevel(h);
@@ -1916,6 +1930,11 @@ function finishCraftEventAnim(hero, elKey, total, lang) {
   const outro = (lang === "en" ? CRAFT_EVENT_OUTRO_LINES_EN : CRAFT_EVENT_OUTRO_LINES_JA);
   // Phase 1D-31: 工房と同じ吹き出しなので「ヒーロー名:「」」装飾は不要 (= セリフのみ)
   showCraftEventBubble(outro[Math.floor(Math.random() * outro.length)]);
+  // Phase 1D-41: ソウル注入を担当したヒーローを記録 (= オーラ付与で同じ hero を除外する)
+  const ac = state.activeCraft;
+  if (ac && state.craftEventType === "soul" && hero) {
+    ac.soulHeroId = hero.heroId;
+  }
   // 1.2 秒後に閉じてホーム再開
   setTimeout(() => {
     $("craftEventAnim")?.classList.add("hidden");
@@ -2303,6 +2322,10 @@ function renderQuestView() {
   // Phase 1D-12: state.questNodeType で 通常ノード / ランドノード を切替
   const isLandTab = state.questNodeType === "land";
   const nodeList = isLandTab ? LAND_NODES : NORMAL_NODES;
+  // Phase 1D-41: ノードタブの active 状態を同期
+  document.querySelectorAll("[data-node-type]").forEach(t => {
+    t.classList.toggle("quest-node-tab--active", t.getAttribute("data-node-type") === state.questNodeType);
+  });
   const cardsHost = $("questNodeCards");
   if (cardsHost) cardsHost.classList.toggle("quest-node-cards--land", isLandTab);
   cardsHost.innerHTML = nodeList.map(n => {
@@ -2400,7 +2423,8 @@ function renderQuestView() {
   // 2-B. 難易度行 (右)
   // Phase 1D-25: 工房レベルで難易度をゲート
   //   easy: Lv 1〜 / normal: Lv 2〜 / hard: Lv 3〜
-  const DIFF_REQUIRED_LV = { easy: 1, normal: 2, hard: 3 };
+  // Phase 1D-41: 難易度の解放を遅らせる (= 中級 Lv3、 上級 Lv4 から)
+  const DIFF_REQUIRED_LV = { easy: 1, normal: 3, hard: 4 };
   $("questDiffRows").innerHTML = ["easy", "normal", "hard"].map(d => {
     const sel = d === state.questPickedDifficulty ? " quest-diff-row__btn--sel" : "";
     const label = QUEST_DIFFICULTY_LABEL[d][lang];
@@ -2452,7 +2476,23 @@ function renderQuestView() {
     };
     return rank(a) - rank(b);
   });
-  $("questHeroPick").innerHTML = eligible.slice(0, 30).map(h => {
+  // Phase 1D-41: 編成できないヒーローを非表示にするフィルタ (= state.questShowDisabled)
+  //   デフォルト OFF = 配属可能ヒーローのみ。 ON で全員表示。
+  //   isHeroLocked / state CRAFTING / inTeam の判定はカード描画ループ内と整合させる
+  const showAllHeroes = !!state.questShowDisabled;
+  // toggle UI に反映
+  const toggleEl = $("questShowDisabledToggle");
+  if (toggleEl) toggleEl.checked = showAllHeroes;
+  const filteredForDisplay = showAllHeroes
+    ? eligible
+    : eligible.filter(h => {
+        const inTeam = state.questTeam.includes(h.heroId);
+        if (inTeam) return true;  // 既に編成済みは常に表示 (= 外せるように)
+        const lockedByOther = isHeroLocked(h.heroId, { ignoreQuestTeam: true, ignoreCraftTeam: true });
+        const isCrafting = h.state === HERO_STATE.CRAFTING;
+        return !(isCrafting || lockedByOther);
+      });
+  $("questHeroPick").innerHTML = filteredForDisplay.slice(0, 30).map(h => {
     const inTeam = state.questTeam.includes(h.heroId);
     const stamPct = h.stamina.max > 0 ? (h.stamina.current / h.stamina.max * 100) : 0;
     const bd = heroQuestLevelBreakdown(h);
@@ -4776,6 +4816,30 @@ function renderHeroDetailPopup() {
   $("heroDetailRarity").textContent = ti18n("rarity." + hero.rarity, hero.rarity);
   $("heroDetailRarity").setAttribute("data-rarity", hero.rarity);
   $("heroDetailAttrs").innerHTML = renderHeroAttrBadges(hero);
+  // Phase 1D-41: ランク表示 + インラインランクアップボタン
+  const rankNum = hero.rank || 0;
+  const stars = "★".repeat(rankNum) + "☆".repeat(Math.max(0, RANK_MAX - rankNum));
+  $("heroDetailRankStars").textContent = stars;
+  const rankUpBtn = $("heroDetailRankUpBtn");
+  const rankUpCostEl = $("heroDetailRankUpCost");
+  if (rankUpBtn && rankUpCostEl) {
+    if (rankNum >= RANK_MAX) {
+      rankUpBtn.classList.add("hidden");
+    } else {
+      const cost = rankUpCost(hero);
+      const inDeficit = (state.gum || 0) < 0;
+      const cantAfford = state.gum < cost;
+      rankUpBtn.classList.remove("hidden");
+      rankUpCostEl.textContent = `${cost.toLocaleString()} GUM`;
+      // 1D-32 ルール: 赤字中はランクアップ不可
+      rankUpBtn.disabled = inDeficit || cantAfford;
+      rankUpBtn.title = inDeficit
+        ? ti18n("enhance.deficitNoRankUp", "赤字中はランクアップできません")
+        : cantAfford
+          ? ti18n("enhance.notEnoughGum", "GUM不足")
+          : ti18n("enhance.rankUpBtn", "ランクアップ");
+    }
+  }
   $("heroDetailStaminaText").textContent = `${hero.stamina.current} / ${hero.stamina.max}`;
   $("heroDetailStaminaFill").style.width = stamPct.toFixed(1) + "%";
   $("heroDetailCl").textContent = craftLevel(hero).toLocaleString();
@@ -6661,6 +6725,17 @@ async function init() {
   $("heroDetailPopup")?.addEventListener("click", (e) => {
     if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
+  // Phase 1D-41: ヒーロー詳細画面でインラインランクアップ (画面遷移なし)
+  $("heroDetailRankUpBtn")?.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    const btn = ev.currentTarget;
+    if (btn.disabled) return;
+    const hid = state.popupHeroId;
+    if (hid == null) return;
+    rankUpHero(hid);
+    // ランクアップ完了後、 popup の表示を更新 (= 新ランク + 新コスト or hidden)
+    renderHeroDetailPopup();
+  });
   // Phase 1D-29: クイックアクション (Idle ヒーローを直接 craft/quest/hire/rest/trade へ)
   $("heroDetailActions")?.addEventListener("click", (ev) => {
     const btn = ev.target.closest(".hero-detail__action");
@@ -6773,6 +6848,25 @@ async function init() {
 
   // ── Quest view (Phase 1C-1 / 1D-11) ──
   $("questViewBack")?.addEventListener("click", closeQuestView);
+  // Phase 1D-41: 編成できないヒーローを表示する toggle
+  $("questShowDisabledToggle")?.addEventListener("change", (ev) => {
+    state.questShowDisabled = !!ev.target.checked;
+    renderQuestView();
+  });
+  // Phase 1D-41: 通常 / ランドノードタブ切替
+  document.querySelectorAll("[data-node-type]").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const t = tab.getAttribute("data-node-type");
+      if (t !== "normal" && t !== "land") return;
+      state.questNodeType = t;
+      // ノードタイプ切替時に picked を該当タイプの先頭に reset (= 別タイプ id を保持してると undefined node)
+      const list = t === "land" ? LAND_NODES : NORMAL_NODES;
+      if (list.length > 0 && (!state.questPickedNodeId || !list.some(n => n.id === state.questPickedNodeId))) {
+        state.questPickedNodeId = list[0].id;
+      }
+      renderQuestView();
+    });
+  });
   // ノードカード「選択」ボタン (or カード自体)
   $("questNodeCards")?.addEventListener("click", (ev) => {
     // Phase 1D-12: ランド購入ボタン

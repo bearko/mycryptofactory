@@ -1078,6 +1078,39 @@
     .hero-detail__head {
       display: flex; gap: 0.7rem; align-items: center;
     }
+    /* Phase 1D-41: 右上にランク表示 + インラインランクアップボタン */
+    .hero-detail__rank-block {
+      margin-left: auto;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.32rem;
+      flex-shrink: 0;
+    }
+    .hero-detail__rank-stars {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .hero-detail__rank-up-btn {
+      appearance: none;
+      background: linear-gradient(135deg, var(--accent) 0%, #e0c178 100%);
+      color: #1a1420;
+      border: 1.5px solid #1a1420;
+      border-radius: 6px;
+      padding: 0.28rem 0.6rem;
+      font-size: 0.7rem; font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.18);
+      white-space: nowrap;
+    }
+    .hero-detail__rank-up-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #d6b873 0%, #ecd197 100%);
+    }
+    .hero-detail__rank-up-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .hero-detail__rank-up-btn.hidden { display: none !important; }
+    .hero-detail__rank-up-cost { font-variant-numeric: tabular-nums; }
     .hero-detail__portrait {
       width: 64px; height: 64px;
       border-radius: 6px;
@@ -1871,6 +1904,29 @@
     }
 
     /* Phase 1D-11: ノードカード (背景画像 + 名前 + 素材アイコン + 選択ボタン) */
+    /* Phase 1D-41: クエスト選択画面の通常/ランドタブ切替 */
+    .quest-node-tabs {
+      display: flex; gap: 0.32rem;
+      margin-bottom: 0.4rem;
+    }
+    .quest-node-tab {
+      appearance: none;
+      background: var(--panel-2);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      border-radius: 6px 6px 0 0;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .quest-node-tab:hover { border-color: var(--accent); }
+    .quest-node-tab--active {
+      background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
     .quest-node-cards {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -3218,6 +3274,20 @@
     }
     .quest-hero-pick > button:disabled { opacity: 0.4; cursor: not-allowed; }
     .quest-hero-pick > button:hover:not(:disabled) { border-color: var(--accent); }
+    /* Phase 1D-41: 編成できないヒーローの表示切替トグル */
+    .quest-pick-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.4rem;
+    }
+    .quest-show-disabled-toggle {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.74rem; color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+      margin-left: auto;
+    }
+    .quest-show-disabled-toggle input { accent-color: var(--accent); }
     .quest-hero-pick--in {
       border-color: var(--accent) !important;
       background: linear-gradient(135deg, #2f2740 0%, #3a2f4a 100%) !important;
@@ -5211,7 +5281,7 @@
 
     <!-- 各メニューのサブメニュー (画面右側に展開) -->
     <div class="menu-card hidden" id="craftSubmenu" aria-label="Craft submenu">
-      <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規開発</button>
+      <button type="button" class="menu-item" data-craft-action="new-dev" data-i18n="menu.craft.newDev">新規クラフト</button>
       <!-- Phase 1D-32: 受注クラフト (素材不要、報酬は通常販売価格の 60% / 期限あり) -->
       <button type="button" class="menu-item" data-craft-action="commission" data-i18n="menu.craft.commission">受注クラフト</button>
       <button type="button" class="menu-item" data-craft-action="factoryLvUp" data-i18n="menu.craft.factoryLvUp">工房レベルアップ</button>
@@ -5362,6 +5432,13 @@
             <span id="heroDetailAttrs"></span>
           </div>
         </div>
+        <!-- Phase 1D-41: 右上にランク表示 + インラインランクアップボタン -->
+        <div class="hero-detail__rank-block">
+          <span class="hero-detail__rank-stars" id="heroDetailRankStars" title="ランク">—</span>
+          <button type="button" class="hero-detail__rank-up-btn hidden" id="heroDetailRankUpBtn" title="ランクアップ">
+            <span class="hero-detail__rank-up-cost" id="heroDetailRankUpCost">— GUM</span>
+          </button>
+        </div>
       </div>
       <div class="hero-detail__row">
         <span class="hero-detail__row-label" data-i18n="hero.stamina">体力 (HP)</span>
@@ -5452,6 +5529,11 @@
       <!-- 1. クエスト選択 (Phase 1D-11: bg image + materials + 選択 ボタンのカード) -->
       <section class="quest-section">
         <h3 class="quest-section__title" data-i18n="quest.section.pick">1. クエストを選択</h3>
+        <!-- Phase 1D-41: 通常 / ランドノードのタブ切替 (= state.questNodeType と連動) -->
+        <div class="quest-node-tabs">
+          <button type="button" class="quest-node-tab quest-node-tab--active" data-node-type="normal" data-i18n="menu.quest.normal">通常node</button>
+          <button type="button" class="quest-node-tab" data-node-type="land" data-i18n="menu.quest.land">ランドnode</button>
+        </div>
         <div class="quest-node-cards" id="questNodeCards"></div>
       </section>
 
@@ -5477,7 +5559,14 @@
               <div class="quest-team-slots" id="questTeamSlots"></div>
             </section>
             <section class="quest-section quest-section--pick">
-              <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
+              <div class="quest-pick-header">
+                <h4 class="quest-subsection__title" data-i18n="quest.candidates.label">Select Hero</h4>
+                <!-- Phase 1D-41: 編成不可ヒーローの表示切替 (デフォルト OFF) -->
+                <label class="quest-show-disabled-toggle">
+                  <input type="checkbox" id="questShowDisabledToggle" />
+                  <span data-i18n="quest.showDisabled">編成できないヒーローも表示</span>
+                </label>
+              </div>
               <div class="quest-hero-pick" id="questHeroPick"></div>
             </section>
           </div>
