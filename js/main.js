@@ -1803,13 +1803,13 @@ function closeQuestView() {
   resumeTime();
 }
 
-/** Phase 1D-15: 指定ノード × 難易度で得られる素材の期待ドロップ数 (range)
+/** Phase 1D-15 → 1D-38: 指定ノード × 難易度で得られる素材の期待ドロップ数 (range)
  *  を計算する。
  *
- *  rollQuestRewards の生成モデル:
- *    - dropCount = 5 (= 5 戦闘)
- *    - hard なら 1〜2 個が highTier、それ以外は normal
- *    - normal slot は qty 1〜2、highTier slot は qty 1
+ *  rollQuestRewards (1D-38 仕様) との整合:
+ *    - easy:    5 ドロップ × qty 1〜2 (normal pool のみ)
+ *    - normal:  7 ドロップ × qty 1〜3 (normal pool のみ)
+ *    - hard:    9 ドロップ × qty 1〜3、 うち 2-3 が highTier (qty 1〜2)
  *
  *  各素材について [min, max] のドロップ数 range を返す。
  *
@@ -1817,29 +1817,33 @@ function closeQuestView() {
  */
 function expectedQuestRewardRanges(node, difficulty) {
   if (!node) return {};
-  const dropCount = 5;
-  const hasHigh = difficulty === "hard" && node.poolHighTier?.length > 0;
-  const minHigh = hasHigh ? 1 : 0;
-  const maxHigh = hasHigh ? 2 : 0;
+  const cfg = difficulty === "hard"
+    ? { dropCount: 9, normalMaxQty: 3, hardMaxQty: 2, minHigh: 2, maxHigh: 3 }
+    : difficulty === "normal"
+    ? { dropCount: 7, normalMaxQty: 3, hardMaxQty: 0, minHigh: 0, maxHigh: 0 }
+    : { dropCount: 5, normalMaxQty: 2, hardMaxQty: 0, minHigh: 0, maxHigh: 0 };
+  const hasHigh = cfg.maxHigh > 0 && node.poolHighTier?.length > 0;
   const out = {};
   // Normal pool 内の素材集合 (重複は 1 つにまとめる)
   const normalPool = node.poolNormal || [];
   const uniqueNormals = [...new Set(normalPool)];
-  const normalMaxSlots = dropCount - minHigh;       // 正規スロット最大個数 (= high 最少時)
-  const normalMinSlots = Math.max(0, dropCount - maxHigh); // 正規スロット最少個数 (= high 最多時)
+  const normalMaxSlots = cfg.dropCount - cfg.minHigh;
+  const normalMinSlots = Math.max(0, cfg.dropCount - cfg.maxHigh);
   for (const mat of uniqueNormals) {
     const occurrences = normalPool.filter(m => m === mat).length;
     const probPerSlot = normalPool.length > 0 ? occurrences / normalPool.length : 0;
     if (uniqueNormals.length === 1) {
       // pool に 1 種類しか無い場合 → 全 normal slot がこの素材
       out[mat] = {
-        min: normalMinSlots,             // 全 slot が qty 1
-        max: normalMaxSlots * 2,         // 全 slot が qty 2
+        min: normalMinSlots,                       // 全 slot qty 1
+        max: normalMaxSlots * cfg.normalMaxQty,    // 全 slot qty maxQty
         rare: false,
       };
     } else {
       // 複数種類 → 期待値ベースで ±1 の range を見積もる
-      const expected = (normalMinSlots + normalMaxSlots) / 2 * probPerSlot * 1.5;
+      const expectedSlots = (normalMinSlots + normalMaxSlots) / 2 * probPerSlot;
+      const avgQty = (1 + cfg.normalMaxQty) / 2;
+      const expected = expectedSlots * avgQty;
       out[mat] = {
         min: Math.max(0, Math.floor(expected - 0.5)),
         max: Math.max(1, Math.ceil(expected + 0.5)),
@@ -1854,9 +1858,14 @@ function expectedQuestRewardRanges(node, difficulty) {
       const occurrences = highPool.filter(m => m === mat).length;
       const probPerSlot = highPool.length > 0 ? occurrences / highPool.length : 0;
       if (uniqueHighs.length === 1) {
-        out[mat] = { min: minHigh, max: maxHigh, rare: true };
+        out[mat] = {
+          min: cfg.minHigh,
+          max: cfg.maxHigh * cfg.hardMaxQty,
+          rare: true,
+        };
       } else {
-        const expected = (minHigh + maxHigh) / 2 * probPerSlot * 1;
+        const avgQty = (1 + cfg.hardMaxQty) / 2;
+        const expected = (cfg.minHigh + cfg.maxHigh) / 2 * probPerSlot * avgQty;
         out[mat] = {
           min: Math.max(0, Math.floor(expected)),
           max: Math.max(1, Math.ceil(expected)),
@@ -1877,6 +1886,21 @@ function formatRewardRange(r) {
 
 function renderQuestView() {
   const lang = getLang() === "en" ? "en" : "ja";
+
+  // Phase 1D-38: 現在の素材インベントリ strip (= どのクエストに行くか判断材料)
+  //   craftMatStrip と同じ chip スタイルを再利用
+  const matStrip = $("questMatStrip");
+  if (matStrip) {
+    matStrip.innerHTML = ALL_MATERIAL_IDS.map(id => {
+      const qty = state.materials[id] || 0;
+      const cls = qty === 0 ? " craft-mat-chip--zero" : "";
+      return `<span class="craft-mat-chip${cls}" title="${escapeHtml(materialName(id, lang))}">
+        <img src="${materialIcon(id)}" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="craft-mat-chip__name">${escapeHtml(materialName(id, lang))}</span>
+        <span class="craft-mat-chip__qty">${qty}</span>
+      </span>`;
+    }).join("");
+  }
 
   // 1. ノードカード — 背景画像 + 名前 + 素材アイコン + 選択/購入 ボタン
   // Phase 1D-12: state.questNodeType で 通常ノード / ランドノード を切替
@@ -2400,6 +2424,12 @@ function renderHeader() {
     gumEl.textContent = state.gum.toLocaleString();
     // Phase 1D-32: 赤字 (gum < 0) は赤字表示クラスをトグル
     gumEl.classList.toggle("factory-gum--deficit", (state.gum || 0) < 0);
+  }
+  // Phase 1D-38: マーケット内の GUM 表示も同期
+  const marketGumNum = $("marketViewGumNum");
+  if (marketGumNum) {
+    marketGumNum.textContent = state.gum.toLocaleString();
+    marketGumNum.classList.toggle("market-gum--deficit", (state.gum || 0) < 0);
   }
   const gauge = $("weekGaugeFill");
   if (gauge) {
@@ -5118,21 +5148,26 @@ function renderMarketHire() {
       return true;
     });
     let blockReason = null;
+    let warnReason = null;
     const reqLv = PLAN_REQUIRED_LV[p.id] || 1;
     if ((state.factoryLevel || 1) < reqLv) {
       blockReason = ti18n("hire.block.factoryLv").replace("{n}", reqLv);
-    } else if (state.gum < p.cost) {
-      blockReason = ti18n("hire.block.gum")
-        .replace("{cost}", p.cost.toLocaleString())
-        .replace("{cur}", state.gum.toLocaleString());
     } else if (eligibleRecruiters.length === 0) {
       blockReason = ti18n("hire.block.recruiter")
         .replace("{rarity}", ti18n("rarity." + p.recruiterMinRarity));
     }
+    // Phase 1D-32 → 1D-38: GUM 不足は赤字許容のため block ではなく warn として表示
+    if (state.gum < p.cost) {
+      warnReason = ti18n("hire.block.gum")
+        .replace("{cost}", p.cost.toLocaleString())
+        .replace("{cur}", state.gum.toLocaleString());
+    }
     const disabled = blockReason !== null;
     const reasonHtml = disabled
       ? `<p class="hire-plan__reason">${escapeHtml(blockReason)}</p>`
-      : "";
+      : warnReason
+        ? `<p class="hire-plan__reason hire-plan__reason--warn">⚠ ${escapeHtml(warnReason)}</p>`
+        : "";
     return `<div class="hire-plan ${disabled ? "hire-plan--disabled" : ""}" data-plan="${p.id}">
       <div class="hire-plan__head">
         <span class="hire-plan__name">${escapeHtml(lang === "en" ? p.nameEn : p.nameJa)}</span>
@@ -5245,7 +5280,9 @@ function renderActiveHire() {
           // 候補は heroes.json の元データから派生 (まだ owned ではない)
           const def = HERO_ROSTER.find(h => h.heroId === c.heroId);
           const cost = hireCostFor(c);
-          const canAfford = state.gum >= cost;
+          // Phase 1D-32 → 1D-38: 雇用は GUM が足りなくても契約可 (= 赤字突入を許容)。
+          //   このため canAfford による disable は撤廃。 GUM 不足は警告表示で示すだけ。
+          const cantAfford = state.gum < cost;
           // 表示用に factory hero を組み立てる (attribute / element 値を引きたいので)
           const tmp = def ? makeFactoryHero(def) : null;
           const elementsHtml = tmp ? ELEMENTS.map(k => {
@@ -5279,8 +5316,8 @@ function renderActiveHire() {
             <div class="hire-cand-card__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></div>
             ${passiveLine}
             <div class="hire-cand-card__foot">
-              <span class="hire-cand-card__cost">${cost.toLocaleString()} GUM</span>
-              <button type="button" class="hire-cand-card__hire-btn" data-hire-cand="${c.heroId}" ${canAfford ? "" : "disabled"}>
+              <span class="hire-cand-card__cost ${cantAfford ? "hire-cand-card__cost--deficit" : ""}">${cost.toLocaleString()} GUM${cantAfford ? "  ⚠" : ""}</span>
+              <button type="button" class="hire-cand-card__hire-btn" data-hire-cand="${c.heroId}">
                 ${escapeHtml(ti18n("hire.hireBtn"))}
               </button>
             </div>
