@@ -238,6 +238,32 @@
       letter-spacing: 0.04em;
       color: #1a1420;
     }
+    /* Phase β2-3: 並行スロットページャ */
+    .order-pager {
+      position: absolute;
+      top: 0.55rem; right: 0.55rem;
+      display: flex; align-items: center; gap: 0.25rem;
+      z-index: 2;
+    }
+    .order-pager.hidden { display: none !important; }
+    .order-pager__btn {
+      appearance: none;
+      background: rgba(15,12,22,0.7);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      width: 24px; height: 22px;
+      font-size: 0.78rem; font-weight: 800;
+      cursor: pointer;
+      padding: 0;
+    }
+    .order-pager__btn:hover { background: var(--accent); color: #1a1420; }
+    .order-pager__btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .order-pager__label {
+      color: #1a1420;
+      font-size: 0.78rem; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
     .progress-card__body {
       flex: 1; min-height: 0;
       display: flex; flex-direction: column;
@@ -5871,6 +5897,12 @@
           <!-- Card 1: Craft (= 既存 order-panel をカード内に保持。データ差し替え無し) -->
           <section class="progress-card" data-card-id="craft">
             <h3 class="progress-card__title" data-i18n="progress.craft">Craft</h3>
+            <!-- Phase β2-3: 並行スロットページャ (= 工房 Lv 2+ で 2 スロット以上のとき表示) -->
+            <div class="order-pager hidden" id="orderPager">
+              <button type="button" class="order-pager__btn" id="orderPagerPrev" aria-label="Prev">◀</button>
+              <span class="order-pager__label" id="orderPagerLabel">1 / 1</span>
+              <button type="button" class="order-pager__btn" id="orderPagerNext" aria-label="Next">▶</button>
+            </div>
             <div class="order-panel order-panel--empty" id="orderPanel">
               <div class="order-panel__top">
                 <div class="order-panel__icon" id="orderIcon" aria-hidden="true"></div>
