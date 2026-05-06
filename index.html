@@ -1691,6 +1691,15 @@
     .warehouse-item__meta {
       display: flex; gap: 0.5rem;
       font-size: 0.7rem; color: var(--muted);
+      align-items: center;
+    }
+    /* Phase 1D-44: コンテスト受賞バッジ */
+    .warehouse-item__contest {
+      display: inline-flex; align-items: center; gap: 0.15rem;
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.03em;
+      margin-left: auto;
     }
     .warehouse-item__score {
       display: flex; align-items: center; gap: 0.5rem;
@@ -3427,6 +3436,138 @@
     }
     .quest-result__back:hover, .quest-result__close:hover {
       border-color: var(--accent);
+    }
+
+    /* Phase 1D-44: 12 月エクステンションコンテスト結果モーダル */
+    .contest-modal {
+      position: fixed; inset: 0; z-index: 295;
+      background: rgba(15, 12, 22, 0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .contest-modal.hidden { display: none !important; }
+    .contest-modal__card {
+      max-width: 460px; width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--panel);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      color: var(--text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+    }
+    .contest-modal__title {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: 0.06em;
+      text-align: center;
+      color: var(--accent);
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .contest-modal__lead {
+      margin: 0; text-align: center;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    .contest-modal__body {
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .contest-modal__panel {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 0.25rem 0.5rem;
+      align-items: center;
+    }
+    .contest-modal__panel--grand {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,140,0,0.05));
+    }
+    .contest-modal__panel--empty {
+      grid-template-columns: 1fr auto;
+      color: var(--muted);
+    }
+    .contest-modal__dept {
+      grid-column: 1 / -1;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .contest-modal__panel--grand .contest-modal__dept {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .contest-modal__noentry { font-size: 0.78rem; }
+    .contest-modal__winner {
+      display: contents;
+    }
+    .contest-modal__icon {
+      width: 36px; height: 36px;
+      object-fit: contain; image-rendering: pixelated;
+    }
+    .contest-modal__winner-info {
+      display: flex; flex-direction: column; gap: 0.1rem;
+    }
+    .contest-modal__name {
+      font-size: 0.86rem; font-weight: 700;
+    }
+    .contest-modal__value {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .contest-modal__value strong { color: var(--text); }
+    .contest-modal__prize {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .contest-modal__total {
+      margin: 0;
+      text-align: center;
+      font-size: 0.92rem; font-weight: 800;
+      color: var(--accent);
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border);
+    }
+    .contest-modal__close {
+      align-self: stretch;
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.6rem;
+      font-weight: 800; font-size: 0.95rem;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+
+    /* Phase 1D-44: 傑作紙吹雪エフェクト */
+    .confetti-layer {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      overflow: hidden;
+    }
+    .confetti-layer.hidden { display: none !important; }
+    .confetti-piece {
+      position: absolute;
+      top: -10px;
+      width: 8px; height: 14px;
+      opacity: 0.95;
+      transform-origin: center;
+      animation-name: confettiFall;
+      animation-iteration-count: 1;
+      animation-fill-mode: forwards;
+      animation-timing-function: cubic-bezier(0.18, 0.45, 0.55, 1);
+    }
+    @keyframes confettiFall {
+      0%   { transform: translate(0, -10vh) rotate(0deg);    opacity: 1; }
+      100% { transform: translate(var(--cx, 0), 110vh) rotate(720deg); opacity: 0; }
     }
 
     /* Market 雇用タブ (Phase 1D-3) */
@@ -5604,6 +5745,20 @@
       <h3 class="ql-info-modal__title" data-i18n="quest.qlInfo.title">クエストレベル内訳</h3>
       <div class="ql-info-modal__body" id="qlInfoBody"></div>
       <button type="button" class="ql-info-modal__close" id="qlInfoClose" data-i18n="btn.close">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Phase 1D-44: 紙吹雪レイヤー (傑作査定 / 大賞受賞時にスポーン) -->
+  <div class="confetti-layer hidden" id="confettiLayer" aria-hidden="true"></div>
+
+  <!-- Phase 1D-44: 12 月エクステンションコンテスト結果モーダル -->
+  <div class="contest-modal hidden" id="contestModal" role="dialog" aria-modal="true" aria-labelledby="contestModalTitle">
+    <div class="contest-modal__card">
+      <h2 class="contest-modal__title" id="contestModalTitle" data-i18n="contest.title">エクステンションコンテスト</h2>
+      <p class="contest-modal__lead" data-i18n="contest.lead">今年の最高傑作を表彰します！</p>
+      <div class="contest-modal__body" id="contestModalBody"></div>
+      <p class="contest-modal__total" id="contestModalTotal">—</p>
+      <button type="button" class="contest-modal__close" id="contestModalClose" data-i18n="btn.close">閉じる</button>
     </div>
   </div>
 

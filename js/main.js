@@ -231,6 +231,8 @@ const state = {
   warehouse: /** @type {Array<object>} */ ([]),
   /** Phase 1B-4 品評会の表示中データ (5 名審査員 + 各点数 + 合計) */
   pendingAppraisal: /** @type {object | null} */ (null),
+  /** Phase 1D-44 12 月コンテスト結果の表示中データ (4 部門 winner + 大賞 + 賞金合計) */
+  pendingContest: /** @type {object | null} */ (null),
   /** Phase 1D-3 ファクトリーレベル (Phase 1D-3 では 1 固定。
    *  level-up フローは別 PR で実装予定) */
   factoryLevel: 1,
@@ -1250,6 +1252,20 @@ function maybeTriggerMonthlyEvent() {
       setTimeout(triggerRecruitmentEvent, 200);
     }
   }
+  // Phase 1D-44: 12/1 直前 (= 11 月 4 週終了) の検知 → エクステンションコンテスト
+  //   2 年目から (= startY + 2 以降) 開催。 1 周目 12 月は告知だけにしたいが、
+  //   今は単純に skip。 startY 不明のときは保守的に開催 (= 旧 save 互換)。
+  if (state.month === 12 && state.week === 1) {
+    const key = `${state.year}-contest`;
+    if (!state.monthlyEventsFired.has(key)) {
+      state.monthlyEventsFired.add(key);
+      const startY = state.startYear ?? null;
+      const isYr1  = startY != null ? (state.year <= startY + 1) : false;
+      if (!isYr1 || startY == null) {
+        setTimeout(triggerExtensionContest, 200);
+      }
+    }
+  }
 }
 
 /** 3 月年俸支払い: ヒーローごとの年俸を集計し、 GUM から差し引く。
@@ -1359,6 +1375,144 @@ function triggerRecruitmentEvent() {
       setMarketTab?.("hire");
     },
   });
+}
+
+/** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
+
+/** 部門賞 (各クラフトパワー部門の最高ホルダー) と大賞 (4 色合計最高ホルダー) の
+ *  賞金額。 倉庫が空ならイベント自体を skip する (= 通知のみ)。 */
+const CONTEST_DEPT_PRIZE  = 5000;
+const CONTEST_GRAND_PRIZE = 20000;
+
+/** クラフトパワー部門のラベル順 (UI 表示順)。 内部キーは ELEMENTS と同じ。 */
+const CONTEST_DEPT_KEYS = ["garuda", "ifrit", "leviathan", "tiamat"];
+
+function triggerExtensionContest() {
+  if (!Array.isArray(state.warehouse) || state.warehouse.length === 0) {
+    // 倉庫空 → 通知のみで skip
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("contest.notif.empty", "12月: エクステンションコンテスト (倉庫が空のため不参加)"),
+      element: "tiamat",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+    return;
+  }
+  pauseTime();
+  // 4 部門 winner (各クラフトパワー単独最大)
+  const deptWinners = {};
+  for (const k of CONTEST_DEPT_KEYS) {
+    let best = null;
+    let bestVal = -1;
+    for (const w of state.warehouse) {
+      const v = (w.progress?.[k]) || 0;
+      if (v > bestVal) { bestVal = v; best = w; }
+    }
+    if (best && bestVal > 0) deptWinners[k] = { item: best, value: bestVal };
+  }
+  // 大賞 = 4 クラフトパワー合計最大
+  let grand = null;
+  let grandSum = -1;
+  for (const w of state.warehouse) {
+    const sum = CONTEST_DEPT_KEYS.reduce((s, k) => s + (w.progress?.[k] || 0), 0);
+    if (sum > grandSum) { grandSum = sum; grand = w; }
+  }
+  // GUM 加算
+  let totalPrize = 0;
+  for (const k of CONTEST_DEPT_KEYS) if (deptWinners[k]) totalPrize += CONTEST_DEPT_PRIZE;
+  if (grand) totalPrize += CONTEST_GRAND_PRIZE;
+  state.gum += totalPrize;
+  // 受賞アイテムにフラグを残す (= 倉庫表示で「殿堂」識別用 / 将来の特典用)
+  for (const k of CONTEST_DEPT_KEYS) {
+    if (!deptWinners[k]) continue;
+    const w = deptWinners[k].item;
+    w.contestWins = w.contestWins || [];
+    w.contestWins.push({ year: state.year, dept: k });
+  }
+  if (grand) {
+    grand.contestWins = grand.contestWins || [];
+    grand.contestWins.push({ year: state.year, dept: "grand" });
+  }
+  state.pendingContest = {
+    year: state.year,
+    deptWinners,
+    grand: grand ? { item: grand, sum: grandSum } : null,
+    totalPrize,
+  };
+  checkDeficitTransition?.();  // 賞金で黒字復帰した場合のフラグ更新
+  openContestResultModal();
+}
+
+/** コンテスト結果モーダルを開く + 描画 */
+function openContestResultModal() {
+  const pc = state.pendingContest;
+  if (!pc) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const titleEl = $("contestModalTitle");
+  const bodyEl  = $("contestModalBody");
+  const totalEl = $("contestModalTotal");
+  if (titleEl) titleEl.textContent = ti18n("contest.title", "{year} 年 エクステンションコンテスト").replace("{year}", String(pc.year));
+  // 各部門の panel
+  const deptHtml = CONTEST_DEPT_KEYS.map(k => {
+    const w = pc.deptWinners[k];
+    const deptLbl = ti18n("contest.dept." + k, k);
+    const prizeLbl = ti18n("contest.prizeAmount", "賞金 {n} GUM").replace("{n}", CONTEST_DEPT_PRIZE.toLocaleString());
+    if (!w) {
+      return `<div class="contest-modal__panel contest-modal__panel--empty">
+        <span class="contest-modal__dept">${escapeHtml(deptLbl)}</span>
+        <span class="contest-modal__noentry">${escapeHtml(ti18n("contest.noEntry", "該当なし"))}</span>
+      </div>`;
+    }
+    const ext = EXTENSION_BY_ID[String(w.item.extId)];
+    const name = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w.item.extId}`;
+    return `<div class="contest-modal__panel" data-dept="${k}">
+      <span class="contest-modal__dept">${escapeHtml(deptLbl)}</span>
+      <div class="contest-modal__winner">
+        <img class="contest-modal__icon" src="${extIconUrl(w.item.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="contest-modal__winner-info">
+          <span class="contest-modal__name">${escapeHtml(name)}</span>
+          <span class="contest-modal__value">${escapeHtml(deptLbl)}: <strong>${w.value}</strong></span>
+        </div>
+      </div>
+      <span class="contest-modal__prize">${escapeHtml(prizeLbl)}</span>
+    </div>`;
+  }).join("");
+  // 大賞 panel
+  let grandHtml = "";
+  if (pc.grand) {
+    const ext = EXTENSION_BY_ID[String(pc.grand.item.extId)];
+    const name = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${pc.grand.item.extId}`;
+    const grandLbl  = ti18n("contest.grandPrize", "大賞");
+    const grandPriz = ti18n("contest.prizeAmount", "賞金 {n} GUM").replace("{n}", CONTEST_GRAND_PRIZE.toLocaleString());
+    grandHtml = `<div class="contest-modal__panel contest-modal__panel--grand" data-dept="grand">
+      <span class="contest-modal__dept">${escapeHtml(grandLbl)}</span>
+      <div class="contest-modal__winner">
+        <img class="contest-modal__icon" src="${extIconUrl(pc.grand.item.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="contest-modal__winner-info">
+          <span class="contest-modal__name">${escapeHtml(name)}</span>
+          <span class="contest-modal__value">${escapeHtml(ti18n("contest.totalPower", "クラフトパワー合計"))}: <strong>${pc.grand.sum}</strong></span>
+        </div>
+      </div>
+      <span class="contest-modal__prize">${escapeHtml(grandPriz)}</span>
+    </div>`;
+  }
+  if (bodyEl) bodyEl.innerHTML = deptHtml + grandHtml;
+  if (totalEl) totalEl.textContent = ti18n("contest.totalPrize", "受賞合計 {n} GUM").replace("{n}", pc.totalPrize.toLocaleString());
+  $("contestModal")?.classList.remove("hidden");
+  // Phase 1D-44: 大賞があれば紙吹雪 (大賞無しの年は dept のみで控えめ)
+  if (pc.grand) {
+    triggerConfetti(80, 4000);
+  }
+}
+
+function closeContestResultModal() {
+  $("contestModal")?.classList.add("hidden");
+  state.pendingContest = null;
+  resumeTime();
+  renderHeader?.();
+  renderNotifications?.();
 }
 
 /** ─── Phase 1D-42: ノード経験値 / クラフト経験値 ─── */
@@ -6648,6 +6802,11 @@ function renderMarketWarehouse() {
     const apr  = w.appraisal;
     const tierLbl = apr ? ti18n("appraisal.tier." + apr.tier) : "—";
     const score   = apr ? apr.totalScore : 0;
+    // Phase 1D-44: コンテスト受賞バッジ (1 個でも受賞があれば表示)
+    const wins = Array.isArray(w.contestWins) ? w.contestWins : [];
+    const winBadge = wins.length > 0
+      ? `<span class="warehouse-item__contest" title="${escapeHtml(ti18n("contest.badge.title", "コンテスト受賞"))}">🏆 ×${wins.length}</span>`
+      : "";
     return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${ext ? ext.rarity : "common"}">
       <img class="warehouse-item__icon" src="${extIconUrl(w.extId)}" alt="" onerror="this.style.opacity='0.2'" />
       <div class="warehouse-item__main">
@@ -6658,6 +6817,7 @@ function renderMarketWarehouse() {
         <div class="warehouse-item__meta">
           <span class="warehouse-item__date">${escapeHtml(dateLbl)}</span>
           <span class="warehouse-item__duration">${ti18n("craft.weeks").replace("{n}", w.durationActualWeeks || 0)}</span>
+          ${winBadge}
         </div>
         ${apr ? `
         <div class="warehouse-item__score">
@@ -6775,11 +6935,56 @@ function renderAppraisalScreen() {
     tierEl.textContent = ti18n("appraisal.tier." + pa.tier);
     tierEl.setAttribute("data-tier", pa.tier);
     okBtn.disabled = false;
+    // Phase 1D-44: 傑作 (masterpiece) で紙吹雪を 1 回だけスポーン
+    if (pa.tier === "masterpiece" && !pa._confettiFired) {
+      pa._confettiFired = true;
+      triggerConfetti(60, 3500);
+    }
   } else {
     totalEl.classList.add("hidden");
     tierEl.classList.add("hidden");
     okBtn.disabled = true;
   }
+}
+
+/** Phase 1D-44: 紙吹雪エフェクトをスポーン。 傑作査定 / 大賞コンテストで使う。
+ *  count 個の紙片を画面上端に生成し、 ms ミリ秒後にレイヤーごとクリアする。
+ *  CSS @keyframes confettiFall + ランダム色 / 開始 X 座標 / 着地 X オフセット (--cx)
+ *  / アニメーション時間で個別動作。
+ *  @param {number} count
+ *  @param {number} ms
+ */
+function triggerConfetti(count = 50, ms = 3000) {
+  const layer = $("confettiLayer");
+  if (!layer) return;
+  layer.classList.remove("hidden");
+  // 既存ピースを片付け (連続発火に備える)
+  layer.innerHTML = "";
+  const colors = [
+    "#ffd700", "#ff6b9d", "#5ecf8a", "#56ccf2",
+    "#bb86fc", "#ff9844", "#f9f871", "#ff5252",
+  ];
+  const W = window.innerWidth || 800;
+  for (let i = 0; i < count; i++) {
+    const piece = document.createElement("span");
+    piece.className = "confetti-piece";
+    const startX = Math.random() * W;
+    const driftX = (Math.random() * 200 - 100) + "px";  // ±100px 横ドリフト
+    const dur    = (1.8 + Math.random() * 1.4).toFixed(2) + "s";
+    const delay  = (Math.random() * 0.6).toFixed(2) + "s";
+    const color  = colors[i % colors.length];
+    piece.style.left  = startX + "px";
+    piece.style.background = color;
+    piece.style.setProperty("--cx", driftX);
+    piece.style.animationDuration = dur;
+    piece.style.animationDelay    = delay;
+    // 細長い + 立体感のため 2 枚重ねるとリッチだが軽量化のため単片で
+    layer.appendChild(piece);
+  }
+  setTimeout(() => {
+    layer.classList.add("hidden");
+    layer.innerHTML = "";
+  }, ms);
 }
 
 function closeAppraisalScreen() {
@@ -7174,6 +7379,11 @@ async function init() {
   $("craftDoneClose")?.addEventListener("click", closeCompletionScreen);
   // 完成画面は背景タップでは閉じない (重要画面なので明示クリック必須)
   $("appraisalClose")?.addEventListener("click", closeAppraisalScreen);
+  // Phase 1D-44: コンテスト結果モーダル close
+  $("contestModalClose")?.addEventListener("click", closeContestResultModal);
+  $("contestModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "contestModal") closeContestResultModal();
+  });
 
   // ── Market view: tabs (Phase 1B-5 + 1D-3) ──
   $("marketViewBack")?.addEventListener("click", closeMarketView);
