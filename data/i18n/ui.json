@@ -5,8 +5,8 @@
 
   "title.aria":                { "ja": "ゲームを始める",  "en": "Start the game" },
   "title.press":               { "ja": "Press to Start", "en": "Press to Start" },
-  "alpha.badge":               { "ja": "β 版 / BETA", "en": "β / BETA" },
-  "alpha.note":                { "ja": "β 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。", "en": "Beta build. Feedback welcome. Save data is local-only and resets on reload." },
+  "alpha.badge":               { "ja": "β2 版 / BETA2", "en": "β2 / BETA2" },
+  "alpha.note":                { "ja": "β2 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。", "en": "Beta-2 build. Feedback welcome. Save data is local-only and resets on reload." },
 
   "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
 
@@ -382,7 +382,7 @@
   "stub.desc":                 { "ja": "この機能は次のフェーズで実装予定です。", "en": "This feature is coming in a future phase." },
 
   "help.title":                { "ja": "ヘルプ", "en": "Help" },
-  "help.body":                 { "ja": "マイクリ工房 (MyCryptoFactory) を 8 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう。", "en": "MyCryptoFactory is a workshop-management sim set in the MCH economy. Aim to grow your workshop to #1 in the world within 8 years by earning GUM and reinvesting." },
+  "help.body":                 { "ja": "マイクリ工房 (MyCryptoFactory) を 10 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう (引退エンディングは 2028 年 12 月、その後も自由プレイ可)。", "en": "MyCryptoFactory is a workshop-management sim set in the MCH economy. Aim to grow your workshop to #1 in the world within 10 years by earning GUM and reinvesting (Endgame at Dec 2028; free play continues afterward)." },
   "help.timeNote":             { "ja": "ホーム画面で待機している間のみ時間が進行します（1 週間 = 7 秒）。メニュー / 機能画面を開いている間は時間が止まります。", "en": "Time only advances while you're on the home screen (1 week = 7 seconds). Time pauses while a menu or sub-screen is open." },
 
   "btn.close":                 { "ja": "閉じる", "en": "Close" },
@@ -451,6 +451,6 @@
   "progress.market.noGum":           { "ja": "オークションの出品料が不足しています", "en": "Not enough GUM for auction fee" },
   "progress.market.noHero":          { "ja": "取引を担当できるヒーローがいません", "en": "No hero available to handle trade" },
 
-  "footer.meta":               { "ja": "MyCryptoFactory β version · 非営利のファン制作", "en": "MyCryptoFactory β version · Non-commercial fan project" },
+  "footer.meta":               { "ja": "MyCryptoFactory β2 version · 非営利のファン制作", "en": "MyCryptoFactory β2 version · Non-commercial fan project" },
   "footer.credit.full":        { "ja": "キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> 参照。", "en": "Character artwork / assets belong to <strong>My Crypto Heroes (MCH Co., Ltd.)</strong>. See <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> for usage terms." }
 }

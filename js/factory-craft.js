@@ -96,13 +96,16 @@ export function recipeFor(ext) {
   ];
 }
 
-/** rarity ごとのデフォルト所要週数 (1 月 = 4 週として、Common = 3 ヶ月 = 12 週) */
+/** rarity ごとのデフォルト所要週数 (1 月 = 4 週)。
+ *  Phase β2-1: Legendary 48 → 24 (= 半年) に短縮。 10 年プレイ枠で複数本作れる
+ *  バランスにする。 Epic / Rare / Uncommon も全体的に圧縮し、 ヒーロー揃え /
+ *  ランクアップ / スキル組み合わせの工夫が報われる調整。 */
 export const DEFAULT_DURATION_WEEKS = {
-  common:    12,
-  uncommon:  16,
-  rare:      24,
-  epic:      36,
-  legendary: 48,
+  common:    12,  // 3 ヶ月 (= 据置)
+  uncommon:  14,  // 3.5 ヶ月 (= 16 → 14)
+  rare:      18,  // 4.5 ヶ月 (= 24 → 18)
+  epic:      24,  // 6 ヶ月 (= 36 → 24)
+  legendary: 24,  // 6 ヶ月 (= 48 → 24、 ユーザー仕様)
 };
 
 /** Phase 1D-22: 工房レベルごとに作れる最大 rarity (= レアリティゲート)
