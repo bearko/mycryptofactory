@@ -99,6 +99,13 @@ import {
   preloadAllSe,
 } from "./factory-audio.js";
 import {
+  SHOP_ITEMS,
+  SHOP_ITEM_BY_ID,
+  loadShopItems,
+  shopItemsByCategory,
+  shopItemViewData,
+} from "./factory-shop.js";
+import {
   pickHeroFlavor,
 } from "./factory-hero-flavors.js";
 import {
@@ -306,6 +313,17 @@ const state = {
   lastCommissionGenAtMonth: /** @type {number | null} */ (null),
   /** Phase 1D-32: 受注クラフト confirm 画面で picker から選択された commission の id */
   craftPickedCommissionId: /** @type {number | null} */ (null),
+  /** Phase 1D-34: ショップアイテムの在庫 (= 各年 11 月 4 週で stockPerYear に補充)。
+   *  Map<itemId, remaining>。 ロード時 / 補充時に shop master の stockPerYear で初期化。 */
+  shopStock: /** @type {Record<string, number>} */ ({}),
+  /** Phase 1D-34: 最終的に在庫補充を実行した年 (= 11 月 4 週)。再補充判定に使う。 */
+  lastShopRestockYear: /** @type {number | null} */ (null),
+  /** Phase 1D-34: ショップ view の現在のカテゴリタブ */
+  shopTab: /** @type {string} */ ("magic-stone"),
+  /** Phase 1D-34: 持続バフのアクティブタイマー (一括管理)。
+   *  Map<buffKey, expireAtTick>: aroma / scroll / lubricant / roller / jade-statue (= 1 回限り)
+   */
+  buffs: /** @type {Record<string, number | true>} */ ({}),
 };
 
 const QUEST_TEAM_SIZE = 3;
@@ -1112,6 +1130,333 @@ function maybeRegenerateCommissions() {
   state.commissions = out;
 }
 
+/** ─── Phase 1D-34: ショップ機能 ─── */
+
+/** 初回ロード時に shopStock を初期化する。 既存の state.shopStock があれば
+ *  そのまま尊重し、 新たに追加された item のみ stockPerYear で埋める。 */
+function initShopStock() {
+  if (!state.shopStock || typeof state.shopStock !== "object") state.shopStock = {};
+  for (const it of SHOP_ITEMS) {
+    if (state.shopStock[it.id] == null) {
+      state.shopStock[it.id] = it.stockPerYear || 0;
+    }
+  }
+}
+
+/** 年次在庫補充: 11 月 4 週で全アイテムを stockPerYear に戻す。
+ *  advanceWeek から呼ばれる。 */
+function maybeRestockShop() {
+  // 11 月 4 週終了 = 12 月 1 週開始 のタイミングで補充判定
+  if (state.month !== 11 || state.week !== 4) return;
+  if (state.lastShopRestockYear === state.year) return;
+  state.lastShopRestockYear = state.year;
+  for (const it of SHOP_ITEMS) {
+    state.shopStock[it.id] = it.stockPerYear || 0;
+  }
+  // 通知タイル
+  state.notifications.push({
+    id: ++_notifId,
+    text: ti18n("shop.notif.restocked", "ショップに新しいアイテムが入荷しました！"),
+    element: "tiamat",
+    value: 0,
+    createdTick: state.tickCount,
+  });
+  if (typeof renderNotifications === "function") renderNotifications();
+}
+
+/** ショップ view を開く */
+function openShopView() {
+  const view = $("shopView");
+  if (!view) return;
+  pauseTime();
+  view.classList.remove("hidden");
+  renderShopView();
+}
+
+function closeShopView() {
+  $("shopView")?.classList.add("hidden");
+  resumeTime();
+}
+
+const SHOP_TABS = [
+  { id: "magic-stone", labelJa: "魔石",       labelEn: "Stones" },
+  { id: "stamina",     labelJa: "体力回復",   labelEn: "Stamina" },
+  { id: "grade-up",    labelJa: "強化",       labelEn: "Boost" },
+  { id: "speedup",     labelJa: "時短",       labelEn: "Speedup" },
+  { id: "rank-up",     labelJa: "ランク↑",   labelEn: "Rank up" },
+];
+
+function renderShopView() {
+  const lang = getLang() === "en" ? "en" : "ja";
+  const tabsHost = $("shopTabs");
+  if (tabsHost) {
+    tabsHost.innerHTML = SHOP_TABS.map(t => {
+      const sel = t.id === state.shopTab ? " shop-tab--sel" : "";
+      const lbl = lang === "en" ? t.labelEn : t.labelJa;
+      return `<button type="button" class="shop-tab${sel}" data-shop-tab="${t.id}">${escapeHtml(lbl)}</button>`;
+    }).join("");
+  }
+  const listHost = $("shopList");
+  if (!listHost) return;
+  const byCat = shopItemsByCategory();
+  const items = byCat[state.shopTab] || [];
+  if (items.length === 0) {
+    listHost.innerHTML = `<div class="shop-empty">${escapeHtml(ti18n("shop.empty", "このカテゴリには商品がありません"))}</div>`;
+    return;
+  }
+  listHost.innerHTML = items.map(it => {
+    const view = shopItemViewData(it, state.factoryLevel);
+    const stock = state.shopStock?.[it.id] ?? 0;
+    const name = lang === "en" ? (it.nameEn || it.nameJa) : it.nameJa;
+    let desc = lang === "en" ? (it.descEn || it.descJa) : it.descJa;
+    desc = desc.replace("{lv}", String(view.lv)).replace("{gain}", String(view.gain));
+    const factoryLvLock = it.factoryLvRequired && state.factoryLevel < it.factoryLvRequired;
+    const cantAfford = state.gum < view.price;
+    const sold = stock <= 0;
+    const reason = factoryLvLock ? ti18n("shop.lock.factoryLv", "工房 Lv{n} 必要").replace("{n}", String(it.factoryLvRequired))
+      : sold ? ti18n("shop.lock.sold", "売り切れ")
+      : cantAfford ? ti18n("shop.lock.gum", "GUM 不足")
+      : "";
+    const disabled = factoryLvLock || sold || cantAfford;
+    return `<div class="shop-item ${disabled ? "shop-item--disabled" : ""}">
+      <img class="shop-item__icon" src="${view.iconUrl}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="shop-item__info">
+        <div class="shop-item__head">
+          <span class="shop-item__name">${escapeHtml(name)}</span>
+          <span class="shop-item__stock">${stock} / ${it.stockPerYear}</span>
+        </div>
+        <p class="shop-item__desc">${escapeHtml(desc)}</p>
+        ${reason ? `<p class="shop-item__reason">${escapeHtml(reason)}</p>` : ""}
+      </div>
+      <div class="shop-item__buy-col">
+        <span class="shop-item__price">${view.price.toLocaleString()} GUM</span>
+        <button type="button" class="shop-item__btn" data-shop-buy="${it.id}" ${disabled ? "disabled" : ""}>
+          ${escapeHtml(ti18n("shop.buy", "購入"))}
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/** 購入処理: GUM 控除 + 在庫減 + 効果適用 */
+function purchaseShopItem(itemId) {
+  const it = SHOP_ITEM_BY_ID[itemId];
+  if (!it) return;
+  const view = shopItemViewData(it, state.factoryLevel);
+  // バリデーション
+  if (it.factoryLvRequired && state.factoryLevel < it.factoryLvRequired) return;
+  if ((state.shopStock?.[itemId] ?? 0) <= 0) return;
+  if (state.gum < view.price) return;
+  // 効果適用前にバリデーション (アクティブクラフト要件 / 倉庫対象要件 等)
+  const ok = applyShopItemEffect(it, view);
+  if (!ok) return;
+  // GUM + 在庫
+  state.gum -= view.price;
+  state.shopStock[itemId] = (state.shopStock[itemId] || 0) - 1;
+  // SE
+  playSe("buttonClick");
+  renderHeader();
+  renderShopView();
+}
+
+/** 効果適用。 失敗時 (= 適用先無し / pending state など) は false を返して購入をキャンセル。 */
+function applyShopItemEffect(item, view) {
+  const lang = getLang() === "en" ? "en" : "ja";
+  switch (item.effect) {
+    case "craft-progress": {
+      // 魔石: アクティブクラフトの該当 element を view.gain だけ加算
+      if (!state.activeCraft) {
+        maiSays("shop.mai.noCraft");
+        return false;
+      }
+      const k = item.element;
+      state.activeCraft.progress[k] = (state.activeCraft.progress[k] || 0) + view.gain;
+      // +N pop の代わりに通知タイル
+      const ext = EXTENSION_BY_ID[String(state.activeCraft.extId)];
+      const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : "—";
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("shop.notif.stoneApplied", "{ext} に {elem} +{gain}")
+          .replace("{ext}", extName)
+          .replace("{elem}", elementLabel(k))
+          .replace("{gain}", String(view.gain)),
+        element: k,
+        value: view.gain,
+        createdTick: state.tickCount,
+      });
+      if (typeof renderOrderPanel === "function") renderOrderPanel();
+      if (typeof renderNotifications === "function") renderNotifications();
+      return true;
+    }
+    case "heal-all-50pct": {
+      // 全ヒーローの体力を 50% 回復 (max 上限を超えない)
+      let healedCount = 0;
+      for (const h of state.ownedHeroes || []) {
+        if (!h || !h.stamina) continue;
+        const heal = Math.round(h.stamina.max * 0.5);
+        const before = h.stamina.current;
+        h.stamina.current = Math.min(h.stamina.max, h.stamina.current + heal);
+        if (h.stamina.current > before) healedCount++;
+      }
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("shop.notif.healAll", "魔法触媒で全ヒーローを 50% 回復").replace("{n}", String(healedCount)),
+        element: "garuda",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      if (typeof renderWorkshop === "function") renderWorkshop();
+      return true;
+    }
+    case "buff-aroma":
+    case "buff-scroll":
+    case "buff-lubricant":
+    case "buff-roller": {
+      const key = item.effect.replace("buff-", "");
+      const expireAt = state.tickCount + (item.durationWeeks || 12) * SECONDS_PER_WEEK;
+      state.buffs[key] = expireAt;
+      const labels = {
+        aroma:     ti18n("shop.buff.aroma",     "アロマ効果中"),
+        scroll:    ti18n("shop.buff.scroll",    "スクロール効果中"),
+        lubricant: ti18n("shop.buff.lubricant", "潤滑油効果中"),
+        roller:    ti18n("shop.buff.roller",    "ローラー効果中"),
+      };
+      state.notifications.push({
+        id: ++_notifId,
+        text: labels[key] || "Buff active",
+        element: "leviathan",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      return true;
+    }
+    case "buff-jade-statue": {
+      // 1 回限りの一過性バフ (= 次のクエストに適用、 use したら消費)
+      state.buffs["jade-statue"] = true;
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("shop.buff.jadeStatue", "翡翠の像: 次回クエストの QL ×1.5"),
+        element: "leviathan",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      return true;
+    }
+    case "appraisal-up": {
+      // 倉庫から候補ピック → 査定を 1 段階上げる。 候補は state.warehouse の中で
+      //   appraisal が最高 tier (= "傑作" 相当) ではないもの。 picker UI 無しで
+      //   ランダム 1 個を選ぶ簡易実装 (詳細選択 UI は Phase β-2 で)。
+      const pool = (state.warehouse || []).filter(w => {
+        const tier = w?.appraisal?.tier;
+        return tier && tier !== "masterpiece";
+      });
+      if (pool.length === 0) {
+        maiSays("shop.mai.noAppraisalTarget");
+        return false;
+      }
+      const tierOrder = ["poor", "fair", "good", "excellent", "masterpiece"];
+      const target = pool[Math.floor(Math.random() * pool.length)];
+      const cur = target.appraisal.tier;
+      const idx = tierOrder.indexOf(cur);
+      const next = tierOrder[Math.min(tierOrder.length - 1, idx + 1)];
+      target.appraisal.tier = next;
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("shop.notif.appraisalUp", "鍛冶職人の書: 査定が {from} → {to}")
+          .replace("{from}", ti18n("appraisal.tier." + cur, cur))
+          .replace("{to}",   ti18n("appraisal.tier." + next, next)),
+        element: "tiamat",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      return true;
+    }
+    case "random-recipe": {
+      // 未獲得シリーズから 1 つ獲得 (現在の最高所有 rarity と同じレアリティ)
+      const locked = lockedSeriesList(state.unlockedSeries);
+      if (locked.length === 0) {
+        maiSays("shop.mai.allRecipesOwned");
+        return false;
+      }
+      // 獲得は acquireRandomSeriesRecipe の経路を流用 (= popup 演出付き)
+      acquireRandomSeriesRecipe("recipe.from.shop");
+      return true;
+    }
+    case "random-rank-up": {
+      // 雇用ヒーローからランダム 1 体のランクを 1 上げる (max ★5 で頭打ち)
+      const pool = (state.ownedHeroes || []).filter(h => (h.rank || 0) < 5);
+      if (pool.length === 0) {
+        maiSays("shop.mai.allHeroesMaxRank");
+        return false;
+      }
+      const target = pool[Math.floor(Math.random() * pool.length)];
+      target.rank = (target.rank || 0) + 1;
+      const heroName = tHero(target.heroId, target.nameJa);
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("shop.notif.rankUp", "妖精の粉: {hero} のランクが ★{rank} に")
+          .replace("{hero}", heroName)
+          .replace("{rank}", String(target.rank)),
+        element: "ifrit",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      playSe("rankUpDone");
+      if (typeof renderHeroList === "function") renderHeroList();
+      if (typeof renderHeroTeam === "function") renderHeroTeam();
+      return true;
+    }
+    case "rarity-up":
+    case "rarity-to-legendary": {
+      // Phase β-2 で UI 実装 (倉庫からターゲット選択)。 とりあえずランダム適用版。
+      const pool = (state.warehouse || []).slice();
+      if (pool.length === 0) {
+        maiSays("shop.mai.noWarehouse");
+        return false;
+      }
+      const target = pool[Math.floor(Math.random() * pool.length)];
+      const ext = EXTENSION_BY_ID[String(target.extId)];
+      if (!ext) return false;
+      const targetRarity = item.effect === "rarity-to-legendary" ? "legendary" : nextRarity(ext.rarity);
+      // 同シリーズで targetRarity の ext を見つける
+      const sameSeries = EXTENSIONS.filter(e => e.series === ext.series && e.rarity === targetRarity);
+      if (sameSeries.length === 0) {
+        maiSays("shop.mai.noUpgradeTarget");
+        return false;
+      }
+      const upgraded = sameSeries[0];
+      target.extId = upgraded.extId;
+      const oldName = lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa;
+      const newName = lang === "en" ? (upgraded.nameEn || upgraded.nameJa) : upgraded.nameJa;
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("shop.notif.rarityUp", "{from} → {to}")
+          .replace("{from}", oldName)
+          .replace("{to}", newName),
+        element: "tiamat",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+      return true;
+    }
+  }
+  return false;
+}
+
+function nextRarity(cur) {
+  const order = ["common", "uncommon", "rare", "epic", "legendary"];
+  const i = order.indexOf((cur || "").toLowerCase());
+  return order[Math.min(order.length - 1, Math.max(0, i + 1))];
+}
+
+/** バフが有効かどうかを返す helper (= 倍率の参照側で使う)。 */
+function isBuffActive(key) {
+  const v = state.buffs?.[key];
+  if (v === true) return true;  // 一過性バフ (jade-statue)
+  if (typeof v === "number") return state.tickCount < v;
+  return false;
+}
+
 /** 受注クラフト picker view を開く */
 function openCommissionView() {
   const view = $("commissionView");
@@ -1275,7 +1620,9 @@ function tickActiveCraft() {
       adjustStamina(hero, staminaRecoverPerTick(hero));
       if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
     } else {
-      adjustStamina(hero, -staminaDecayPerTick(hero));
+      // Phase 1D-34: アロマバフ中は体力減少を半減
+      const aromaMult = isBuffActive("aroma") ? 0.5 : 1.0;
+      adjustStamina(hero, -staminaDecayPerTick(hero) * aromaMult);
       if (isExhausted(hero)) {
         hero.state = HERO_STATE.RESTING;
         // Phase 1D-19: クラフト中に体力ゼロ → 「疲れた…」セリフ
@@ -1297,7 +1644,9 @@ function tickActiveCraft() {
     // 3. パッシブ発動ロール
     const passive = rollPassiveTrigger(hero);
     if (passive) {
-      ac.progress[passive.element] = (ac.progress[passive.element] || 0) + passive.value;
+      // Phase 1D-34: 潤滑油バフ中はパッシブ獲得値も 2 倍 (= craft power 2x)
+      const lubeMult = isBuffActive("lubricant") ? 2 : 1;
+      ac.progress[passive.element] = (ac.progress[passive.element] || 0) + passive.value * lubeMult;
       pushPassiveNotification(hero, passive);
     }
   }
@@ -1309,7 +1658,9 @@ function tickActiveCraft() {
     const heroBonus  = (activeWorkers - 1) * 0.10;
     // クラフトLv ボーナス: 1000 で +50% 上限
     const lvBonus    = Math.min(0.5, totalCraftLv / 2000);
-    const factor     = 1 + heroBonus + lvBonus;
+    // Phase 1D-34: 潤滑油バフ中はクラフト進捗も 2 倍
+    const lubeFactor = isBuffActive("lubricant") ? 2 : 1;
+    const factor     = (1 + heroBonus + lvBonus) * lubeFactor;
     const before = ac.timeProgress || 0;
     ac.timeProgress = Math.min(1, before + baseDelta * factor);
     // Phase 1D-27: 進捗 40% / 80% でクラフト中の介入イベント (魂注入 / オーラ付与) を起動
@@ -1736,8 +2087,9 @@ function tickActiveQuest() {
   // Phase 1D-29 fix: 他のモーダルが開いている間は完了通知を保留
   //   (同 tick での mai 重複呼び出しによる pauseFlags 不整合を回避)
   if (state.pauseFlags > 0) return;
-  // 進捗 = elapsed ticks / total ticks
-  const elapsed = state.tickCount - aq.startedAtTick;
+  // 進捗 = elapsed ticks / total ticks (Phase 1D-34: スクロールバフで 2x)
+  const speedMult = isBuffActive("scroll") ? 2 : 1;
+  const elapsed = (state.tickCount - aq.startedAtTick) * speedMult;
   const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
   aq.progress = Math.min(1, elapsed / totalTicks);
   if (aq.progress >= 1) {
@@ -2163,7 +2515,12 @@ function startActiveQuest() {
   const team = state.questTeam.slice();
   const teamHeroes = team.map(id => id == null ? null : findHero(id));
   const baseLv = QUEST_BASE_LEVEL[diff];
-  const teamLv = teamQuestLevel(teamHeroes);
+  let teamLv = teamQuestLevel(teamHeroes);
+  // Phase 1D-34: 翡翠の像バフが有効なら QL を 1.5x した上で 1 回限りの効果を消費
+  if (isBuffActive("jade-statue")) {
+    teamLv = Math.round(teamLv * 1.5);
+    state.buffs["jade-statue"] = false;
+  }
   const rate   = questSuccessRate(teamLv, baseLv);
   if (rate < 0) return;
 
@@ -2367,6 +2724,8 @@ function advanceWeek() {
     // Phase 1D-32: 月初め (week=1 になった瞬間) に受注クラフトを再生成
     maybeRegenerateCommissions();
   }
+  // Phase 1D-34: 11 月 4 週でショップ在庫補充
+  maybeRestockShop();
   // Phase 1D-26: 10 年エンディング (2028年11月4週 終了 = 2028/12/1 直前)
   //   ランキング集計の締切。 集計画面 → 引き続きプレイ可能
   if (!state.endgameTriggered10y &&
@@ -5011,9 +5370,11 @@ function tickActiveSales() {
   // Phase 1D-32: 取引成立通知をモーダル → 速報タイル (state.notifications) に
   //   切替済みのため、pauseFlags > 0 で待機する必要は無くなった。
   //   (= 1D-29 で導入した「他モーダル open 中は settlement を遅延」ガードを撤去)
+  // Phase 1D-34: ローラーバフ中は取引時間 1/2 (= elapsed を 2x として判定)
+  const rollerMult = isBuffActive("roller") ? 2 : 1;
   const completed = [];
   for (const s of state.activeSales) {
-    const elapsed = state.tickCount - s.listedAtTick;
+    const elapsed = (state.tickCount - s.listedAtTick) * rollerMult;
     const total = s.weeks * SECONDS_PER_WEEK;
     if (elapsed >= total && s.status === "listed") {
       // 価格にランダム ±10% 変動
@@ -5890,6 +6251,13 @@ async function init() {
   } catch (e) {
     console.warn("[init] extensions.json load failed", e);
   }
+  // Phase 1D-34: ショップアイテム master data
+  try {
+    await loadShopItems();
+    initShopStock();
+  } catch (e) {
+    console.warn("[init] shop-items.json load failed", e);
+  }
 
   // Initial render
   renderHeader();
@@ -6067,6 +6435,33 @@ async function init() {
       openMarketView();
       setMarketTab(tab);
     });
+  });
+
+  // Phase 1D-34: マーケットサブメニュー > ショップ
+  document.querySelectorAll(".menu-item[data-market-action]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.getAttribute("data-market-action");
+      hideAllSubmenus();
+      closeMenu();
+      if (action === "shop") openShopView();
+    });
+  });
+
+  // Phase 1D-34: ショップ view click hooks
+  $("shopTabs")?.addEventListener("click", (ev) => {
+    const tab = ev.target.closest("[data-shop-tab]");
+    if (!tab) return;
+    state.shopTab = tab.getAttribute("data-shop-tab");
+    renderShopView();
+  });
+  $("shopList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-shop-buy]");
+    if (!btn || btn.disabled) return;
+    purchaseShopItem(btn.getAttribute("data-shop-buy"));
+  });
+  $("shopViewClose")?.addEventListener("click", closeShopView);
+  $("shopView")?.addEventListener("click", (ev) => {
+    if (ev.target.id === "shopView") closeShopView();
   });
 
   // 設定 submenu: 時間 2x speed トグル
