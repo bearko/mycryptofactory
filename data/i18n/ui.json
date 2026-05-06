@@ -5,8 +5,8 @@
 
   "title.aria":                { "ja": "ゲームを始める",  "en": "Start the game" },
   "title.press":               { "ja": "Press to Start", "en": "Press to Start" },
-  "alpha.badge":               { "ja": "β 版 / BETA", "en": "β / BETA" },
-  "alpha.note":                { "ja": "β 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。", "en": "Beta build. Feedback welcome. Save data is local-only and resets on reload." },
+  "alpha.badge":               { "ja": "β2 版 / BETA2", "en": "β2 / BETA2" },
+  "alpha.note":                { "ja": "β2 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。", "en": "Beta-2 build. Feedback welcome. Save data is local-only and resets on reload." },
 
   "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
 
@@ -32,6 +32,23 @@
   "enhance.craftLv":            { "ja": "クラフトLv", "en": "Craft Lv" },
   "enhance.questLv":            { "ja": "クエストLv", "en": "Quest Lv" },
   "enhance.merchantLv":         { "ja": "マーチャントLv", "en": "Merchant Lv" },
+  "enhance.filter.rarity":      { "ja": "レアリティ", "en": "Rarity" },
+  "enhance.filter.all":         { "ja": "すべて", "en": "All" },
+  "enhance.sort.label":         { "ja": "並び替え", "en": "Sort by" },
+  "enhance.sort.rankDesc":      { "ja": "ランク (高い順)", "en": "Rank (desc)" },
+  "enhance.sort.paramDesc":     { "ja": "パラメータ合計 (高い順)", "en": "Total params (desc)" },
+  "enhance.sort.craftDesc":     { "ja": "クラフト Lv (高い順)", "en": "Craft Lv (desc)" },
+  "enhance.sort.questDesc":     { "ja": "クエスト Lv (高い順)", "en": "Quest Lv (desc)" },
+  "enhance.sort.merchantDesc":  { "ja": "マーチャント Lv (高い順)", "en": "Merchant Lv (desc)" },
+  "enhance.sort.salaryDesc":    { "ja": "年俸 (高い順)", "en": "Salary (desc)" },
+  "enhance.sort.salaryAsc":     { "ja": "年俸 (安い順)", "en": "Salary (asc)" },
+  "fire.fireBtn":               { "ja": "解雇する", "en": "Fire" },
+  "hero.management.title":      { "ja": "ヒーロー管理", "en": "Hero management" },
+  "hero.management.tab.fire":   { "ja": "解雇", "en": "Fire" },
+  "hero.management.fire.intro": { "ja": "能動的にヒーローを解雇できます。 進行中作業のヒーローは解雇できません。", "en": "You can proactively fire heroes. Heroes on active tasks cannot be fired." },
+  "hero.management.fire.empty": { "ja": "現在ヒーローを所持していません。", "en": "You currently have no heroes." },
+  "hero.management.hire.intro": { "ja": "採用プランの選択 / 候補確認はマーケットの雇用タブで行います。", "en": "Hiring plans and candidate selection happen in the Market hire tab." },
+  "hero.management.hire.openBtn":{ "ja": "雇用タブを開く", "en": "Open hire tab" },
   "menu.quest.normal":         { "ja": "通常node",     "en": "Normal node" },
   "menu.quest.land":           { "ja": "ランドnode",   "en": "Land node" },
   "settings.speed2x":          { "ja": "時間2倍速", "en": "2x speed" },
@@ -253,7 +270,8 @@
   "hire.pickCandidate":        { "ja": "候補から 1 名を雇用、または全員見送りできます。", "en": "Pick one candidate, or skip them all." },
   "hire.skipAll":              { "ja": "全員見送る", "en": "Skip all" },
   "hire.backToPlans":          { "ja": "← プラン選択に戻る", "en": "← Back to plans" },
-  "hire.mai.candidatesReady":  { "ja": "採用候補が揃いましたよ！「次へ」を押すと採用画面を開きます。", "en": "Candidates are ready! Tap Next to open the hire screen." },
+  "hire.mai.candidatesReady":  { "ja": "雇用候補が出揃いました！", "en": "Hire candidates are ready!" },
+  "recruit.notif.skipped":     { "ja": "今年の採用イベントは雇用進行中のため見送りました", "en": "This year's recruitment event was skipped due to ongoing hire" },
   "hire.mai.capReached":       { "ja": "工房の定員がいっぱいです。誰かを解雇してください。", "en": "Workshop is at capacity. Please dismiss someone first." },
   "hire.mai.notEnoughGum":     { "ja": "GUMが足りません。", "en": "Not enough GUM." },
   "hire.mai.hired":            { "ja": "{name}を雇用しました！", "en": "{name} has joined!" },
@@ -382,7 +400,7 @@
   "stub.desc":                 { "ja": "この機能は次のフェーズで実装予定です。", "en": "This feature is coming in a future phase." },
 
   "help.title":                { "ja": "ヘルプ", "en": "Help" },
-  "help.body":                 { "ja": "マイクリ工房 (MyCryptoFactory) を 8 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう。", "en": "MyCryptoFactory is a workshop-management sim set in the MCH economy. Aim to grow your workshop to #1 in the world within 8 years by earning GUM and reinvesting." },
+  "help.body":                 { "ja": "マイクリ工房 (MyCryptoFactory) を 10 年以内に世界一の大工房にすることを目指す、MCH 経済圏ベースの工房経営シムです。GUM を稼ぎ、投資して、工房をパワーアップさせるサイクルを楽しみましょう (引退エンディングは 2028 年 12 月、その後も自由プレイ可)。", "en": "MyCryptoFactory is a workshop-management sim set in the MCH economy. Aim to grow your workshop to #1 in the world within 10 years by earning GUM and reinvesting (Endgame at Dec 2028; free play continues afterward)." },
   "help.timeNote":             { "ja": "ホーム画面で待機している間のみ時間が進行します（1 週間 = 7 秒）。メニュー / 機能画面を開いている間は時間が止まります。", "en": "Time only advances while you're on the home screen (1 week = 7 seconds). Time pauses while a menu or sub-screen is open." },
 
   "btn.close":                 { "ja": "閉じる", "en": "Close" },
@@ -426,6 +444,9 @@
   "skill.eff.hireRareBoost":   { "ja": "高レア採用率",    "en": "Hire rare rate" },
   "skill.eff.tradePriceBoost": { "ja": "取引金額",        "en": "Trade price" },
   "skill.eff.tradeSpeedBoost": { "ja": "取引スピード",    "en": "Trade speed" },
+  "skill.active.title":        { "ja": "✨ アクティブ効果",     "en": "✨ Active effects" },
+  "skill.active.lead":         { "ja": "倉庫のエクステンションから発動中の効果合計", "en": "Total bonuses from your warehouse extensions" },
+  "skill.active.empty":        { "ja": "倉庫にエクステンションが無いか、効果がまだ発動していません。", "en": "No extensions in warehouse, or no active effects yet." },
 
   "progress.craft":            { "ja": "Craft",  "en": "Craft" },
   "progress.quest":            { "ja": "Quest",  "en": "Quest" },
@@ -448,6 +469,6 @@
   "progress.market.noGum":           { "ja": "オークションの出品料が不足しています", "en": "Not enough GUM for auction fee" },
   "progress.market.noHero":          { "ja": "取引を担当できるヒーローがいません", "en": "No hero available to handle trade" },
 
-  "footer.meta":               { "ja": "MyCryptoFactory β version · 非営利のファン制作", "en": "MyCryptoFactory β version · Non-commercial fan project" },
+  "footer.meta":               { "ja": "MyCryptoFactory β2 version · 非営利のファン制作", "en": "MyCryptoFactory β2 version · Non-commercial fan project" },
   "footer.credit.full":        { "ja": "キャラクター画像 / アセットは <strong>My Crypto Heroes (MCH Co., Ltd.)</strong> に帰属します。利用条件は <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> 参照。", "en": "Character artwork / assets belong to <strong>My Crypto Heroes (MCH Co., Ltd.)</strong>. See <a href=\"https://github.com/bearko/mycryptoheroes/blob/main/README.md\" target=\"_blank\" rel=\"noopener\">bearko/mycryptoheroes README</a> for usage terms." }
 }

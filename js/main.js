@@ -1492,6 +1492,19 @@ function triggerAnnualSalary() {
  *  ノーコストで生成し、 既存の hire candidates 経路に流す。 */
 function triggerRecruitmentEvent() {
   if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) return;
+  // Phase β2 hotfix: 既存の雇用が進行中 (= プラン進行中 / 候補出揃い済) なら
+  //   今年の採用イベントは上書きせず skip。 通知のみ残す。
+  if (state.activeHire) {
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("recruit.notif.skipped", "今年の採用イベントは雇用進行中のため見送りました"),
+      element: "garuda",
+      value: 0,
+      createdTick: state.tickCount,
+    });
+    renderNotifications?.();
+    return;
+  }
   // 手持ち最高 rarity 判定
   const ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
   let maxRarityIdx = 0;
@@ -1505,7 +1518,8 @@ function triggerRecruitmentEvent() {
   if (!plan) return;
   pauseTime();
   const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
-  const candidates = rollHireCandidates(plan, ownedIds);
+  // Phase 2B: hireRareBoost を rarityWeights に適用 (= 高レア出現率アップ)
+  const candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
   if (candidates.length === 0) {
     // 候補ゼロ → スキップ
     resumeTime();
@@ -1595,7 +1609,23 @@ function startRemakeFromWarehouse(idx) {
   renderConfirm?.();
 }
 
-/** ─── Phase 2A: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
+/** ─── Phase 2A/2B: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
+
+/** Phase 2B: hireRareBoost を適用した plan の clone を返す。
+ *  rarity 重みを「rare 以上の重み × (1 + X%)」 に持ち上げる。 */
+function planWithHireRareBoost(plan) {
+  const pct = activeEffectPct("hireRareBoost");
+  if (!plan || pct <= 0) return plan;
+  const cloned = { ...plan, rarityWeights: { ...plan.rarityWeights } };
+  const m = 1 + pct / 100;
+  for (const r of ["rare", "epic", "legendary"]) {
+    if (cloned.rarityWeights[r] != null) {
+      cloned.rarityWeights[r] = cloned.rarityWeights[r] * m;
+    }
+  }
+  return cloned;
+}
+
 
 /** state.warehouse の全 ext から発動中の効果を集計し、 effect type → % map で返す。
  *  打ち直し済み (rarityOverride あり) は昇格 rarity でスケール。
@@ -1618,6 +1648,47 @@ function getActiveSkillEffects() {
 function activeEffectPct(type) {
   const eff = getActiveSkillEffects();
   return eff[type] || 0;
+}
+
+/** Phase 2B: アクティブ効果モーダルを開く + 描画。 工房画面のボタンから起動。 */
+function openActiveEffectsModal() {
+  const modal = $("activeEffectsModal");
+  const list  = $("activeEffectsList");
+  const empty = $("activeEffectsEmpty");
+  if (!modal || !list) return;
+  pauseTime();
+  const effects = getActiveSkillEffects();
+  const entries = Object.entries(effects).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    list.innerHTML = "";
+    empty?.classList.remove("hidden");
+  } else {
+    empty?.classList.add("hidden");
+    list.innerHTML = entries.map(([type, value]) => {
+      const def = EFFECT_DEFS[type];
+      const lbl = def ? ti18n(def.labelKey, type) : type;
+      return `<li>
+        <span>${escapeHtml(lbl)}</span>
+        <strong>+${value.toFixed(1)}%</strong>
+      </li>`;
+    }).join("");
+  }
+  modal.classList.remove("hidden");
+}
+function closeActiveEffectsModal() {
+  $("activeEffectsModal")?.classList.add("hidden");
+  resumeTime();
+}
+
+/** 工房画面右上のアクティブ効果ボタンの表示更新 (= 効果数バッジ)。
+ *  renderWorkshop の最後に呼び出されることで毎 tick 反映。 */
+function refreshActiveEffectsBtn() {
+  const btn   = $("workshopActiveEffectsBtn");
+  const count = $("workshopActiveEffectsCount");
+  if (!btn || !count) return;
+  const n = Object.keys(getActiveSkillEffects()).length;
+  count.textContent = String(n);
+  btn.classList.toggle("hidden", n === 0);
 }
 
 /** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
@@ -2275,7 +2346,10 @@ function tickActiveCraft() {
     if (!hero) continue;
     // 1. stamina 状態遷移
     if (hero.state === HERO_STATE.RESTING) {
-      adjustStamina(hero, staminaRecoverPerTick(hero));
+      // Phase 2B: restTimeShort — 倉庫スキルで休憩中の回復を加速
+      const restPct = activeEffectPct("restTimeShort");
+      const restMult = restPct > 0 ? (1 + restPct / 100) : 1.0;
+      adjustStamina(hero, staminaRecoverPerTick(hero) * restMult);
       if (isFullyRested(hero)) hero.state = HERO_STATE.CRAFTING;
     } else {
       // Phase 1D-34: アロマバフ中は体力減少を半減
@@ -2371,6 +2445,10 @@ function triggerCraftEvent(type) {
 }
 
 function openCraftEventPicker(type) {
+  // Phase β2 hotfix: maiSaysSequence の close で caller (tickActiveCraft) の
+  //   pause が消費されてしまうため、 picker 自身が pauseTime() で固定する。
+  //   finishCraftEventAnim の resumeTime とペアになる。
+  pauseTime();
   const view = $("craftEventPicker");
   if (!view) {
     // フォールバック: 自動で適当な要素 + チームの先頭で実行
@@ -2762,7 +2840,10 @@ function tickPassiveRestRecovery() {
     if (skip.has(hero.heroId)) continue;
     if (hero.state === HERO_STATE.RESTING) {
       // 休憩中: stamina を回復
-      adjustStamina(hero, staminaRecoverPerTick(hero));
+      // Phase 2B: restTimeShort — 倉庫スキルで回復速度を加速
+      const restPctP = activeEffectPct("restTimeShort");
+      const restMultP = restPctP > 0 ? (1 + restPctP / 100) : 1.0;
+      adjustStamina(hero, staminaRecoverPerTick(hero) * restMultP);
       if (isFullyRested(hero)) hero.state = HERO_STATE.IDLE;
     } else if (hero.state === HERO_STATE.IDLE) {
       // Phase 1D-23: Idle 中の体力減少を廃止 (ユーザー仕様)。
@@ -2859,7 +2940,30 @@ function triggerQuestComplete(aq) {
   const success = (r >= 1.0) ? true : (Math.random() <= r);
   const node = NODE_BY_ID[aq.nodeId];
   let rewards = {};
-  if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
+  if (success && node) {
+    rewards = rollQuestRewards(node, aq.difficulty);
+    // Phase 2B: matYieldBoost — 各 drop qty を倉庫スキル分上乗せ (round + min 1)
+    const yieldPct = activeEffectPct("matYieldBoost");
+    if (yieldPct > 0) {
+      const m = 1 + yieldPct / 100;
+      for (const [matId, q] of Object.entries(rewards)) {
+        rewards[matId] = Math.max(1, Math.round(q * m));
+      }
+    }
+    // Phase 2B: rareMatBoost — rare 素材 (poolHighTier) の追加 drop を確率発火
+    const rarePct = activeEffectPct("rareMatBoost");
+    if (rarePct > 0 && Array.isArray(node.poolHighTier) && node.poolHighTier.length > 0) {
+      // Bernoulli + 期待値: cap 40% を 2 回に分割 (= 各 20% 確率で +1 個まで)
+      const trials = 2;
+      const pPer = (rarePct / 100) / trials;
+      for (let i = 0; i < trials; i++) {
+        if (Math.random() < pPer) {
+          const matId = node.poolHighTier[Math.floor(Math.random() * node.poolHighTier.length)];
+          rewards[matId] = (rewards[matId] || 0) + 1;
+        }
+      }
+    }
+  }
 
   // 報酬を所持素材に追加
   if (success) {
@@ -2912,7 +3016,10 @@ function triggerQuestComplete(aq) {
   if (success) playSe("questSuccess");
   // Phase 1D-22: クエスト成功で 12% の確率で未取得シリーズレシピが手に入る
   //   (発火は result 画面が閉じた後に showRecipePopup 起動)
-  state.pendingRecipeReason = (success && Math.random() < 0.12) ? "recipe.from.quest" : null;
+  // Phase 2B: recipeRateBoost — 倉庫スキルでベースレシピ獲得率 12% を上乗せ
+  const recipeRatePct = activeEffectPct("recipeRateBoost");
+  const recipeChance = 0.12 * (1 + recipeRatePct / 100);
+  state.pendingRecipeReason = (success && Math.random() < recipeChance) ? "recipe.from.quest" : null;
   // Mai ポップアップ → 閉じるとレポート画面
   maiSays(success ? "quest.mai.success" : "quest.mai.failure", {
     onClose: openQuestResultScreen,
@@ -4240,23 +4347,78 @@ function openHeroView() {
 function openHeroEnhanceView() {
   pauseTime();
   $("heroEnhanceView")?.classList.remove("hidden");
-  renderHeroEnhanceList();
+  // Phase β2-2: 開いたら必ず「強化」 タブから開始
+  switchHeroManagementTab("enhance");
 }
 function closeHeroEnhanceView() {
   $("heroEnhanceView")?.classList.add("hidden");
   resumeTime();
 }
 
-/** Phase 1D-23: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー */
+/** Phase β2-2: ヒーロー管理画面のタブ切替 (強化 / 雇用 / 解雇) */
+function switchHeroManagementTab(tabName) {
+  if (!tabName) return;
+  document.querySelectorAll(".hero-management__tab").forEach(t => {
+    t.classList.toggle("hero-management__tab--active", t.getAttribute("data-mgmt-tab") === tabName);
+  });
+  document.querySelectorAll(".hero-management__panel").forEach(p => {
+    p.classList.toggle("hidden", p.getAttribute("data-mgmt-panel") !== tabName);
+  });
+  if (tabName === "fire") renderHeroFireList();
+  else if (tabName === "enhance") renderHeroEnhanceList();
+}
+
+/** Phase β2-2: 解雇タブのヒーロー一覧を描画 */
+function renderHeroFireList() {
+  const host = $("heroFireList");
+  if (!host) return;
+  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => annualSalaryOf(b) - annualSalaryOf(a));
+  if (heroes.length === 0) {
+    host.innerHTML = `<p class="hero-management__fire-intro">${escapeHtml(ti18n("hero.management.fire.empty", "現在ヒーローを所持していません。"))}</p>`;
+    return;
+  }
+  host.innerHTML = heroes.map(h => {
+    const name = tHero(h.heroId, h.nameJa);
+    const stars = "★".repeat(h.rank || 0) + "☆".repeat(5 - (h.rank || 0));
+    const rarLbl = ti18n("rarity." + h.rarity, h.rarity);
+    const salary = annualSalaryOf(h);
+    const isIdle = h.state === HERO_STATE.IDLE
+      && !isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true });
+    const blockMsg = !isIdle
+      ? ` <span style="color:var(--muted);font-size:0.65rem">(${escapeHtml(ti18n("hero.lock.busy", "作業中"))})</span>`
+      : "";
+    return `<div class="hero-fire-row" data-rarity="${h.rarity}">
+      <img class="hero-fire-row__portrait" src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+      <div class="hero-fire-row__main">
+        <span class="hero-fire-row__name">${escapeHtml(name)}</span>
+        <span class="hero-fire-row__meta">${escapeHtml(rarLbl)} · ${stars}${blockMsg}</span>
+        <span class="hero-fire-row__salary">${ti18n("hero.salary", "年俸")}: ${salary.toLocaleString()} GUM</span>
+      </div>
+      <button type="button" class="hero-fire-row__btn" data-fire-hero="${h.heroId}" ${isIdle ? "" : "disabled"}>
+        ${escapeHtml(ti18n("fire.fireBtn", "解雇する"))}
+      </button>
+    </div>`;
+  }).join("");
+}
+
+/** Phase 1D-23 + β2-1: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー
+ *  ランクアップ画面の before/after に使用。 craft / quest / merchant Lv 全てに
+ *  rarity 倍率 (= RARITY_CRAFT_MULT) と rank 倍率を統一適用。 これにより
+ *  rank-up 表示と実 gameplay 値 (teamCraftLevelTotal / teamQuestLevel) が一致する。 */
+const _RARITY_PARAM_MULT = {
+  common: 1.0, uncommon: 1.5, rare: 2.5, epic: 4.0, legendary: 6.0,
+};
 function _heroFullHpProjected(hero, rankOverride = null) {
   const rank = rankOverride == null ? (hero.rank || 0) : rankOverride;
   const rMult = 1 + 0.4 * Math.max(0, Math.min(RANK_MAX, rank));
-  // 4 元素値 (ガルーダ重み込み + ランク倍率)
+  const rarMult = _RARITY_PARAM_MULT[(hero.rarity || "common").toLowerCase()] || 1.0;
+  // 4 元素値 (ガルーダ重み込み + ランク倍率 + レアリティ倍率)
   const e = hero.element || {};
-  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * rMult);
-  const ifrit   = Math.round((e.ifrit   || 0) * rMult);
-  const lev     = Math.round((e.leviathan || 0) * rMult);
-  const tia     = Math.round((e.tiamat  || 0) * rMult);
+  const totalMult = rMult * rarMult;
+  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * totalMult);
+  const ifrit   = Math.round((e.ifrit   || 0) * totalMult);
+  const lev     = Math.round((e.leviathan || 0) * totalMult);
+  const tia     = Math.round((e.tiamat  || 0) * totalMult);
   const sum = garudaW + ifrit + lev + tia;
   const hasKo  = Array.isArray(hero.attributes) && hero.attributes.includes("ko");
   const hasNo  = Array.isArray(hero.attributes) && hero.attributes.includes("no");
@@ -4271,15 +4433,32 @@ function _heroFullHpProjected(hero, rankOverride = null) {
 }
 
 /** Phase 1D-20: ヒーロー強化リストを描画
- *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記 */
+ *  Phase 1D-23: before/after の元素値 + Craft/Quest/Market Lv を併記
+ *  Phase β2-2: rarity フィルタ + 任意キーソートに対応 */
 function renderHeroEnhanceList() {
   const host = $("heroEnhanceList");
   if (!host) return;
   const lang = getLang() === "en" ? "en" : "ja";
-  const heroes = (state.ownedHeroes || []).slice().sort((a, b) => {
-    if ((b.rank || 0) !== (a.rank || 0)) return (b.rank || 0) - (a.rank || 0);
-    return craftLevel(b) - craftLevel(a);
-  });
+  const filterEl = $("heroEnhanceFilterRarity");
+  const sortEl   = $("heroEnhanceSortKey");
+  const filter = filterEl?.value || "all";
+  const sortKey = sortEl?.value || "rankDesc";
+  let heroes = (state.ownedHeroes || []).slice();
+  if (filter !== "all") {
+    heroes = heroes.filter(h => (h.rarity || "common").toLowerCase() === filter);
+  }
+  // 並び替え (Phase β2-2)
+  const projOf = (h) => _heroFullHpProjected(h, h.rank || 0);
+  const cmps = {
+    rankDesc:     (a, b) => (b.rank || 0) - (a.rank || 0) || craftLevel(b) - craftLevel(a),
+    paramDesc:    (a, b) => projOf(b).sum - projOf(a).sum,
+    craftDesc:    (a, b) => craftLevel(b) - craftLevel(a),
+    questDesc:    (a, b) => projOf(b).questLv - projOf(a).questLv,
+    merchantDesc: (a, b) => projOf(b).merchantLv - projOf(a).merchantLv,
+    salaryDesc:   (a, b) => annualSalaryOf(b) - annualSalaryOf(a),
+    salaryAsc:    (a, b) => annualSalaryOf(a) - annualSalaryOf(b),
+  };
+  heroes.sort(cmps[sortKey] || cmps.rankDesc);
   host.innerHTML = heroes.map(hero => {
     const name = tHero(hero.heroId, hero.nameJa);
     const rank = hero.rank || 0;
@@ -4861,17 +5040,24 @@ function renderConfirm() {
         </div>`;
     }
   } else {
+    // Phase 2B: matCostReduce — 表示も削減後 qty に揃える (= 不足判定も削減後で再評価)
+    const costPctConfirm = activeEffectPct("matCostReduce");
+    const costMultConfirm = costPctConfirm > 0 ? Math.max(0.3, 1 - costPctConfirm / 100) : 1.0;
     $("confirmMaterials").innerHTML = recipe.map(m => {
       const have = state.materials[m.id] || 0;
-      const short = avail.shortage[m.id] > 0;
+      const reducedQty = Math.max(1, Math.ceil((m.qty || 0) * costMultConfirm));
+      const short = have < reducedQty;
       const rowCls = short ? "craft-confirm__mat-row craft-confirm__mat-row--short" : "craft-confirm__mat-row";
       const qtyText = ti18n("craft.material.qtyHave")
-        .replace("{qty}", m.qty)
+        .replace("{qty}", reducedQty)
         .replace("{have}", have);
+      const discountMark = costPctConfirm > 0 && reducedQty < (m.qty || 0)
+        ? ` <span style="color:var(--accent);font-size:0.65rem">(-${costPctConfirm.toFixed(0)}%)</span>`
+        : "";
       return `<div class="${rowCls}">
         <img src="${materialIcon(m.id)}" alt="" onerror="this.style.opacity='0.2'" />
         <span class="craft-confirm__mat-name">${escapeHtml(materialName(m.id, getLang()))}</span>
-        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}</span>
+        <span class="craft-confirm__mat-qty">${escapeHtml(qtyText)}${discountMark}</span>
       </div>`;
     }).join("");
   }
@@ -5034,9 +5220,13 @@ function startActiveCraft() {
   const recipe = recipeFor(ext);
 
   // 素材消費 (受注 / 打ち直しはスキップ)
+  // Phase 2B: matCostReduce — 倉庫スキルで要求素材量を軽減 (= 消費量を割り戻す)
   if (!isCommission && !isRemake) {
+    const costPct = activeEffectPct("matCostReduce");
+    const costMult = costPct > 0 ? Math.max(0.3, 1 - costPct / 100) : 1.0;  // 最低 70% は消費
     for (const m of recipe) {
-      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - (m.qty || 0));
+      const consumed = Math.max(1, Math.ceil((m.qty || 0) * costMult));
+      state.materials[m.id] = Math.max(0, (state.materials[m.id] || 0) - consumed);
     }
   }
 
@@ -5316,6 +5506,8 @@ function renderWorkshop() {
     sprite.classList.add("workshop-hero--bounce");
     setTimeout(() => sprite.classList.remove("workshop-hero--bounce"), 460);
   }
+  // Phase 2B: アクティブ効果ボタンの表示数を更新
+  refreshActiveEffectsBtn();
 }
 
 /** Phase 1D-13: 工房内の 12 固定配置座標 (workshop 領域の % 座標)。
@@ -5804,6 +5996,9 @@ function renderHeroDetailPopup() {
       btn.disabled = !isIdle;
     });
   }
+  // Phase β2-2: 解雇ボタンは Idle のみ有効 (= 進行中作業を中断しないため)
+  const fireBtn = $("heroDetailFireBtn");
+  if (fireBtn) fireBtn.disabled = !isIdle;
 }
 function closeHeroDetailPopup() {
   $("heroDetailPopup")?.classList.add("hidden");
@@ -6033,9 +6228,10 @@ function maiSays(messageKey, options = {}) {
   if (!modal || !body) return;
   setMaiBody(ti18n(messageKey));
   modal.classList.remove("hidden");
-  // Phase 1D-47 bug fix: 呼び出し側が pauseTime() 済みのケースで二重 pause
-  //   (= +2 / -1 で flags が 1 ずつリークしフリーズ) を防止。
-  //   既に paused なら自前 pause を skip → close 側の resumeTime と 1:1 に揃う。
+  // Phase 1D-47 fix: 既に paused なら自前 pause を skip (= 二重 pause リーク防止)
+  // close 側は常に resume を 1 回 → 呼出側 pre-pause なら caller の pause を
+  // 消費する形になる (= 呼出側 onClose は paused 前提の操作を行う場合は自分で
+  // pauseTime() を呼び直す必要がある)。
   if (state.pauseFlags === 0) pauseTime();
   _maiNextAction = options.onClose || null;
 }
@@ -6059,11 +6255,7 @@ function closeMaiModal() {
     $("maiModal")?.classList.add("hidden");
     const closeBtn = $("maiModalClose");
     if (closeBtn) closeBtn.textContent = ti18n("btn.close");
-    // Phase 1D-9 バグ修正: 必ず resumeTime して maiSaysSequence の pauseTime と
-    //   ペアにする。次に呼ばれる callback (next) は独立した pause/resume
-    //   ペアを管理する前提 (= 旧設計の「next 側で pauseTime を呼ぶから resume
-    //   しない」 は openCompletionScreen が pauseTime を呼ぶケースで pauseFlags
-    //   が累積するバグの原因だったので撤廃)
+    // 必ず resume を 1 回 (= 呼出側 pre-pause 時はその pause を消費する)
     resumeTime();
     if (seqCb) { seqCb(); return; }
     const next = _maiNextAction;
@@ -6073,7 +6265,6 @@ function closeMaiModal() {
   }
   // ── 通常 (単行 maiSays) の閉じ処理 ──
   $("maiModal")?.classList.add("hidden");
-  // Phase 1D-9 バグ修正: 同上 — 常に resume してから next() を呼ぶ
   resumeTime();
   const next = _maiNextAction;
   _maiNextAction = null;
@@ -6111,7 +6302,7 @@ function maiSaysSequence(messages, options = {}) {
   setMaiBody(_maiSeqQueue[_maiSeqIdx]);
   btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
-  // Phase 1D-47 bug fix: maiSays と同様、呼び出し側が pauseTime() 済みなら skip。
+  // Phase 1D-47 fix: 既に paused なら skip (= maiSays と同じ)
   if (state.pauseFlags === 0) pauseTime();
 }
 
@@ -6427,7 +6618,10 @@ function renderSellModal() {
 
   // 推定価格 + 純収益
   const seller = findHero(_sellPickedSellerId);
-  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const expectedRaw = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 2B: tradePriceBoost プレビューに反映
+  const tpPctPrev = activeEffectPct("tradePriceBoost");
+  const expected = tpPctPrev > 0 ? Math.round(expectedRaw * (1 + tpPctPrev / 100)) : expectedRaw;
   const net = netSaleRevenue(expected);
   $("sellEstPrice").innerHTML = `
     <div class="sell-est__row">
@@ -6463,7 +6657,10 @@ function startSale() {
   // Phase 1D-25: 前回の seller を記録 → 次回 modal 起動時に default 選択
   state.lastSaleSellerId = seller.heroId;
   const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
-  const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  const expectedRaw = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 2B: tradePriceBoost — 倉庫スキルで売却額を上乗せ
+  const tpPct = activeEffectPct("tradePriceBoost");
+  const expected = tpPct > 0 ? Math.round(expectedRaw * (1 + tpPct / 100)) : expectedRaw;
   // Phase 1D-40: seller が「商」属性持ちなら、 ext rarity に応じて取引期間を短縮
   //   - Rare:      1/2 期間 (= 倍速)
   //   - Epic:      1/3 期間 (= 3 倍速)
@@ -6506,10 +6703,13 @@ function tickActiveSales() {
   //   (= 1D-29 で導入した「他モーダル open 中は settlement を遅延」ガードを撤去)
   // Phase 1D-34: ローラーバフ中は取引時間 1/2 (= elapsed を 2x として判定)
   const rollerMult = isBuffActive("roller") ? 2 : 1;
+  // Phase 2B: tradeSpeedBoost — 倉庫スキルで取引時間を加速
+  const tsPct = activeEffectPct("tradeSpeedBoost");
+  const tsMult = tsPct > 0 ? (1 + tsPct / 100) : 1.0;
   const completed = [];
   for (const s of state.activeSales) {
-    // Phase 1D-40 + 1D-34: 商 seller × rarity 短縮 × ローラーバフ
-    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult;
+    // Phase 1D-40 + 1D-34 + 2B: 商 seller × rarity 短縮 × ローラーバフ × 倉庫スキル
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult * tsMult;
     const total = s.weeks * SECONDS_PER_WEEK;
     if (elapsed >= total && s.status === "listed") {
       // 価格にランダム ±10% 変動
@@ -6819,15 +7019,23 @@ function tickActiveHire() {
   if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
     const plan = PLAN_BY_ID[ah.planId];
     const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
-    ah.candidates = rollHireCandidates(plan, ownedIds);
-    // Phase 1D-7: Mai 通知 → 「次へ」 押下で雇用画面に直接遷移
-    maiSays("hire.mai.candidatesReady", {
-      onClose: () => {
-        state.marketTab = "hire";
-        openMarketView();
-        setMarketTab("hire");
-      },
+    // Phase 2B: hireRareBoost を適用
+    ah.candidates = rollHireCandidates(planWithHireRareBoost(plan), ownedIds);
+    // Phase β2 hotfix: 旧 maiSays 通知は他イベント (年俸 / 採用イベント) と
+    //   重なって候補が見えなくなる事故が発生したため、 候補が出揃ったら
+    //   即座に雇用画面 (= マーケットの雇用タブ) を開く。 保留はできない仕様。
+    state.marketTab = "hire";
+    openMarketView();
+    setMarketTab("hire");
+    // 通知タイルにだけ「候補が出揃いました」 を残す
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("hire.mai.candidatesReady", "雇用候補が出揃いました！"),
+      element: "tiamat",
+      value: 0,
+      createdTick: state.tickCount,
     });
+    renderNotifications?.();
   }
   renderHireOverlay();
   renderSaleOverlay();
@@ -7553,6 +7761,12 @@ async function init() {
 
   // ── Help ──
   $("btnHelpOpen")?.addEventListener("click", openHelp);
+  // Phase 2B: アクティブ効果モーダル
+  $("workshopActiveEffectsBtn")?.addEventListener("click", openActiveEffectsModal);
+  $("activeEffectsClose")?.addEventListener("click", closeActiveEffectsModal);
+  $("activeEffectsModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "activeEffectsModal") closeActiveEffectsModal();
+  });
   $("btnHelpClose")?.addEventListener("click", closeHelp);
   $("helpOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "helpOverlay") closeHelp();
@@ -7754,6 +7968,13 @@ async function init() {
     if (Number.isFinite(id)) openHeroDetailPopup(id);
   });
   $("heroDetailClose")?.addEventListener("click", closeHeroDetailPopup);
+  // Phase β2-2: 解雇ボタン (= 能動的なリストラ)
+  $("heroDetailFireBtn")?.addEventListener("click", () => {
+    const id = state.popupHeroId;
+    if (id == null) return;
+    closeHeroDetailPopup();
+    setTimeout(() => openFireConfirm(id), 100);
+  });
   $("heroDetailPopup")?.addEventListener("click", (e) => {
     if (e.target.id === "heroDetailPopup") closeHeroDetailPopup();
   });
@@ -8094,6 +8315,28 @@ async function init() {
     if (!btn || btn.disabled) return;
     const hid = parseInt(btn.getAttribute("data-enhance-hero"), 10);
     if (Number.isFinite(hid)) rankUpHero(hid);
+  });
+  // Phase β2-2: ソート / フィルタ変更時に再描画
+  $("heroEnhanceFilterRarity")?.addEventListener("change", renderHeroEnhanceList);
+  $("heroEnhanceSortKey")?.addEventListener("change", renderHeroEnhanceList);
+  // Phase β2-2: 管理タブ切替 (強化 / 雇用 / 解雇)
+  document.querySelectorAll(".hero-management__tab").forEach(tab => {
+    tab.addEventListener("click", () => switchHeroManagementTab(tab.getAttribute("data-mgmt-tab")));
+  });
+  $("heroMgmtOpenMarketHire")?.addEventListener("click", () => {
+    closeHeroEnhanceView();
+    setTimeout(() => {
+      state.marketTab = "hire";
+      openMarketView?.();
+      setMarketTab?.("hire");
+    }, 100);
+  });
+  // 解雇リストの delegation
+  $("heroFireList")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-fire-hero]");
+    if (!btn || btn.disabled) return;
+    const hid = parseInt(btn.getAttribute("data-fire-hero"), 10);
+    if (Number.isFinite(hid)) openFireConfirm(hid);
   });
   // Phase 1D-12: 編成 view の tab 切替
   document.querySelectorAll(".hero-team-tab").forEach(btn => {

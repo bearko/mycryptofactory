@@ -33,10 +33,15 @@ export const QUEST_DURATION_WEEKS = {
  *  team quest level >= base なら成功率 100%、未満なら割合に応じて低下。
  *  Phase 1D-23: 初期ヒーローの初期ランクでは中級・上級が攻略不可になるよう
  *  ベース値を引き上げ (initial 4 commons の合計 quest level ~190 程度想定)。 */
+// Phase β2-1: rarity スケール導入により team Lv が大幅にアップしたため、
+//   QUEST_BASE_LEVEL も底上げ。 想定:
+//   - 初級 350: Common rank 0 5 体で ~60% 突破
+//   - 中級 1100: Uncommon rank 1+ 〜 Rare rank 0 編成で 60-80%
+//   - 上級 3000: Rare rank 5 〜 Epic で 60-80%、 Legendary で 80-100%
 export const QUEST_BASE_LEVEL = {
-  easy:    400,
-  normal:  800,
-  hard:   1200,
+  easy:    350,
+  normal:  1100,
+  hard:    3000,
 };
 
 /**
@@ -132,9 +137,24 @@ for (const n of LAND_NODES)   NODE_BY_ID[n.id] = n;
  *              hasNo: boolean, noBoost: number, ql: number,
  *              currentHp: number, maxHp: number }}
  */
+// Phase β2-1: クラフトと同じ rarity スケールをクエスト計算にも適用 (= Common ランク 5
+//   農ヒーローが Legendary 0 を上回る逆転を防ぐ)。 値は factory-hero.js の
+//   RARITY_CRAFT_MULT と揃える (= 同じ rarity 重み)。
+const _RARITY_QUEST_MULT = {
+  common: 1.0, uncommon: 1.5, rare: 2.5, epic: 4.0, legendary: 6.0,
+};
+const _GARUDA_W_QUEST = 1 / 6;  // factory-hero.js の GARUDA_WEIGHT と同期
+
 export function heroQuestLevelBreakdown(hero) {
   const e = hero?.element || {};
-  const base = (e.garuda || 0) + (e.ifrit || 0) + (e.leviathan || 0) + (e.tiamat || 0);
+  // Phase β2-1: ガルーダ重み + ランク倍率 + レアリティ倍率を適用
+  const rank = Math.max(0, Math.min(5, hero?.rank || 0));
+  const rMult = 1 + 0.4 * rank;
+  const rarMult = _RARITY_QUEST_MULT[(hero?.rarity || "common").toLowerCase()] || 1.0;
+  const base = Math.round(
+    ((e.garuda || 0) * _GARUDA_W_QUEST + (e.ifrit || 0) +
+     (e.leviathan || 0) + (e.tiamat || 0)) * rMult * rarMult
+  );
   const cur = hero?.stamina?.current ?? 0;
   const max = hero?.stamina?.max ?? 0;
   const hpRatio = max > 0 ? (cur / max) : 1;
@@ -148,6 +168,9 @@ export function heroQuestLevelBreakdown(hero) {
     hasNo,
     noBoost,
     ql,
+    rank,
+    rankMult: rMult,
+    rarityMult: rarMult,
     currentHp: cur,
     maxHp: max,
   };
@@ -158,14 +181,20 @@ export function teamQuestLevel(team) {
   let total = 0;
   for (const h of team) {
     if (!h || !h.element) continue;
-    const elSum = (h.element.garuda || 0) + (h.element.ifrit || 0) +
-                  (h.element.leviathan || 0) + (h.element.tiamat || 0);
+    // Phase β2-1: ガルーダ重み + ランク倍率 + レアリティ倍率を統一適用
+    const rank = Math.max(0, Math.min(5, h.rank || 0));
+    const rMult = 1 + 0.4 * rank;
+    const rarMult = _RARITY_QUEST_MULT[(h.rarity || "common").toLowerCase()] || 1.0;
+    const elSum = (h.element.garuda || 0) * _GARUDA_W_QUEST +
+                  (h.element.ifrit || 0) +
+                  (h.element.leviathan || 0) +
+                  (h.element.tiamat || 0);
     const ratio = h.stamina && h.stamina.max > 0
       ? (h.stamina.current / h.stamina.max)
       : 1;
     // 「農」属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)
     const no = Array.isArray(h.attributes) && h.attributes.includes("no") ? 1.5 : 1.0;
-    total += Math.round(elSum * ratio * no);
+    total += Math.round(elSum * rMult * rarMult * ratio * no);
   }
   return total;
 }
