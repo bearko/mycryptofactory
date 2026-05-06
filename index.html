@@ -1547,6 +1547,22 @@
       border-bottom: 1px solid var(--border);
     }
     .market-view__title { margin: 0; font-size: 1rem; color: var(--accent); flex: 1; }
+    /* Phase 1D-38: マーケット内 GUM 表示 (= 雇用判断材料) */
+    .market-view__gum {
+      display: inline-flex; align-items: center; gap: 0.32rem;
+      font-weight: 700; color: var(--accent);
+      font-size: 0.95rem;
+      font-variant-numeric: tabular-nums;
+      padding: 0.2rem 0.55rem;
+      background: rgba(196,163,90,0.10);
+      border-radius: 999px;
+      border: 1px solid rgba(196,163,90,0.30);
+    }
+    .market-view__gum-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
+    .market-view__gum-num.market-gum--deficit {
+      color: #e84a4a;
+      text-shadow: 0 0 4px rgba(232,74,74,0.45);
+    }
     .market-view__back {
       appearance: none;
       background: var(--panel-2);
@@ -3229,6 +3245,8 @@
       font-size: 0.72rem; color: var(--ifrit);
       font-weight: 700;
     }
+    /* Phase 1D-38: 赤字許容での警告表示 (GUM 不足) — 黄色寄りで「使えるけど注意」感 */
+    .hire-plan__reason--warn { color: #d6a648; }
     .hire-plan__head {
       display: flex; align-items: baseline; justify-content: space-between;
     }
@@ -3450,6 +3468,8 @@
       gap: 0.4rem;
     }
     .hire-cand-card__cost { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+    /* Phase 1D-38: GUM 不足での雇用 (= 赤字契約) は警告表示で明示。 ボタンは押せる */
+    .hire-cand-card__cost--deficit { color: #e84a4a; }
     .hire-cand-card__hire-btn {
       appearance: none;
       background: var(--accent); color: #1a1420;
@@ -5296,6 +5316,9 @@
       <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="quest-view__back" id="questViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="quest-view__body">
+      <!-- Phase 1D-38: 現在の素材インベントリ strip (= どのクエストに行くか判断材料) -->
+      <div class="craft-mat-strip" id="questMatStrip"></div>
+
       <!-- 1. クエスト選択 (Phase 1D-11: bg image + materials + 選択 ボタンのカード) -->
       <section class="quest-section">
         <h3 class="quest-section__title" data-i18n="quest.section.pick">1. クエストを選択</h3>
@@ -5366,6 +5389,11 @@
   <div class="market-view hidden" id="marketView" role="dialog" aria-labelledby="marketViewTitle">
     <div class="market-view__header">
       <h2 class="market-view__title" id="marketViewTitle" data-i18n="market.title">マーケット</h2>
+      <!-- Phase 1D-38: 現在の保有 GUM をマーケット内でも常時表示 (= 雇用判断材料) -->
+      <span class="market-view__gum" id="marketViewGum" aria-label="GUM" title="GUM">
+        <img class="market-view__gum-icon" src="https://www.mycryptoheroes.net/_nuxt/img/icon_gum.cd9a4ae.png" alt="GUM" />
+        <span class="market-view__gum-num" id="marketViewGumNum">0</span>
+      </span>
       <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button><button type="button" class="market-view__back" id="marketViewBack" data-i18n="btn.back">← 戻る</button>
     </div>
     <div class="market-view__tabs">
