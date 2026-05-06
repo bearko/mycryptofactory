@@ -1307,6 +1307,19 @@ function maybeTriggerMonthlyEvent() {
   if (!(state.monthlyEventsFired instanceof Set)) {
     state.monthlyEventsFired = new Set(state.monthlyEventsFired || []);
   }
+  // Phase 1D-47: 1 月 4 週開始 → 年度末事前警告 (今年の支払い予定額を Mai が告知)
+  if (state.month === 1 && state.week === 4) {
+    const key = `${state.year}-salaryWarn`;
+    if (!state.monthlyEventsFired.has(key)) {
+      state.monthlyEventsFired.add(key);
+      const startY = state.startYear ?? null;
+      // 初年度 (= 1 周目 1 月) は支払いそのものが免除のため警告も出さない
+      const isFirstYear = startY != null ? (state.year === startY + 1) : false;
+      if (!isFirstYear || startY == null) {
+        setTimeout(triggerSalaryAdvanceWarning, 200);
+      }
+    }
+  }
   // 4/1 直前 (= 3 月 4 週終了) の検知: 直近 advanceWeek で week が 1 にロールオーバー
   // しているはず。 シンプルに「month == 4 && week == 1」をチェック。
   if (state.month === 4 && state.week === 1) {
@@ -1322,15 +1335,8 @@ function maybeTriggerMonthlyEvent() {
       if (!isFirstYear || startY == null) {
         setTimeout(triggerAnnualSalary, 200);
       } else {
-        // 初年度 → 通知のみ
-        state.notifications.push({
-          id: ++_notifId,
-          text: ti18n("salary.notif.firstYearWaived", "初年度のため年俸支払いは免除されました"),
-          element: "garuda",
-          value: 0,
-          createdTick: state.tickCount,
-        });
-        renderNotifications?.();
+        // Phase 1D-47: 初年度 → Mai popup でイントロ + 補助金セリフ + 来年予告 (旧仕様の通知タイルから昇格)
+        setTimeout(triggerFirstYearSalarySubsidy, 200);
       }
     }
   }
@@ -1358,9 +1364,64 @@ function maybeTriggerMonthlyEvent() {
   }
 }
 
+/** Phase 1D-47: 1 月 4 週の年度末事前警告 (Mai popup)。
+ *  支払い予定総額 + 赤字注意を案内。 ユーザー要望: GUM 数値を太字 + 強調色。 */
+function triggerSalaryAdvanceWarning() {
+  if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) return;
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  const total = state.ownedHeroes.reduce((s, h) => s + annualSalaryOf(h), 0);
+  // 強調用 HTML (太字 + アクセント色)。 maiSays は HTML 直接受け付けないため
+  // テキスト内に <strong>...</strong> を埋めて maiSays が許す HTML 装飾
+  // (factory-mai render 側で innerHTML 挿入される) を活用。
+  const totalEm = `<strong style="color:var(--accent);font-weight:800;">${total.toLocaleString()} GUM</strong>`;
+  const lines = lang === "en"
+    ? [
+        "Year-end is coming up.",
+        `Projected annual salary total is ${totalEm}.`,
+        "Paying beyond your GUM puts you in deficit — please be careful!",
+      ]
+    : [
+        "年度末が近づいてきました。",
+        `年俸の支払い額は今 ${totalEm} を予定しています。`,
+        "所持金を超えて支払いをすると赤字になりますのでご注意ください。",
+      ];
+  maiSaysSequence(lines);
+}
+
+/** Phase 1D-47: 初年度の年俸ターン (= 4 月 1 週) で出すマイ popup。
+ *  「年度末にヒーローの給与を…と思ったら今年は MCH 補助金が降りて支払い免除」
+ *  + 来年からは支払い発生する旨の注意書き。 旧通知タイルから昇格。 */
+function triggerFirstYearSalarySubsidy() {
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  const lines = lang === "en"
+    ? [
+        "Year-end has arrived. Time to pay your heroes' annual salaries…",
+        "…or so I thought! An MCH subsidy came through this year and the payment is waived!",
+        "From next year, salary payment kicks in at the end of March — please plan ahead!",
+      ]
+    : [
+        "年度末になりました。ヒーローの給与を支払います。",
+        "…と思ったら今年は MCH 補助金が降りて支払い免除されました！",
+        "来年からは 3 月末に給与支払いが発生するので、注意してくださいね。",
+      ];
+  // 通知タイルにも残す (= 履歴用)
+  state.notifications.push({
+    id: ++_notifId,
+    text: ti18n("salary.notif.firstYearWaived", "初年度のため年俸支払いは免除されました"),
+    element: "garuda",
+    value: 0,
+    createdTick: state.tickCount,
+  });
+  renderNotifications?.();
+  maiSaysSequence(lines);
+}
+
 /** 3 月年俸支払い: ヒーローごとの年俸を集計し、 GUM から差し引く。
  *  - 赤字に突入してもゲームオーバーにはならない (= deficit attrition 経路は別)
  *  - 支払額をマイの popup で内訳表示
+ *  - Phase 1D-47: 冒頭にイントロセリフを追加 (「年度末にヒーローの給与を支払います」)
  */
 function triggerAnnualSalary() {
   if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) {
@@ -1379,6 +1440,7 @@ function triggerAnnualSalary() {
   const rest = items.slice(topN);
   const restTotal = rest.reduce((s, it) => s + it.salary, 0);
   const linesJa = [
+    "年度末にヒーローの給与を支払います。",
     `${state.year} 年の年俸支払い時期です！`,
     `総額 ${total.toLocaleString()} GUM をお支払いしました。`,
   ];
@@ -1400,6 +1462,7 @@ function triggerAnnualSalary() {
   }
   const linesEn = lang === "en"
     ? [
+        "Year-end. Time to pay your heroes' annual salaries.",
         `${state.year} annual salary payment.`,
         `Total: ${total.toLocaleString()} GUM paid.`,
         ...top.map(it => `  ${tHero(it.hero.heroId, it.hero.nameEn || it.hero.nameJa)} ${"★".repeat(it.hero.rank || 0)} … ${it.salary.toLocaleString()}`),
@@ -2667,11 +2730,21 @@ function tickPassiveRestRecovery() {
   }
 }
 
-/** Phase 1D-19: idle ヒーローが「ヒマだな…」と発言する判定。
+/** Phase 1D-19 → 1D-47: idle ヒーローが「ヒマだな…」と発言する判定。
  *  週単位で 1 ヒーローにつき高々 1 回。各 tick で軽い確率で発火。
+ *
+ *  Phase 1D-47: 雇用担当 (= activeHire.recruiterId) や 出品担当
+ *  (= activeSales[].sellerId) として既に役割が割り振られているヒーローは
+ *  hero.state は IDLE のままだが「暇」 ではないので発言を抑制する。
+ *  視覚的にも workshop で「採用中」「取引中」 タグ + グレーアウト表示する
+ *  (renderWorkshop 側で対応)。
  */
 function maybeIdleSpeak(hero) {
   if (!hero || hero.state !== HERO_STATE.IDLE) return;
+  // 雇用担当 / 出品中 → 「忙しい」扱い、 idle セリフ抑制
+  if (state.activeHire && state.activeHire.recruiterId === hero.heroId) return;
+  if (Array.isArray(state.activeSales)
+      && state.activeSales.some(s => s.sellerId === hero.heroId)) return;
   const wkKey = (state.year * 1000) + (state.month * 50) + state.week;
   if (state.heroIdleSpokeAt[hero.heroId] === wkKey) return;  // 今週もう発言済み
   // 平均 5〜6 週に 1 回ペースで発言する程度の確率 (= 0.03 / tick × 7 tick/週 ≈ 0.21)
@@ -4176,19 +4249,27 @@ function renderHeroEnhanceList() {
       ? `<span class="ench-cmp"><span class="ench-cmp__cur">${curV.toLocaleString()}</span><span class="ench-cmp__arrow">→</span><span class="ench-cmp__nxt">${nxtV.toLocaleString()}</span></span>`
       : `<span class="ench-cmp"><span class="ench-cmp__cur ench-cmp__cur--max">${curV.toLocaleString()}</span></span>`;
 
+    // Phase 1D-47: クラフトパワー (4 元素) はアイコン + 値のみ表示。 元素名テキストは省略。
     const elemRows = ELEMENTS.map(k => `
-      <div class="ench-row">
-        <img class="ench-row__icon" src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" />
-        <span class="ench-row__label">${escapeHtml(elementLabel(k))}</span>
+      <div class="ench-row ench-row--icon-only">
+        <img class="ench-row__icon" src="${elementIconUrl(k)}" alt="${escapeHtml(elementLabel(k))}" title="${escapeHtml(elementLabel(k))}" />
         ${cmp(cur.elements[k], nxt ? nxt.elements[k] : 0)}
       </div>
     `).join("");
-    // 適性別 Lv 行
+    // 適性別 Lv 行 (Phase 1D-47: 「(士農工商)」の補足ラベルを i18n 側で削除)
     const lvRows = `
       <div class="ench-row ench-row--lv"><span class="ench-row__label" data-i18n="enhance.craftLv">${escapeHtml(ti18n("enhance.craftLv", "クラフトLv"))}</span>${cmp(cur.craftLv, nxt ? nxt.craftLv : 0)}</div>
       <div class="ench-row ench-row--lv"><span class="ench-row__label" data-i18n="enhance.questLv">${escapeHtml(ti18n("enhance.questLv", "クエストLv"))}</span>${cmp(cur.questLv, nxt ? nxt.questLv : 0)}</div>
       <div class="ench-row ench-row--lv"><span class="ench-row__label" data-i18n="enhance.merchantLv">${escapeHtml(ti18n("enhance.merchantLv", "マーチャントLv"))}</span>${cmp(cur.merchantLv, nxt ? nxt.merchantLv : 0)}</div>
     `;
+    // Phase 1D-47: 年俸 行 (rank で変動 → before/after 表示で実感しやすく)
+    const curSalary = annualSalaryOf({ rarity: hero.rarity, rank });
+    const nxtSalary = isMax ? curSalary : annualSalaryOf({ rarity: hero.rarity, rank: rank + 1 });
+    const salaryRow = `<div class="ench-row ench-row--lv ench-row--salary">
+      <span class="ench-row__label">${escapeHtml(ti18n("hero.salary", "年俸"))}</span>
+      ${cmp(curSalary, nxtSalary)}
+      <span class="ench-row__unit">GUM</span>
+    </div>`;
     const btnHtml = isMax
       ? `<div class="hero-enhance-row__max">${escapeHtml(ti18n("enhance.maxRank"))}</div>`
       : `<button type="button" class="hero-enhance-row__btn" data-enhance-hero="${hero.heroId}" ${insufficientGum ? "disabled" : ""}>
@@ -4204,6 +4285,7 @@ function renderHeroEnhanceList() {
           ${elemRows}
           <div class="ench-divider"></div>
           ${lvRows}
+          ${salaryRow}
         </div>
       </div>
       ${btnHtml}
@@ -5092,6 +5174,8 @@ function renderWorkshop() {
         <span class="workshop-hero__state-icon workshop-hero__state-icon--rest hidden" title="${escapeHtml(ti18n("hero.state.resting"))}">💤</span>
         <span class="workshop-hero__state-icon workshop-hero__state-icon--craft hidden" title="${escapeHtml(ti18n("hero.state.crafting"))}">⚒</span>
         <span class="workshop-hero__state-icon workshop-hero__state-icon--quest hidden" title="${escapeHtml(ti18n("hero.state.questing"))}">🗺</span>
+        <span class="workshop-hero__state-icon workshop-hero__state-icon--hire hidden" title="${escapeHtml(ti18n("hero.state.hiring", "採用中"))}">📣</span>
+        <span class="workshop-hero__state-icon workshop-hero__state-icon--sale hidden" title="${escapeHtml(ti18n("hero.state.selling", "取引中"))}">💼</span>
         <img class="workshop-hero__img" src="${hero.img()}" alt="" onerror="this.style.opacity='0.2'" />
         <div class="workshop-hero__stam"><div class="workshop-hero__stam-fill"></div></div>
         <div class="workshop-hero__floats"></div>
@@ -5106,12 +5190,20 @@ function renderWorkshop() {
     const isResting  = hero.state === HERO_STATE.RESTING;
     const isCrafting = hero.state === HERO_STATE.CRAFTING;
     const isQuesting = hero.state === HERO_STATE.QUESTING;
+    // Phase 1D-47: 雇用担当 / 出品中も「他作業」 として表示 (= グレーアウト + バッジ)
+    const isHiring  = !!(state.activeHire && state.activeHire.recruiterId === hero.heroId);
+    const isSelling = Array.isArray(state.activeSales)
+                      && state.activeSales.some(s => s.sellerId === hero.heroId);
     sprite.classList.toggle("workshop-hero--sleeping", isResting);
     sprite.classList.toggle("workshop-hero--questing", isQuesting);
     sprite.classList.toggle("workshop-hero--crafting", isCrafting);
+    sprite.classList.toggle("workshop-hero--hiring",  isHiring);
+    sprite.classList.toggle("workshop-hero--selling", isSelling);
     sprite.querySelector(".workshop-hero__state-icon--rest")?.classList.toggle("hidden", !isResting);
     sprite.querySelector(".workshop-hero__state-icon--craft")?.classList.toggle("hidden", !isCrafting);
     sprite.querySelector(".workshop-hero__state-icon--quest")?.classList.toggle("hidden", !isQuesting);
+    sprite.querySelector(".workshop-hero__state-icon--hire")?.classList.toggle("hidden", !isHiring);
+    sprite.querySelector(".workshop-hero__state-icon--sale")?.classList.toggle("hidden", !isSelling);
     const stamPct = hero.stamina.max > 0
       ? Math.max(0, Math.min(100, (hero.stamina.current / hero.stamina.max) * 100))
       : 0;
@@ -5616,6 +5708,9 @@ function renderHeroDetailPopup() {
   $("heroDetailStaminaText").textContent = `${hero.stamina.current} / ${hero.stamina.max}`;
   $("heroDetailStaminaFill").style.width = stamPct.toFixed(1) + "%";
   $("heroDetailCl").textContent = craftLevel(hero).toLocaleString();
+  // Phase 1D-47: 年俸表示 (rank で変動)
+  const salaryEl = $("heroDetailSalary");
+  if (salaryEl) salaryEl.textContent = `${annualSalaryOf(hero).toLocaleString()} GUM / 年`;
   // 4 色の craft 寄与値 (1/3 重み込み)
   $("heroDetailElements").innerHTML = ELEMENTS.map(k => {
     const v = elementValueForCraft(hero, k);
@@ -5881,7 +5976,10 @@ function maiSays(messageKey, options = {}) {
   if (!modal || !body) return;
   setMaiBody(ti18n(messageKey));
   modal.classList.remove("hidden");
-  pauseTime();
+  // Phase 1D-47 bug fix: 呼び出し側が pauseTime() 済みのケースで二重 pause
+  //   (= +2 / -1 で flags が 1 ずつリークしフリーズ) を防止。
+  //   既に paused なら自前 pause を skip → close 側の resumeTime と 1:1 に揃う。
+  if (state.pauseFlags === 0) pauseTime();
   _maiNextAction = options.onClose || null;
 }
 function closeMaiModal() {
@@ -5956,7 +6054,8 @@ function maiSaysSequence(messages, options = {}) {
   setMaiBody(_maiSeqQueue[_maiSeqIdx]);
   btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
-  pauseTime();
+  // Phase 1D-47 bug fix: maiSays と同様、呼び出し側が pauseTime() 済みなら skip。
+  if (state.pauseFlags === 0) pauseTime();
 }
 
 /** Phase 1D-5: 文脈に応じたチュートリアルを 1 度だけ表示する。
