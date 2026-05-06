@@ -3397,8 +3397,15 @@
       image-rendering: pixelated;
     }
     .quest-result__hero-hp { color: var(--ifrit); font-variant-numeric: tabular-nums; }
-    .quest-result__close {
+    /* Phase 1D-42: 結果画面の 3 ボタン (再出発 / クエストへ / 閉じる) */
+    .quest-result__actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
       align-self: stretch;
+    }
+    .quest-result__redeploy {
+      grid-column: 1 / -1;
       appearance: none;
       background: var(--accent); color: #1a1420;
       border: none; border-radius: 6px;
@@ -3406,6 +3413,20 @@
       font-weight: 800; font-size: 0.95rem;
       cursor: pointer;
       letter-spacing: 0.06em;
+    }
+    .quest-result__back, .quest-result__close {
+      appearance: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem;
+      font-weight: 700; font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .quest-result__back:hover, .quest-result__close:hover {
+      border-color: var(--accent);
     }
 
     /* Market 雇用タブ (Phase 1D-3) */
@@ -5599,7 +5620,11 @@
         <p class="quest-result__sec-title" data-i18n="quest.result.team">出撃メンバー</p>
         <div class="quest-result__team" id="questResultTeam"></div>
       </div>
-      <button type="button" class="quest-result__close" id="questResultClose" data-i18n="quest.result.close">OK</button>
+      <div class="quest-result__actions">
+        <button type="button" class="quest-result__redeploy" id="questResultRedeploy" data-i18n="quest.result.redeploy">休憩後、再出発</button>
+        <button type="button" class="quest-result__back" id="questResultBack" data-i18n="quest.result.back">クエストへ</button>
+        <button type="button" class="quest-result__close" id="questResultClose" data-i18n="quest.result.close">閉じる</button>
+      </div>
     </div>
   </div>
 

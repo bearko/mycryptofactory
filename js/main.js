@@ -159,6 +159,8 @@ const state = {
   year: 2018,
   month: 12,
   week: 1, // 1..4 within month
+  // Phase 1D-42: ゲーム開始年 (= 初年度判定用 — 翌年 3 月までは年俸免除)
+  startYear: 2018,
   weekProgress: 0, // 0..6 (seconds elapsed within current week, ticks 1/sec)
   // Resources
   // Phase 1D-21: 初期 GUM を 500 → 1000 に増額。最初の 1 体 Common 雇用 (300 GUM)
@@ -332,6 +334,17 @@ const state = {
    *  Map<buffKey, expireAtTick>: aroma / scroll / lubricant / roller / jade-statue (= 1 回限り)
    */
   buffs: /** @type {Record<string, number | true>} */ ({}),
+  /** Phase 1D-42: 月次イベント trigger 済みマーカー (二重発火防止)。 形式: "{year}-{eventKey}" */
+  monthlyEventsFired: /** @type {Set<string>} */ (new Set()),
+  /** Phase 1D-42: ノード経験値 (id → 累計 XP)。 levelFromNodeXp で Lv 1-100 に変換。
+   *  ベース QL に乗っかる形でクエストレベル合計に加算される。 */
+  nodeXp: /** @type {Record<string, number>} */ ({}),
+  /** Phase 1D-42: クラフト経験値 (累計)。 levelFromCraftXp で Lv 1-100 に変換。
+   *  チームクラフトレベル合計に上乗せ。 */
+  craftXp: /** @type {number} */ (0),
+  /** Phase 1D-42: クエスト「休憩後再出発」予約。 全員 HP 全回復後に同編成同ノードで自動派遣。
+   *  形式: { nodeId, difficulty, team:[heroId|null × 3] } | null */
+  pendingQuestRedeploy: /** @type {object | null} */ (null),
 };
 
 const QUEST_TEAM_SIZE = 3;
@@ -1172,6 +1185,241 @@ function maybeRestockShop() {
   if (typeof renderNotifications === "function") renderNotifications();
 }
 
+/** ─── Phase 1D-42: 月次イベント (3月年俸 / 4月採用イベント / 12月コンテストは PR-B2) ─── */
+
+/** rarity ごとの「ベース年俸」 (= rank 0 の hero 1 名分)。 ヒーロー雇用契約金の
+ *  約 0.5 〜 0.7 倍を目安に rank 連動でスケールさせる。 */
+const SALARY_BASE_BY_RARITY = {
+  common:     50,
+  uncommon:  150,
+  rare:      450,
+  epic:     1400,
+  legendary: 4000,
+};
+
+/** ヒーロー 1 名の年俸 = base × (1 + 0.4 × rank)
+ *  rank 0: 1.0x / rank 5: 3.0x  (= rankMultiplier と同じカーブ) */
+function annualSalaryOf(hero) {
+  if (!hero) return 0;
+  const base = SALARY_BASE_BY_RARITY[hero.rarity] || SALARY_BASE_BY_RARITY.common;
+  const rankBoost = 1 + 0.4 * Math.max(0, Math.min(5, hero.rank || 0));
+  return Math.round(base * rankBoost);
+}
+
+/** 月次イベント発火判定。 advanceWeek の毎週末 (= week=1 になった直後) に呼ぶ。
+ *  - 3 月 4 週終了 (= 4/1 直前) → 年俸支払い (2 年目以降のみ)
+ *  - 4 月 4 週終了 (= 5/1 直前) → 採用イベント
+ *  state.monthlyEventsFired で「{year}-salary」「{year}-recruit」キーを保存し
+ *  二重発火を防ぐ。 */
+function maybeTriggerMonthlyEvent() {
+  if (!(state.monthlyEventsFired instanceof Set)) {
+    state.monthlyEventsFired = new Set(state.monthlyEventsFired || []);
+  }
+  // 4/1 直前 (= 3 月 4 週終了) の検知: 直近 advanceWeek で week が 1 にロールオーバー
+  // しているはず。 シンプルに「month == 4 && week == 1」をチェック。
+  if (state.month === 4 && state.week === 1) {
+    const key = `${state.year}-salary`;
+    if (!state.monthlyEventsFired.has(key)) {
+      state.monthlyEventsFired.add(key);
+      // 初年度 (= ゲーム開始の年) は免除。 開始年 = state.startYear だが、
+      // 旧データに startYear が無いケースを考慮し state.year - 1 で判定 (= 1 周以上経過)。
+      const startY = state.startYear ?? null;
+      const isFirstYear = startY != null ? (state.year === startY + 1) : false;
+      // ↑ 「2 年目から」 = 開始年の翌年 (= state.year === startY + 1) で初支払い、
+      //   そこから毎年。 startY 不明のときは保守的に支払う (= 旧 save 互換)。
+      if (!isFirstYear || startY == null) {
+        setTimeout(triggerAnnualSalary, 200);
+      } else {
+        // 初年度 → 通知のみ
+        state.notifications.push({
+          id: ++_notifId,
+          text: ti18n("salary.notif.firstYearWaived", "初年度のため年俸支払いは免除されました"),
+          element: "garuda",
+          value: 0,
+          createdTick: state.tickCount,
+        });
+        renderNotifications?.();
+      }
+    }
+  }
+  // 5/1 直前 (= 4 月 4 週終了) の検知 → 採用イベント
+  if (state.month === 5 && state.week === 1) {
+    const key = `${state.year}-recruit`;
+    if (!state.monthlyEventsFired.has(key)) {
+      state.monthlyEventsFired.add(key);
+      setTimeout(triggerRecruitmentEvent, 200);
+    }
+  }
+}
+
+/** 3 月年俸支払い: ヒーローごとの年俸を集計し、 GUM から差し引く。
+ *  - 赤字に突入してもゲームオーバーにはならない (= deficit attrition 経路は別)
+ *  - 支払額をマイの popup で内訳表示
+ */
+function triggerAnnualSalary() {
+  if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) {
+    return;
+  }
+  pauseTime();
+  const lang = getLang() === "en" ? "en" : "ja";
+  const items = state.ownedHeroes.map(h => ({ hero: h, salary: annualSalaryOf(h) }));
+  const total = items.reduce((s, it) => s + it.salary, 0);
+  // GUM 控除 (= 赤字突入を許容)
+  state.gum -= total;
+  // 内訳テキスト (上位 5 名 + 残りは集約)
+  items.sort((a, b) => b.salary - a.salary);
+  const topN = 5;
+  const top = items.slice(0, topN);
+  const rest = items.slice(topN);
+  const restTotal = rest.reduce((s, it) => s + it.salary, 0);
+  const linesJa = [
+    `${state.year} 年の年俸支払い時期です！`,
+    `総額 ${total.toLocaleString()} GUM をお支払いしました。`,
+  ];
+  if (top.length > 0) {
+    linesJa.push("内訳 (高い順):");
+    for (const it of top) {
+      const name = tHero(it.hero.heroId, it.hero.nameJa);
+      const stars = "★".repeat(it.hero.rank || 0);
+      linesJa.push(`  ${name}${stars ? " " + stars : ""} … ${it.salary.toLocaleString()} GUM`);
+    }
+    if (rest.length > 0) {
+      linesJa.push(`  他 ${rest.length} 名 … ${restTotal.toLocaleString()} GUM`);
+    }
+  }
+  if ((state.gum || 0) < 0) {
+    linesJa.push(`現在所持金: ${state.gum.toLocaleString()} GUM (赤字)。 クラフトしてエクステンションを売りましょう！`);
+  } else {
+    linesJa.push(`現在所持金: ${state.gum.toLocaleString()} GUM`);
+  }
+  const linesEn = lang === "en"
+    ? [
+        `${state.year} annual salary payment.`,
+        `Total: ${total.toLocaleString()} GUM paid.`,
+        ...top.map(it => `  ${tHero(it.hero.heroId, it.hero.nameEn || it.hero.nameJa)} ${"★".repeat(it.hero.rank || 0)} … ${it.salary.toLocaleString()}`),
+        rest.length > 0 ? `  +${rest.length} more … ${restTotal.toLocaleString()}` : "",
+        (state.gum || 0) < 0
+          ? `Current GUM: ${state.gum.toLocaleString()} (deficit). Sell extensions to recover!`
+          : `Current GUM: ${state.gum.toLocaleString()}`,
+      ].filter(Boolean)
+    : null;
+  const lines = lang === "en" ? linesEn : linesJa;
+  maiSaysSequence(lines, { onClose: () => {
+    renderHeader?.();
+    // 赤字突入を検知 (= マイの初回助言の予約フラグ等)
+    checkDeficitTransition?.();
+  }});
+}
+
+/** 4 月採用イベント: 手持ちヒーローの最高 rarity と同じ rarity で雇用候補を 1 set
+ *  ノーコストで生成し、 既存の hire candidates 経路に流す。 */
+function triggerRecruitmentEvent() {
+  if (!Array.isArray(state.ownedHeroes) || state.ownedHeroes.length === 0) return;
+  // 手持ち最高 rarity 判定
+  const ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
+  let maxRarityIdx = 0;
+  for (const h of state.ownedHeroes) {
+    const idx = ORDER.indexOf((h.rarity || "common").toLowerCase());
+    if (idx > maxRarityIdx) maxRarityIdx = idx;
+  }
+  const targetRarity = ORDER[maxRarityIdx];
+  // 該当 rarity に対応する HIRE_PLAN を探す (recruiterMinRarity == targetRarity)
+  const plan = HIRE_PLANS.find(p => p.recruiterMinRarity === targetRarity);
+  if (!plan) return;
+  pauseTime();
+  const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
+  const candidates = rollHireCandidates(plan, ownedIds);
+  if (candidates.length === 0) {
+    // 候補ゼロ → スキップ
+    resumeTime();
+    return;
+  }
+  // 既存 activeHire の構造に乗せる (= candidates 即時生成済み、 plan は仮想 / cost 0)
+  state.activeHire = {
+    planId: plan.id,
+    recruiterId: null,        // 採用担当不要 (= イベント特権)
+    startedAtTick: state.tickCount,
+    candidates,
+    isRecruitmentEvent: true,  // 識別マーカー
+  };
+  const lang = getLang() === "en" ? "en" : "ja";
+  const lines = lang === "en"
+    ? [
+        "It's spring! Word of your workshop has spread.",
+        `New hires of ${ti18n("rarity." + targetRarity)} tier are at your door — no plan cost!`,
+      ]
+    : [
+        "春の採用シーズンです！",
+        `工房の評判を聞いて ${ti18n("rarity." + targetRarity)} のヒーローが応募してきました (採用プラン無料)！`,
+      ];
+  maiSaysSequence(lines, {
+    onClose: () => {
+      state.marketTab = "hire";
+      openMarketView?.();
+      setMarketTab?.("hire");
+    },
+  });
+}
+
+/** ─── Phase 1D-42: ノード経験値 / クラフト経験値 ─── */
+
+/** XP テーブル: 累計 XP → Lv (1〜100)。 緩やかなカーブ。
+ *  Lv1 = 0 XP / Lv50 ≈ 12,250 XP / Lv100 = 50,500 XP (= sum of 1..100 × 10) */
+function levelFromXp(xp) {
+  if (!xp || xp <= 0) return 1;
+  // Lv L → 必要累計 = 10 × L × (L-1) / 2 (= 三角数)
+  // 逆算: L = floor((1 + sqrt(1 + 8*xp/10)) / 2) + 1 だが安全のためループ
+  let lv = 1;
+  let need = 0;
+  while (lv < 100) {
+    need += 10 * lv;
+    if (xp < need) break;
+    lv++;
+  }
+  return Math.max(1, Math.min(100, lv));
+}
+
+/** ノードの現在 Lv (= state.nodeXp[nodeId] から算出)。 */
+function nodeLevel(nodeId) {
+  return levelFromXp(state.nodeXp?.[nodeId] || 0);
+}
+
+/** クラフトの現在 Lv (= state.craftXp から算出)。 */
+function craftLevelFromXp() {
+  return levelFromXp(state.craftXp || 0);
+}
+
+/** 難易度 + 結果に応じた XP 量を返す。 中級・上級ほど多く、 失敗でも一部入る。
+ *  Common Lv100 でも上級 80% を 5 体編成で クリアできる目安として、 上級成功で
+ *  ~250、 中級 ~120、 初級 ~50 程度。 */
+function questXpGain(difficulty, success) {
+  const base = difficulty === "hard" ? 250 : difficulty === "normal" ? 120 : 50;
+  return success ? base : Math.round(base * 0.2);  // 失敗でも 20% は入る
+}
+
+/** クラフト完了で得られる XP。 rarity が高いほど多く入る。 共通 ~30 / Legendary ~600。 */
+function craftXpGainForRarity(rarity) {
+  switch ((rarity || "common").toLowerCase()) {
+    case "uncommon":  return 80;
+    case "rare":      return 200;
+    case "epic":      return 400;
+    case "legendary": return 600;
+    default:          return 30;
+  }
+}
+
+/** ノード Lv による QL ボーナス。 1 Lv = +6 QL (= Lv100 で +600)。
+ *  ベース QL に加算され、 「Common ヒーロー 5 体 + ノード Lv100 で上級 80% 圏」
+ *  になるよう設計。 */
+function nodeLvBonusForQuest(nodeId) {
+  return nodeLevel(nodeId) * 6;
+}
+
+/** クラフト Lv によるチームクラフト Lv ボーナス。 1 Lv = +5 (= Lv100 で +500)。 */
+function craftLvBonusForCraft() {
+  return craftLevelFromXp() * 5;
+}
+
 /** ショップ view を開く */
 function openShopView() {
   const view = $("shopView");
@@ -1562,6 +1810,10 @@ function onTick() {
   }
   // Phase 1B-5: 任意 RESTING ヒーロー (= activeCraft / activeQuest 配属外) の自動回復
   tickPassiveRestRecovery();
+  // Phase 1D-42: 「休憩後、再出発」 予約があり、 全員 IDLE まで戻ったら自動派遣
+  if (state.pendingQuestRedeploy) {
+    tryAutoRedeployQuest();
+  }
   // Phase 1D-32: 受注クラフトの期限切れ判定 (進行中 commission の deadline 越え)
   tickCommissionDeadlines();
   // Phase 1D-32: 赤字 6 ヶ月超 → 3 ヶ月ごとに離職 → 0 名でゲームオーバー
@@ -1617,7 +1869,8 @@ function tickActiveCraft() {
   const ac = state.activeCraft;
   if (!ac) return;
   let activeWorkers = 0;
-  let totalCraftLv = 0;
+  // Phase 1D-42: 工房クラフト経験値の Lv ボーナスを基底加算
+  let totalCraftLv = craftLvBonusForCraft();
   for (let slotIdx = 0; slotIdx < ac.team.length; slotIdx++) {
     const heroId = ac.team[slotIdx];
     if (heroId == null) continue;
@@ -1968,6 +2221,25 @@ function triggerCraftCompletion(ac) {
   const qualityRatio = tgtSum > 0 ? progSum / tgtSum : 1;
   const qualityTier  = pickQualityTier(qualityRatio, allMet);
 
+  // Phase 1D-42: クラフト経験値 (CE) 加算。 受注 / 新規どちらでも同量入る。
+  //   完成時に rarity に応じて加算 → Lvup 時は通知タイル
+  const ext = EXTENSION_BY_ID[String(ac.extId)];
+  if (ext) {
+    const xpGain = craftXpGainForRarity(ext.rarity);
+    const lvBefore = craftLevelFromXp();
+    state.craftXp = (state.craftXp || 0) + xpGain;
+    const lvAfter = craftLevelFromXp();
+    if (lvAfter > lvBefore) {
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("xp.notif.craftLevelUp", "クラフト Lv {lv}").replace("{lv}", String(lvAfter)),
+        element: "ifrit",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+    }
+  }
+
   // Phase 1D-32: 受注クラフトは別フローで完了処理 (倉庫入り無し / 報酬 GUM)
   if (ac.commissionId != null) {
     triggerCommissionResult(ac, allMet, qualityRatio);
@@ -2174,6 +2446,27 @@ function triggerQuestComplete(aq) {
     }
   }
 
+  // Phase 1D-42: ノード経験値 (= CE) 加算。 中級・上級ほど多く、 失敗でも一部入る。
+  if (node) {
+    const xpGain = questXpGain(aq.difficulty, success);
+    if (!state.nodeXp) state.nodeXp = {};
+    const before = state.nodeXp[node.id] || 0;
+    const lvBefore = nodeLevel(node.id);
+    state.nodeXp[node.id] = before + xpGain;
+    const lvAfter = nodeLevel(node.id);
+    // Lvup が起こったら通知
+    if (lvAfter > lvBefore) {
+      const nodeName = (getLang() === "en" ? (node.nameEn || node.nameJa) : node.nameJa);
+      state.notifications.push({
+        id: ++_notifId,
+        text: ti18n("xp.notif.nodeLevelUp", "{node} Lv {lv}").replace("{node}", nodeName).replace("{lv}", String(lvAfter)),
+        element: "leviathan",
+        value: 0,
+        createdTick: state.tickCount,
+      });
+    }
+  }
+
   // 配属ヒーローの HP を 0 にして RESTING 入り (ユーザー仕様):
   // 「成功しても編成中のヒーローの体力がゼロになる」
   for (const id of aq.team) {
@@ -2368,7 +2661,10 @@ function renderQuestView() {
   const node = NODE_BY_ID[state.questPickedNodeId];
   const team = state.questTeam.map(id => id == null ? null : findHero(id));
   const baseLv = QUEST_BASE_LEVEL[state.questPickedDifficulty];
-  const teamLv = teamQuestLevel(team);
+  // Phase 1D-42: ベース QL に「ノード Lv ボーナス」を加算
+  const heroQl = teamQuestLevel(team);
+  const nodeBonus = node ? nodeLvBonusForQuest(node.id) : 0;
+  const teamLv = heroQl + nodeBonus;
   const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
   const commentKey = successRateCommentKey(rate);
   const isHard = state.questPickedDifficulty === "hard";
@@ -2408,7 +2704,7 @@ function renderQuestView() {
           </div>`;
         }).join("")}
       </div>
-      <div class="quest-detail-panel__lv">${escapeHtml(ti18n("quest.detail.questLv"))}: <strong>${teamLv}</strong> / ${baseLv}</div>
+      <div class="quest-detail-panel__lv">${escapeHtml(ti18n("quest.detail.questLv"))}: <strong>${teamLv}</strong> / ${baseLv} <span class="quest-hero-pick__ql-info" data-team-ql-info title="${escapeHtml(ti18n("quest.qlInfo.teamTitle", "チームクエストレベル内訳"))}">i</span></div>
       <div class="quest-detail-panel__rate">${escapeHtml(ti18n("quest.detail.rate"))}: <strong data-rate="${rateAttr}">${escapeHtml(rateText)}</strong></div>
     </div>
     <div class="quest-detail-panel__mai">
@@ -2567,6 +2863,61 @@ function closeQlInfoModal() {
   resumeTime();
 }
 
+/** Phase 1D-42: チーム QL の内訳ポップアップ
+ *  ヒーロー個別の QL 合計 + 現在選択中ノードの Lv ボーナスを表示する。
+ *  クエスト編成画面 (quest-detail-panel) の「Lv」値の隣の ⓘ から呼び出す。 */
+function openTeamQlInfoModal() {
+  const node = NODE_BY_ID[state.questPickedNodeId];
+  const team = state.questTeam.map(id => id == null ? null : findHero(id));
+  const heroQl  = teamQuestLevel(team);
+  const nodeBon = node ? nodeLvBonusForQuest(node.id) : 0;
+  const nodeLv  = node ? nodeLevel(node.id) : 0;
+  const nodeName = node
+    ? (getLang() === "en" ? (node.nameEn || node.nameJa) : node.nameJa)
+    : "";
+  const total = heroQl + nodeBon;
+  const body = $("qlInfoBody");
+  if (!body) return;
+  // ヒーロー内訳 (= 編成済みヒーローのみ、抜き出して個別 QL を併記)
+  const heroRows = team
+    .filter(h => h != null)
+    .map(h => {
+      const bd = heroQuestLevelBreakdown(h);
+      const name = tHero(h.heroId, h.nameJa);
+      return `<div class="ql-info-row">
+        <span>${escapeHtml(name)}</span>
+        <strong>${bd.ql}</strong>
+      </div>`;
+    }).join("");
+  const nodeRow = node
+    ? `<div class="ql-info-row">
+        <span>${escapeHtml(
+          ti18n("quest.qlInfo.nodeBonus", "{node} Lv {lv} ボーナス")
+            .replace("{node}", nodeName)
+            .replace("{lv}", String(nodeLv))
+        )}</span>
+        <strong>+${nodeBon}</strong>
+      </div>`
+    : "";
+  body.innerHTML = `
+    <div class="ql-info-row"><span style="font-weight:700">${escapeHtml(
+      ti18n("quest.qlInfo.teamTitle", "チームクエストレベル内訳")
+    )}</span></div>
+    ${heroRows}
+    <div class="ql-info-row">
+      <span>${escapeHtml(ti18n("quest.qlInfo.heroSum", "ヒーロー QL 合計"))}</span>
+      <strong>${heroQl}</strong>
+    </div>
+    ${nodeRow}
+    <div class="ql-info-row ql-info-row--total">
+      <span>${escapeHtml(ti18n("quest.qlInfo.total"))}</span>
+      <strong>${total}</strong>
+    </div>
+  `;
+  $("qlInfoModal")?.classList.remove("hidden");
+  pauseTime();
+}
+
 /** Phase 1D-12: ランドセクター通行証を購入 (or 最初のランドは無料 home 設定)。
  *  - 既に home land 未設定なら、選択ランドを home land に (無料)
  *  - 既に home land あり → 500 GUM で通行証購入
@@ -2624,7 +2975,8 @@ function startActiveQuest() {
   const team = state.questTeam.slice();
   const teamHeroes = team.map(id => id == null ? null : findHero(id));
   const baseLv = QUEST_BASE_LEVEL[diff];
-  let teamLv = teamQuestLevel(teamHeroes);
+  // Phase 1D-42: ベース QL に「ノード Lv ボーナス」を加算
+  let teamLv = teamQuestLevel(teamHeroes) + nodeLvBonusForQuest(node.id);
   // Phase 1D-34: 翡翠の像バフが有効なら QL を 1.5x した上で 1 回限りの効果を消費
   if (isBuffActive("jade-statue")) {
     teamLv = Math.round(teamLv * 1.5);
@@ -2765,6 +3117,71 @@ function closeQuestResultScreen() {
   }
 }
 
+/** Phase 1D-42: 「休憩後、再出発」 ─ 同編成・同ノードでの自動再派遣を予約。
+ *  HP 全回復 (= 全員 IDLE) を待って onTick から tryAutoRedeployQuest が
+ *  startActiveQuest を実行する。 待機中はチームメンバーを isHeroLocked で
+ *  ロックし、他作業 (クラフト/雇用/出品など) には組めなくする。 */
+function closeAndRedeployQuest() {
+  const pq = state.pendingQuestResult;
+  if (!pq) { closeQuestResultScreen(); return; }
+  state.pendingQuestRedeploy = {
+    nodeId: pq.nodeId,
+    difficulty: pq.difficulty,
+    team: pq.team.slice(),
+  };
+  closeQuestResultScreen();
+}
+
+/** Phase 1D-42: 「クエストへ」 ─ 結果画面を閉じてクエスト編成画面に遷移。
+ *  直前のノード/難易度を pre-select することでユーザー操作を最短化する。
+ *  ヒーローは HP=0 (RESTING) なので新規編成自体は別途回復を待つ必要がある。 */
+function closeAndOpenQuestPick() {
+  const pq = state.pendingQuestResult;
+  if (pq) {
+    state.questPickedNodeId    = pq.nodeId;
+    state.questPickedDifficulty = pq.difficulty;
+    // ノードタイプ (normal/land) も復元
+    if (LAND_NODES.some(n => n.id === pq.nodeId)) {
+      state.questNodeType = "land";
+    } else if (NORMAL_NODES.some(n => n.id === pq.nodeId)) {
+      state.questNodeType = "normal";
+    }
+  }
+  closeQuestResultScreen();
+  setTimeout(() => openQuestView(), 50);
+}
+
+/** Phase 1D-42: 待機中チームの自動再派遣を試行。 onTick から呼ばれる。
+ *  - state.pendingQuestRedeploy が無ければ何もしない
+ *  - チーム全員の state が IDLE になったら redeploy 実行 (= startActiveQuest)
+ *  - activeQuest 進行中 (= 既に派遣された) なら redeploy 予約をクリア */
+function tryAutoRedeployQuest() {
+  const r = state.pendingQuestRedeploy;
+  if (!r) return;
+  if (state.activeQuest) return;  // 既に何らかのクエスト中ならスキップ (= 別経由で deploy 済)
+  // 全員 IDLE 判定
+  for (const id of r.team) {
+    if (id == null) continue;
+    const h = findHero(id);
+    if (!h) return;  // ヒーロー消失 (= 売却等) → 待機を解除
+    if (h.state !== HERO_STATE.IDLE) return;  // まだ休憩中
+  }
+  // 全員 IDLE → redeploy
+  const node = NODE_BY_ID[r.nodeId];
+  if (!node) {
+    state.pendingQuestRedeploy = null;
+    return;
+  }
+  // 正規 startActiveQuest フローに乗せるため state を整える
+  state.questPickedNodeId    = r.nodeId;
+  state.questPickedDifficulty = r.difficulty;
+  state.questNodeType = LAND_NODES.some(n => n.id === r.nodeId) ? "land" : "normal";
+  state.questTeam = r.team.slice();
+  // 予約をクリアしてから派遣 (= startActiveQuest 内で activeQuest 設定)
+  state.pendingQuestRedeploy = null;
+  startActiveQuest();
+}
+
 /** クラフト値獲得時の浮上 +N (CSS animation 経由で 1 秒後に消える)。
  *  Phase 1D-12: slotIdx ではなく heroId をキーに使う (workshop が ownedHeroes
  *  全員を表示するようになり、slot 番号と sprite の対応が変わったため)。 */
@@ -2838,6 +3255,8 @@ function advanceWeek() {
   }
   // Phase 1D-34: 11 月 4 週でショップ在庫補充
   maybeRestockShop();
+  // Phase 1D-42: 月次イベントトリガー (3 月 4 週: 年俸 / 4 月 4 週: 採用イベント)
+  maybeTriggerMonthlyEvent();
   // Phase 1D-26: 10 年エンディング (2028年11月4週 終了 = 2028/12/1 直前)
   //   ランキング集計の締切。 集計画面 → 引き続きプレイ可能
   if (!state.endgameTriggered10y &&
@@ -2926,6 +3345,9 @@ function isHeroLocked(heroId, opts = {}) {
       && state.activeCraft.team.includes(heroId)) return true;
   if (state.activeQuest && Array.isArray(state.activeQuest.team)
       && state.activeQuest.team.includes(heroId)) return true;
+  // Phase 1D-42: 自動再派遣予約中のチームは HP 回復待ちでも他作業に組めない強 lock。
+  if (state.pendingQuestRedeploy && Array.isArray(state.pendingQuestRedeploy.team)
+      && state.pendingQuestRedeploy.team.includes(heroId)) return true;
   // 編成 roster (= 次回派遣に予約) は opts で抑止できる弱 lock
   if (!opts.ignoreCraftTeam && Array.isArray(state.craftTeam) && state.craftTeam.includes(heroId)) return true;
   if (!opts.ignoreQuestTeam && Array.isArray(state.questTeam) && state.questTeam.includes(heroId)) return true;
@@ -6899,6 +7321,14 @@ async function init() {
       if (Number.isFinite(hid)) openQlInfoModal(hid);
     }
   }, true);  // capture phase でヒーロー toggle より先に拾う
+  // Phase 1D-42: チーム QL 内訳 ⓘ ボタン (quest-detail-panel 上)
+  $("questDetailPanel")?.addEventListener("click", (ev) => {
+    const info = ev.target.closest("[data-team-ql-info]");
+    if (info) {
+      ev.stopPropagation();
+      openTeamQlInfoModal();
+    }
+  });
   // QL info popup close
   $("qlInfoClose")?.addEventListener("click", closeQlInfoModal);
   $("qlInfoModal")?.addEventListener("click", (e) => {
@@ -6969,6 +7399,9 @@ async function init() {
   });
   $("questStartBtn")?.addEventListener("click", startActiveQuest);
   $("questResultClose")?.addEventListener("click", closeQuestResultScreen);
+  // Phase 1D-42: 結果画面の追加ボタン
+  $("questResultRedeploy")?.addEventListener("click", closeAndRedeployQuest);
+  $("questResultBack")?.addEventListener("click", closeAndOpenQuestPick);
 
   // Phase 1D-35: おまかせ編成ボタン (3 箇所に共通動作で配置)
   $("craftAutoFormBtn")?.addEventListener("click", autoFormCraftTeam);

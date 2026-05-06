@@ -101,6 +101,9 @@
   "quest.qlInfo.hpRatio":      { "ja": "× 体力比率", "en": "× HP ratio" },
   "quest.qlInfo.noBoost":      { "ja": "× 農属性ブースト", "en": "× 農 boost" },
   "quest.qlInfo.total":        { "ja": "= クエストLv", "en": "= Quest Lv" },
+  "quest.qlInfo.teamTitle":    { "ja": "チームクエストレベル内訳", "en": "Team Quest Lv breakdown" },
+  "quest.qlInfo.heroSum":      { "ja": "ヒーロー QL 合計", "en": "Hero QL total" },
+  "quest.qlInfo.nodeBonus":    { "ja": "{node} Lv {lv} ボーナス", "en": "{node} Lv {lv} bonus" },
   "quest.land.buyBtn":         { "ja": "ランドを購入 ({n} GUM)", "en": "Buy land ({n} GUM)" },
   "quest.land.joinFreeBtn":    { "ja": "ランドに加入 (初回のみ 0 GUM)", "en": "Join land (first one is FREE)" },
   "quest.land.mai.firstHome":  { "ja": "最初のランドはホームランドとして無料で取得しました！以降このランドは通行証なしで挑戦できます。", "en": "Your first land is your home — claimed for free! This land won't need a pass." },
@@ -130,6 +133,11 @@
   "hero.state.questing":       { "ja": "クエスト中", "en": "On quest" },
   "hero.state.resting":        { "ja": "休憩中",     "en": "Resting" },
   "hero.state.assigned":       { "ja": "配属中",     "en": "Assigned" },
+  "hero.state.redeploying":    { "ja": "遠征準備中", "en": "Preparing redeploy" },
+
+  "xp.notif.nodeLevelUp":      { "ja": "{node} Lv {lv}", "en": "{node} Lv {lv}" },
+  "xp.notif.craftLevelUp":     { "ja": "クラフト Lv {lv}", "en": "Craft Lv {lv}" },
+  "salary.notif.firstYearWaived": { "ja": "初年度のため年俸支払いは免除されました", "en": "First year salaries waived" },
 
   "hero.sort":                 { "ja": "並び順:",                  "en": "Sort:" },
   "hero.sort.clDesc":          { "ja": "クラフトLv (高い順)",      "en": "Craft Lv (desc)" },
@@ -340,7 +348,9 @@
   "quest.result.noReward":     { "ja": "今回は素材が得られませんでした。", "en": "No materials obtained this time." },
   "quest.result.rewards":      { "ja": "獲得素材", "en": "Rewards" },
   "quest.result.team":         { "ja": "出撃メンバー", "en": "Party" },
-  "quest.result.close":        { "ja": "OK", "en": "OK" },
+  "quest.result.close":        { "ja": "閉じる", "en": "Close" },
+  "quest.result.redeploy":     { "ja": "休憩後、再出発", "en": "Rest, then redeploy" },
+  "quest.result.back":         { "ja": "クエストへ", "en": "Back to quest pick" },
 
   "craft.weeks":               { "ja": "{n} 週", "en": "{n} wk" },
   "craft.targets":             { "ja": "必要基準値", "en": "Required base values" },
