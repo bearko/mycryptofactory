@@ -29,8 +29,13 @@ const LS_API_URL = "mcf.rankingApiUrl";
 const LS_PLAYER_NAME = "mcf.playerName";
 
 /** 組み込みデフォルト (base64)。空文字なら未設定扱い → ローカル送信無効。
- *  ユーザーが GAS デプロイ後に localStorage か直書きで設定する想定。 */
-const _DEFAULT_API_URL_ENC = "";
+ *  Phase β2 hotfix: bearko デプロイの公式 GAS URL を埋め込み (= 起動だけで
+ *  ランキング機能が利用可能)。 ユーザーが上級設定で別 URL に上書き可能。
+ *
+ *  decoded URL:
+ *    https://script.google.com/macros/s/AKfycbweVO0bT_gSu-LpRKrKn7nQ04CkROJgBH18fucZ_64ti3OOqq0BzChJDP40rRWOGpGQ6g/exec
+ */
+const _DEFAULT_API_URL_ENC = "aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J3ZVZPMGJUX2dTdS1McFJLcktuN25RMDRDa1JPSmdCSDE4ZnVjWl82NHRpM09PcXEwQnpDaEpEUDQwclJXT0dwR1E2Zy9leGVj";
 function _decodeDefault() {
   try {
     if (!_DEFAULT_API_URL_ENC) return null;
