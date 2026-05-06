@@ -111,9 +111,34 @@ export function rankUpCost(hero) {
  *  (Phase 1D-1 では 1/3 だったが、まだ他クラフト値の倍ほど大きいので 1/6 に再調整) */
 export const GARUDA_WEIGHT = 1 / 6;
 
+/** Phase 1D-43: レアリティごとのクラフト力係数。
+ *  rank-0 状態では Common/Uncommon の素ステ差が小さく (avg 48 vs 50)、
+ *  rarity 違いが工期に体感差として現れなかった。レアリティ自体に
+ *  「クラフト熟練」係数を持たせて、同レアリティ rank-0 ×5 では
+ *  自身のレアリティ ext を短縮できないが、一段下のレア ext は短縮できる
+ *  バランスにする。 (REQUIRED_CRAFT_LV_BY_RARITY と対で再調整。)
+ *
+ *  - Common    1.0 (基準)
+ *  - Uncommon  1.5
+ *  - Rare      2.5
+ *  - Epic      4.0
+ *  - Legendary 6.0
+ */
+export const RARITY_CRAFT_MULT = {
+  common:    1.0,
+  uncommon:  1.5,
+  rare:      2.5,
+  epic:      4.0,
+  legendary: 6.0,
+};
+export function rarityCraftMult(hero) {
+  return RARITY_CRAFT_MULT[(hero?.rarity || "").toLowerCase()] || 1.0;
+}
+
 /** クラフトレベル = ガルーダ × 1/6 + 他 3 元素 の合計 (整数に丸め)。
  *  + 工 属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1)。
- *  + Phase 1D-20: ランクアップ倍率 (rankMultiplier) を適用。 */
+ *  + Phase 1D-20: ランクアップ倍率 (rankMultiplier) を適用。
+ *  + Phase 1D-43: レアリティ係数 (rarityCraftMult) を適用。 */
 export function craftLevel(hero) {
   if (!hero || !hero.element) return 0;
   const e = hero.element;
@@ -123,7 +148,8 @@ export function craftLevel(hero) {
                (e.tiamat || 0);
   const boost = attributeBoostFactor(hero, "ko"); // 工 = クラフト
   const rankMult = rankMultiplier(hero);
-  return Math.round(base * boost * rankMult);
+  const rarMult  = rarityCraftMult(hero);
+  return Math.round(base * boost * rankMult * rarMult);
 }
 
 /** ヒーロー個別の元素値を「クラフト用 (= ガルーダ × GARUDA_WEIGHT)」に変換した表示値。

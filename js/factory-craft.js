@@ -13,7 +13,7 @@ import {
   NORMAL_MATERIAL_IDS,
   LAND_MATERIAL_IDS,
 } from "./factory-material.js";
-import { GARUDA_WEIGHT } from "./factory-hero.js";
+import { GARUDA_WEIGHT, craftLevel } from "./factory-hero.js";
 
 /** 全エクステ定義 (loadExtensions() 後に populated) */
 export const EXTENSIONS = [];
@@ -166,16 +166,23 @@ export function lockedSeriesList(unlockedSeries) {
   return out;
 }
 
-/** Phase 1D-40: rarity ごとの「快適に作れる」クラフトレベル目安 (= 内部要求値)。
+/** Phase 1D-40 → 1D-43: rarity ごとの「快適に作れる」クラフトレベル目安 (= 内部要求値)。
  *  チームの合計 craftLevel がこの値を上回るほどクラフト時間が短縮される。
- *  数値は initial 4 commons の合計 craftLevel ~50 を基準として rarity の難度に
- *  比例させた目安。 */
+ *
+ *  Phase 1D-43: factory-hero.js の RARITY_CRAFT_MULT 導入と対で値を更新。
+ *  目標バランス (5 体編成・rank 0):
+ *    - 同レアリティ rank-0 ×5 → 自身レア ext は ratio < 1.0 (短縮しない)
+ *    - 1 段上のレア rank-0 ×5 → 1 段下のレア ext は ratio > 1.2 (短縮する)
+ *    - 同レアリティ rank 1+ で ratio > 1.0 になりランクアップ効果が顕在化
+ *
+ *  実データ (data/heroes.json) の top5 合計と比較して微調整済み。
+ */
 export const REQUIRED_CRAFT_LV_BY_RARITY = {
-  common:      50,
-  uncommon:   200,
-  rare:       600,
+  common:     260,
+  uncommon:   450,
+  rare:       850,
   epic:      1500,
-  legendary: 3000,
+  legendary: 2500,
 };
 
 /** Phase 1D-40: チーム合計クラフト Lv ÷ rarity 要求 → 進行速度倍率
@@ -249,21 +256,19 @@ export function craftLevelRequiredFor(ext) {
 }
 
 /** チームの craftLevel 合計を計算する。null スロットは 0 として扱う。
- *  - ガルーダ (HP) は GARUDA_WEIGHT の重みで集計 (paramSum と整合)
- *  - 「工」属性を持つヒーローは 1.5 倍ブースト (Phase 1D-1) */
+ *
+ *  Phase 1D-43: 各ヒーローの craftLevel(hero) (= 工属性 + ランクアップ倍率 +
+ *  レアリティ係数を全反映した値) の合計に統一。
+ *  以前は本関数だけが rankMultiplier / rarityCraftMult を反映しておらず、
+ *  estimateDurationWeeks の予測と tickActiveCraft の実進捗が乖離していた。 */
 export function teamCraftLevelTotal(team) {
   if (!Array.isArray(team)) return 0;
   let total = 0;
   for (const h of team) {
     if (!h || !h.element) continue;
-    const base = (h.element.garuda || 0) * GARUDA_WEIGHT +
-                 (h.element.ifrit || 0) +
-                 (h.element.leviathan || 0) +
-                 (h.element.tiamat || 0);
-    const ko = Array.isArray(h.attributes) && h.attributes.includes("ko") ? 1.5 : 1.0;
-    total += base * ko;
+    total += craftLevel(h);
   }
-  return Math.round(total);
+  return total;
 }
 
 /** recipe を満たすために、現在の inventory で何個ずつ素材が足りないかを返す。
