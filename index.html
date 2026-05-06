@@ -1716,6 +1716,39 @@
       font-size: 0.7rem; color: var(--muted);
       align-items: center;
     }
+    /* Phase 2A: 倉庫アイテムにスキル表示 */
+    .warehouse-item__skill {
+      grid-column: 1 / -1;
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      padding: 0.15rem 0.3rem;
+      background: rgba(196,163,90,0.08);
+      border-radius: 3px;
+      margin-top: 0.2rem;
+    }
+    /* Phase 2A: クラフト完成画面のスキル */
+    .craft-done__skill {
+      margin: 0.4rem 0 0;
+      padding: 0.45rem 0.6rem;
+      background: rgba(196,163,90,0.1);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--accent);
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+    .craft-done__skill.hidden { display: none; }
+    /* Phase 2A: クラフト確認画面のスキルプレビュー */
+    .craft-confirm__skill-preview {
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      margin-top: 0.15rem;
+    }
+    .craft-confirm__skill-preview.hidden { display: none; }
+
     /* Phase 1D-44: コンテスト受賞バッジ */
     .warehouse-item__contest {
       display: inline-flex; align-items: center; gap: 0.15rem;
@@ -5882,6 +5915,8 @@
           <p class="craft-done__mai-says" id="craftDoneMaiSays">—</p>
         </div>
       </div>
+      <!-- Phase 2A: 完成 ext のシリーズ共通スキル表示 -->
+      <p class="craft-done__skill hidden" id="craftDoneSkill"></p>
 
       <button type="button" class="craft-done__close" id="craftDoneClose" data-i18n="comp.toMarket">OK</button>
     </div>
@@ -6346,6 +6381,8 @@
                 <span class="craft-confirm__ext-name" id="confirmExtName">—</span>
                 <span class="craft-confirm__ext-series" id="confirmExtSeries">—</span>
                 <span class="craft-confirm__duration" id="confirmDuration">—</span>
+                <!-- Phase 2A: スキルプレビュー (= 完成時に付与される効果の見込み) -->
+                <span class="craft-confirm__skill-preview hidden" id="confirmSkillPreview"></span>
               </div>
             </div>
 

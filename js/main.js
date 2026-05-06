@@ -120,6 +120,14 @@ import {
   fetchFactoryRanking,
 } from "./factory-ranking-client.js";
 import {
+  resolveExtSkill,
+  aggregateEffectsFromResolved,
+  formatSkillSummary,
+  formatEffectText,
+  EFFECT_DEFS,
+  CATEGORY_LABEL_KEY,
+} from "./factory-ext-skill.js";
+import {
   HIRE_PLANS,
   PLAN_BY_ID,
   canBeRecruiter,
@@ -1587,6 +1595,31 @@ function startRemakeFromWarehouse(idx) {
   renderConfirm?.();
 }
 
+/** ─── Phase 2A: エクステンションスキル集計 (= 倉庫アクティブ効果) ─── */
+
+/** state.warehouse の全 ext から発動中の効果を集計し、 effect type → % map で返す。
+ *  打ち直し済み (rarityOverride あり) は昇格 rarity でスケール。
+ *  キャッシュは持たず毎回再集計するが、 ヒット数が小さいので tickActiveCraft の
+ *  per-tick 呼び出しでも問題ない (= 100 アイテム × 4 元素読み程度)。
+ */
+function getActiveSkillEffects() {
+  const wh = state.warehouse || [];
+  if (!Array.isArray(wh) || wh.length === 0) return {};
+  const skills = wh.map(w => {
+    if (!w) return null;
+    const ext = EXTENSION_BY_ID[String(w.extId)];
+    if (!ext) return null;
+    return resolveExtSkill(ext, w.rarityOverride || null);
+  });
+  return aggregateEffectsFromResolved(skills);
+}
+
+/** Phase 2A: ある effect type について現在のアクティブ % を返すショートカット */
+function activeEffectPct(type) {
+  const eff = getActiveSkillEffects();
+  return eff[type] || 0;
+}
+
 /** ─── Phase 1D-44: 12 月エクステンションコンテスト ───────────────── */
 
 /** 部門賞 (各クラフトパワー部門の最高ホルダー) と大賞 (4 色合計最高ホルダー) の
@@ -2247,7 +2280,12 @@ function tickActiveCraft() {
     } else {
       // Phase 1D-34: アロマバフ中は体力減少を半減
       const aromaMult = isBuffActive("aroma") ? 0.5 : 1.0;
-      adjustStamina(hero, -staminaDecayPerTick(hero) * aromaMult);
+      // Phase 2A: 倉庫スキル staminaDecaySlow を体力減少に適用 (= 1 - X%)
+      const skillDecayPct = activeEffectPct("staminaDecaySlow");
+      const skillMult = skillDecayPct > 0
+        ? Math.max(0, 1 - Math.min(0.7, skillDecayPct / 100))  // 0.7 (= 70%) でクランプ
+        : 1.0;
+      adjustStamina(hero, -staminaDecayPerTick(hero) * aromaMult * skillMult);
       if (isExhausted(hero)) {
         hero.state = HERO_STATE.RESTING;
         // Phase 1D-19: クラフト中に体力ゼロ → 「疲れた…」セリフ
@@ -2283,10 +2321,15 @@ function tickActiveCraft() {
     const heroBonus  = (activeWorkers - 1) * 0.10;
     // Phase 1D-40 + 1D-34: クラフトLv 短縮 (rarity 要求基準) × 潤滑油バフ
     // Phase 1D-45: 打ち直しクラフト中は昇格 rarity の要求値を使う
+    // Phase 2A: 倉庫スキル craftLvBoost を totalCraftLv に乗算
     const ext = EXTENSION_BY_ID[String(ac.extId)];
     const effRarity = ac.remakeTargetRarity || ext?.rarity;
     const required = REQUIRED_CRAFT_LV_BY_RARITY[effRarity] || 50;
-    const lvMult   = craftLvSpeedMultiplier(totalCraftLv, required);
+    const skillCraftPct = activeEffectPct("craftLvBoost");
+    const totalCraftLvWithSkill = skillCraftPct > 0
+      ? totalCraftLv * (1 + skillCraftPct / 100)
+      : totalCraftLv;
+    const lvMult   = craftLvSpeedMultiplier(totalCraftLvWithSkill, required);
     const lubeFactor = isBuffActive("lubricant") ? 2 : 1;
     const factor   = (1 + heroBonus) * lvMult * lubeFactor;
     const before = ac.timeProgress || 0;
@@ -3043,7 +3086,10 @@ function renderQuestView() {
   // Phase 1D-42: ベース QL に「ノード Lv ボーナス」を加算
   const heroQl = teamQuestLevel(team);
   const nodeBonus = node ? nodeLvBonusForQuest(node.id) : 0;
-  const teamLv = heroQl + nodeBonus;
+  // Phase 2A: 倉庫スキル questLvBoost も最終 teamLv に乗算 (= 表示も startActiveQuest と整合)
+  const skillQlPct = activeEffectPct("questLvBoost");
+  const teamLvNoSkill = heroQl + nodeBonus;
+  const teamLv = skillQlPct > 0 ? Math.round(teamLvNoSkill * (1 + skillQlPct / 100)) : teamLvNoSkill;
   const rate = node ? questSuccessRate(teamLv, baseLv) : -1;
   const commentKey = successRateCommentKey(rate);
   const isHard = state.questPickedDifficulty === "hard";
@@ -3361,6 +3407,9 @@ function startActiveQuest() {
     teamLv = Math.round(teamLv * 1.5);
     state.buffs["jade-statue"] = false;
   }
+  // Phase 2A: エクステンションスキル questLvBoost の倉庫合算 % を最終加算
+  const skillQlPct = activeEffectPct("questLvBoost");
+  if (skillQlPct > 0) teamLv = Math.round(teamLv * (1 + skillQlPct / 100));
   const rate   = questSuccessRate(teamLv, baseLv);
   if (rate < 0) return;
 
@@ -4760,6 +4809,14 @@ function renderConfirm() {
   const team = currentTeamHeroes();
   const dur = estimateDurationWeeks(extForCalc, team);
   $("confirmDuration").textContent = ti18n("craft.duration.estimate").replace("{n}", dur);
+  // Phase 2A: 完成見込みのスキルプレビュー (打ち直し中は昇格 rarity)
+  const previewEl = $("confirmSkillPreview");
+  if (previewEl) {
+    const previewRarity = isRemake ? remakeTargetRarity : ext.rarity;
+    const skillText = formatSkillSummary(ext, ti18n, previewRarity);
+    previewEl.textContent = skillText ? "✨ " + skillText : "";
+    previewEl.classList.toggle("hidden", !skillText);
+  }
 
   // Targets (icons only — no text label, just dot/icon + value)
   const targets = extElementTargets(ext);
@@ -6132,6 +6189,14 @@ function renderCompletionScreen() {
   $("craftDoneQuality").textContent = ti18n("comp.tier." + pc.qualityTier);
   $("craftDoneQuality").setAttribute("data-tier", pc.qualityTier);
   $("craftDoneMaiSays").textContent = ti18n("comp.maiComment." + pc.qualityTier);
+  // Phase 2A: 完成 ext のスキル表示 (打ち直し時は昇格 rarity でスケール)
+  const skillEl = $("craftDoneSkill");
+  if (skillEl && ext) {
+    const effRarity = pc.remakeTargetRarity || ext.rarity;
+    const skillText = formatSkillSummary(ext, ti18n, effRarity);
+    skillEl.textContent = skillText ? "✨ " + skillText : "";
+    skillEl.classList.toggle("hidden", !skillText);
+  }
 }
 
 function closeCompletionScreen() {
@@ -6747,7 +6812,10 @@ function tickActiveHire() {
   // Phase 1D-29 fix: 他のモーダルが開いている間は候補通知を保留
   //   (= mai 同時呼び出しで pauseFlags 不整合 → フリーズ回避)
   if (state.pauseFlags > 0) return;
-  const elapsed = state.tickCount - ah.startedAtTick;
+  // Phase 2A: 倉庫スキル hireSpeedBoost で経過時間を加速 (= 同じ実時間で N% 多く進行)
+  const skillHirePct = activeEffectPct("hireSpeedBoost");
+  const speedMult = skillHirePct > 0 ? (1 + skillHirePct / 100) : 1.0;
+  const elapsed = (state.tickCount - ah.startedAtTick) * speedMult;
   if (elapsed >= HIRE_WAIT_WEEKS * SECONDS_PER_WEEK) {
     const plan = PLAN_BY_ID[ah.planId];
     const ownedIds = new Set(state.ownedHeroes.map(h => h.heroId));
@@ -7122,6 +7190,11 @@ function renderMarketWarehouse() {
     const remadeMark = w.rarityOverride
       ? `<span class="warehouse-item__remade" title="${escapeHtml(ti18n("remake.remadeTitle", "打ち直し済"))}">★</span>`
       : "";
+    // Phase 2A: スキル一行表示 (= シリーズ共通スキル × rarity スケール)
+    const skillText = ext ? formatSkillSummary(ext, ti18n, effRarity) : "";
+    const skillRow = skillText
+      ? `<div class="warehouse-item__skill" title="${escapeHtml(skillText)}">✨ ${escapeHtml(skillText)}</div>`
+      : "";
     return `<div class="warehouse-item" data-tier="${apr ? apr.tier : "fine"}" data-rarity="${effRarity}">
       <img class="warehouse-item__icon" src="${extIconUrl(w.extId)}" alt="" onerror="this.style.opacity='0.2'" />
       <div class="warehouse-item__main">
@@ -7139,6 +7212,7 @@ function renderMarketWarehouse() {
           <span class="warehouse-item__tier" data-tier="${apr.tier}">${escapeHtml(tierLbl)}</span>
           <span class="warehouse-item__score-num"><strong>${score}</strong> / 50</span>
         </div>` : ""}
+        ${skillRow}
         ${remakeBtn}
       </div>
     </div>`;
