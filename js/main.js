@@ -4337,16 +4337,24 @@ function closeHeroEnhanceView() {
   resumeTime();
 }
 
-/** Phase 1D-23: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー */
+/** Phase 1D-23 + β2-1: 体力満タン (= ratio 1) を仮定した hero の Lv 計算ヘルパー
+ *  ランクアップ画面の before/after に使用。 craft / quest / merchant Lv 全てに
+ *  rarity 倍率 (= RARITY_CRAFT_MULT) と rank 倍率を統一適用。 これにより
+ *  rank-up 表示と実 gameplay 値 (teamCraftLevelTotal / teamQuestLevel) が一致する。 */
+const _RARITY_PARAM_MULT = {
+  common: 1.0, uncommon: 1.5, rare: 2.5, epic: 4.0, legendary: 6.0,
+};
 function _heroFullHpProjected(hero, rankOverride = null) {
   const rank = rankOverride == null ? (hero.rank || 0) : rankOverride;
   const rMult = 1 + 0.4 * Math.max(0, Math.min(RANK_MAX, rank));
-  // 4 元素値 (ガルーダ重み込み + ランク倍率)
+  const rarMult = _RARITY_PARAM_MULT[(hero.rarity || "common").toLowerCase()] || 1.0;
+  // 4 元素値 (ガルーダ重み込み + ランク倍率 + レアリティ倍率)
   const e = hero.element || {};
-  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * rMult);
-  const ifrit   = Math.round((e.ifrit   || 0) * rMult);
-  const lev     = Math.round((e.leviathan || 0) * rMult);
-  const tia     = Math.round((e.tiamat  || 0) * rMult);
+  const totalMult = rMult * rarMult;
+  const garudaW = Math.round((e.garuda || 0) * (1 / 6) * totalMult);
+  const ifrit   = Math.round((e.ifrit   || 0) * totalMult);
+  const lev     = Math.round((e.leviathan || 0) * totalMult);
+  const tia     = Math.round((e.tiamat  || 0) * totalMult);
   const sum = garudaW + ifrit + lev + tia;
   const hasKo  = Array.isArray(hero.attributes) && hero.attributes.includes("ko");
   const hasNo  = Array.isArray(hero.attributes) && hero.attributes.includes("no");
