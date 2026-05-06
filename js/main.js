@@ -628,6 +628,93 @@ function renderRankingScoreView() {
   $("rankingStatus").textContent = "";
 }
 
+/** ─── Phase 1D-46: ランキング閲覧モーダル (タイトル / スコア後から開く) ─── */
+
+function openRankingViewer() {
+  const view = $("rankingViewer");
+  if (!view) return;
+  view.classList.remove("hidden");
+  // 設定パネルの URL を localStorage から復元
+  const urlInput = $("rankingApiUrlInput");
+  if (urlInput) {
+    try { urlInput.value = localStorage.getItem("mcf.rankingApiUrl") || ""; }
+    catch (e) { urlInput.value = ""; }
+  }
+  const urlStatus = $("rankingApiUrlStatus");
+  if (urlStatus) urlStatus.textContent = "";
+  // 自動取得
+  refreshRankingViewer();
+}
+
+function closeRankingViewer() {
+  $("rankingViewer")?.classList.add("hidden");
+}
+
+async function refreshRankingViewer() {
+  const statusEl = $("rankingViewerStatus");
+  const listEl   = $("rankingViewerList");
+  const emptyEl  = $("rankingViewerEmpty");
+  if (!listEl) return;
+  if (statusEl) statusEl.textContent = ti18n("ranking.viewer.loading", "取得中…");
+  emptyEl?.classList.add("hidden");
+  listEl.innerHTML = "";
+  // API URL 未設定なら案内のみ
+  if (!getRankingApiUrl()) {
+    if (statusEl) statusEl.textContent = "";
+    if (emptyEl) {
+      emptyEl.textContent = ti18n("ranking.viewer.noApi", "ランキング API URL が未設定です。下の上級設定から URL を登録してください。");
+      emptyEl.classList.remove("hidden");
+    }
+    return;
+  }
+  const res = await fetchFactoryRanking({ limit: 50 });
+  if (!res.ok) {
+    if (statusEl) statusEl.textContent = ti18n("ranking.viewer.fetchFail", "取得失敗: ") + (res.error || "");
+    return;
+  }
+  const list = Array.isArray(res.ranking) ? res.ranking : [];
+  if (statusEl) {
+    statusEl.textContent = ti18n("ranking.viewer.fetchedCount", "{n} 件取得").replace("{n}", String(list.length));
+  }
+  if (list.length === 0) {
+    if (emptyEl) {
+      emptyEl.textContent = ti18n("ranking.viewer.empty", "まだランキング登録がありません。最新を取得 ボタンで再読み込みできます。");
+      emptyEl.classList.remove("hidden");
+    }
+    return;
+  }
+  emptyEl?.classList.add("hidden");
+  const lang = getLang() === "en" ? "en" : "ja";
+  listEl.innerHTML = list.map(e => {
+    const meta = lang === "en"
+      ? `Lv ${e.factoryLevel} · craft ${e.craftCount} · hire ${e.hireCount} · ${e.yearWeek || "-"}`
+      : `Lv ${e.factoryLevel} · クラフト ${e.craftCount} · 雇用 ${e.hireCount} · ${e.yearWeek || "-"}`;
+    return `<li data-rank="${e.rank}">
+      <span class="ranking-viewer__rank">#${e.rank}</span>
+      <div>
+        <div class="ranking-viewer__entry-name">${escapeHtml(String(e.playerName || "anonymous"))}</div>
+        <div class="ranking-viewer__entry-meta">${escapeHtml(meta)}</div>
+      </div>
+      <span class="ranking-viewer__entry-score">${(e.score || 0).toLocaleString()}</span>
+    </li>`;
+  }).join("");
+}
+
+function saveRankingApiUrl() {
+  const input = $("rankingApiUrlInput");
+  const status = $("rankingApiUrlStatus");
+  if (!input) return;
+  const url = (input.value || "").trim();
+  setRankingApiUrl(url);
+  if (status) {
+    status.textContent = url
+      ? ti18n("ranking.viewer.urlSaved", "保存しました")
+      : ti18n("ranking.viewer.urlReset", "既定 URL に戻しました");
+  }
+  // 即座に再取得
+  refreshRankingViewer();
+}
+
 async function submitRankingNow() {
   const result = state.endgameScore;
   const stats  = state.endgameStats;
@@ -7254,10 +7341,13 @@ async function init() {
   if (titleEl) {
     titleEl.addEventListener("click", (ev) => {
       if (ev.target.closest("#langToggle")) return;
+      // Phase 1D-46: ランキングボタン押下時はゲーム開始させない
+      if (ev.target.closest("#titleRankingBtn")) return;
       dismissTitle();
     });
     titleEl.addEventListener("keydown", (ev) => {
       if (ev.target.closest("#langToggle")) return;
+      if (ev.target.closest("#titleRankingBtn")) return;
       if (ev.key === "Enter" || ev.key === " ") dismissTitle();
     });
   }
@@ -7703,6 +7793,18 @@ async function init() {
   $("rankingSubmitBtn")?.addEventListener("click", submitRankingNow);
   $("rankingScoreNext")?.addEventListener("click", proceedToActivityReport);
   $("activityReportClose")?.addEventListener("click", closeActivityReport);
+  // Phase 1D-46: ランキング閲覧モーダル (タイトル + スコア後経由で開く)
+  $("titleRankingBtn")?.addEventListener("click", (ev) => {
+    ev.stopPropagation();  // titleView 全体の click (= ゲーム開始) を吸収
+    openRankingViewer();
+  });
+  $("rankingScoreViewLeaderboardBtn")?.addEventListener("click", openRankingViewer);
+  $("rankingViewerCloseBtn")?.addEventListener("click", closeRankingViewer);
+  $("rankingViewer")?.addEventListener("click", (e) => {
+    if (e.target.id === "rankingViewer") closeRankingViewer();
+  });
+  $("rankingViewerRefresh")?.addEventListener("click", refreshRankingViewer);
+  $("rankingApiUrlSaveBtn")?.addEventListener("click", saveRankingApiUrl);
   // Phase 1D-23: 工房レベルアップ view close + アクション delegation
   $("factoryLvUpClose")?.addEventListener("click", closeFactoryLvUpView);
   $("factoryLvUpView")?.addEventListener("click", (e) => {
