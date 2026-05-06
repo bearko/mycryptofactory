@@ -1234,6 +1234,20 @@
       padding: 0.45rem 1.2rem;
       font-weight: 700; cursor: pointer;
     }
+    /* Phase β2-2: 解雇ボタン (赤系で警告色) */
+    .hero-detail__fire-btn {
+      appearance: none;
+      background: rgba(239, 83, 80, 0.15);
+      color: #ef5350;
+      border: 1.5px solid #ef5350;
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.78rem; font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    .hero-detail__fire-btn:hover { background: #ef5350; color: #1a1420; }
+    .hero-detail__fire-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     /* Phase 1D-29: ヒーロー詳細ポップアップ — クイックアクション (閉じるの左) */
     .hero-detail__footer {
       display: flex; align-items: center; gap: 0.5rem;
@@ -5474,6 +5488,112 @@
       color: var(--muted);
       font-size: 0.85rem;
     }
+    /* Phase β2-2: ヒーロー管理 タブ切替 */
+    .hero-management__tabs {
+      display: flex; gap: 0.4rem;
+      padding: 0.5rem 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-management__tab {
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .hero-management__tab--active {
+      background: var(--panel);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .hero-management__panel.hidden { display: none !important; }
+    .hero-management__bridge-intro,
+    .hero-management__fire-intro {
+      margin: 0 0 0.7rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .hero-management__bridge-btn {
+      appearance: none;
+      background: var(--accent); color: #1a1420;
+      border: none; border-radius: 6px;
+      padding: 0.55rem 1.2rem;
+      font-weight: 800; font-size: 0.9rem;
+      cursor: pointer;
+    }
+    /* 解雇リスト */
+    .hero-fire-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.55rem;
+    }
+    .hero-fire-row {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .hero-fire-row__portrait {
+      width: 48px; height: 48px;
+      object-fit: cover; image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .hero-fire-row__main {
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .hero-fire-row__name {
+      font-weight: 700; font-size: 0.92rem;
+    }
+    .hero-fire-row__meta {
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .hero-fire-row__salary {
+      font-size: 0.72rem; color: var(--accent);
+    }
+    .hero-fire-row__btn {
+      appearance: none;
+      background: rgba(239, 83, 80, 0.15);
+      color: #ef5350;
+      border: 1.5px solid #ef5350;
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer;
+    }
+    .hero-fire-row__btn:hover { background: #ef5350; color: #1a1420; }
+    .hero-fire-row__btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* Phase β2-2: 強化画面のソート/フィルタコントロール */
+    .hero-enhance__controls {
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+      margin-bottom: 0.6rem;
+      padding: 0.45rem 0.55rem;
+      background: var(--panel-2);
+      border-radius: 6px;
+    }
+    .hero-enhance__ctrl {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      font-size: 0.7rem; color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .hero-enhance__ctrl select {
+      appearance: none;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
     .hero-enhance-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -5988,6 +6108,8 @@
           <button type="button" class="hero-detail__action" data-quick="rest"  data-i18n="hero.quick.rest">休憩</button>
           <button type="button" class="hero-detail__action" data-quick="trade" data-i18n="hero.quick.trade">取引</button>
         </div>
+        <!-- Phase β2-2: 解雇ボタン (= 能動的にヒーローをリストラ) -->
+        <button type="button" class="hero-detail__fire-btn" id="heroDetailFireBtn" data-i18n="fire.fireBtn">解雇する</button>
         <button type="button" class="hero-detail__close" id="heroDetailClose" data-i18n="btn.close">閉じる</button>
       </div>
     </div>
@@ -6272,16 +6394,63 @@
     </div>
   </div>
 
-  <!-- Phase 1D-20: 強化ビュー (ヒーローのランクアップ) -->
+  <!-- Phase 1D-20 → β2-2: ヒーロー管理ビュー (強化 / 雇用 / 解雇 タブ) -->
   <div class="hero-view hidden" id="heroEnhanceView" role="dialog" aria-labelledby="heroEnhanceTitle">
     <div class="hero-view__header">
-      <h2 class="hero-view__title" id="heroEnhanceTitle" data-i18n="menu.hero.enhance">強化</h2>
+      <h2 class="hero-view__title" id="heroEnhanceTitle" data-i18n="hero.management.title">ヒーロー管理</h2>
       <button type="button" class="view-mai-btn" data-mai-help-btn title="マイのアドバイス"><img src="./Image/Factory/MAI_SD.png" alt="マイ" /></button>
       <button type="button" class="hero-view__back" id="heroEnhanceBack" data-i18n="btn.back">← 戻る</button>
     </div>
+    <!-- Phase β2-2: タブ切替 (強化 / 雇用 / 解雇) -->
+    <div class="hero-management__tabs">
+      <button type="button" class="hero-management__tab hero-management__tab--active" data-mgmt-tab="enhance" data-i18n="menu.hero.enhance">強化</button>
+      <button type="button" class="hero-management__tab" data-mgmt-tab="hire" data-i18n="menu.hero.hire">雇用</button>
+      <button type="button" class="hero-management__tab" data-mgmt-tab="fire" data-i18n="hero.management.tab.fire">解雇</button>
+    </div>
     <div class="hero-view__body">
+      <!-- 強化 panel -->
+      <div class="hero-management__panel" data-mgmt-panel="enhance">
       <p class="hero-enhance__intro" data-i18n="enhance.intro">GUM を支払ってヒーローのランクを上げよう (☆☆☆☆☆ → ★★★★★)</p>
+      <!-- Phase β2-2: ソート + フィルタ -->
+      <div class="hero-enhance__controls">
+        <label class="hero-enhance__ctrl">
+          <span data-i18n="enhance.filter.rarity">レアリティ</span>
+          <select id="heroEnhanceFilterRarity">
+            <option value="all" data-i18n="enhance.filter.all">すべて</option>
+            <option value="common"    data-i18n="rarity.common">Common</option>
+            <option value="uncommon"  data-i18n="rarity.uncommon">Uncommon</option>
+            <option value="rare"      data-i18n="rarity.rare">Rare</option>
+            <option value="epic"      data-i18n="rarity.epic">Epic</option>
+            <option value="legendary" data-i18n="rarity.legendary">Legendary</option>
+          </select>
+        </label>
+        <label class="hero-enhance__ctrl">
+          <span data-i18n="enhance.sort.label">並び替え</span>
+          <select id="heroEnhanceSortKey">
+            <option value="rankDesc"     data-i18n="enhance.sort.rankDesc">ランク (高い順)</option>
+            <option value="paramDesc"    data-i18n="enhance.sort.paramDesc">パラメータ合計 (高い順)</option>
+            <option value="craftDesc"    data-i18n="enhance.sort.craftDesc">クラフト Lv (高い順)</option>
+            <option value="questDesc"    data-i18n="enhance.sort.questDesc">クエスト Lv (高い順)</option>
+            <option value="merchantDesc" data-i18n="enhance.sort.merchantDesc">マーチャント Lv (高い順)</option>
+            <option value="salaryDesc"   data-i18n="enhance.sort.salaryDesc">年俸 (高い順)</option>
+            <option value="salaryAsc"    data-i18n="enhance.sort.salaryAsc">年俸 (安い順)</option>
+          </select>
+        </label>
+      </div>
       <div class="hero-enhance-list" id="heroEnhanceList"></div>
+      </div><!-- 強化 panel end -->
+
+      <!-- 雇用 panel: 既存の market view 雇用タブへブリッジ (= MVP) -->
+      <div class="hero-management__panel hidden" data-mgmt-panel="hire">
+        <p class="hero-management__bridge-intro" data-i18n="hero.management.hire.intro">採用プランの選択 / 候補確認はマーケットの雇用タブで行います。</p>
+        <button type="button" class="hero-management__bridge-btn" id="heroMgmtOpenMarketHire" data-i18n="hero.management.hire.openBtn">雇用タブを開く</button>
+      </div>
+
+      <!-- 解雇 panel: ヒーロー一覧 + 詳細的な情報 + 解雇ボタン -->
+      <div class="hero-management__panel hidden" data-mgmt-panel="fire">
+        <p class="hero-management__fire-intro" data-i18n="hero.management.fire.intro">能動的にヒーローを解雇できます。 進行中作業のヒーローは解雇できません。</p>
+        <div class="hero-fire-list" id="heroFireList"></div>
+      </div>
     </div>
   </div>
 
