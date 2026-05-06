@@ -64,6 +64,8 @@ import {
   rarityAllowedAtFactoryLevel,
   maxRarityForFactoryLevel,
   lockedSeriesList,
+  REQUIRED_CRAFT_LV_BY_RARITY,
+  craftLvSpeedMultiplier,
 } from "./factory-craft.js";
 import {
   MATERIALS,
@@ -179,6 +181,8 @@ const state = {
   heroSort: "cl-desc",
   /** Phase 1D-27: ヒーロー一覧のレアリティフィルタ ("all" | "common" | ...) */
   heroFilterRarity: "all",
+  /** Phase 1D-39: クラフト選択画面のレアリティフィルタ ("all" | "common" | ...) */
+  craftFilterRarity: "all",
   /** Where the hero view should return to when the player taps ←戻る.
    *  "home"  — close hero view and resume on the workshop
    *  "craft" — close hero view and re-open the craft confirmation screen
@@ -1656,11 +1660,12 @@ function tickActiveCraft() {
     const baseDelta  = 1 / totalTicks;
     // 人数ボーナス: 追加 1 人ごとに +10% (1 人 = +0% / 5 人 = +40%)
     const heroBonus  = (activeWorkers - 1) * 0.10;
-    // クラフトLv ボーナス: 1000 で +50% 上限
-    const lvBonus    = Math.min(0.5, totalCraftLv / 2000);
-    // Phase 1D-34: 潤滑油バフ中はクラフト進捗も 2 倍
+    // Phase 1D-40 + 1D-34: クラフトLv 短縮 (rarity 要求基準) × 潤滑油バフ
+    const ext = EXTENSION_BY_ID[String(ac.extId)];
+    const required = REQUIRED_CRAFT_LV_BY_RARITY[ext?.rarity] || 50;
+    const lvMult   = craftLvSpeedMultiplier(totalCraftLv, required);
     const lubeFactor = isBuffActive("lubricant") ? 2 : 1;
-    const factor     = (1 + heroBonus + lvBonus) * lubeFactor;
+    const factor   = (1 + heroBonus) * lvMult * lubeFactor;
     const before = ac.timeProgress || 0;
     ac.timeProgress = Math.min(1, before + baseDelta * factor);
     // Phase 1D-27: 進捗 40% / 80% でクラフト中の介入イベント (魂注入 / オーラ付与) を起動
@@ -2087,9 +2092,10 @@ function tickActiveQuest() {
   // Phase 1D-29 fix: 他のモーダルが開いている間は完了通知を保留
   //   (同 tick での mai 重複呼び出しによる pauseFlags 不整合を回避)
   if (state.pauseFlags > 0) return;
-  // 進捗 = elapsed ticks / total ticks (Phase 1D-34: スクロールバフで 2x)
-  const speedMult = isBuffActive("scroll") ? 2 : 1;
-  const elapsed = (state.tickCount - aq.startedAtTick) * speedMult;
+  // Phase 1D-40 + 1D-34: パーティ QL 短縮 (1.0〜3.0x) × スクロールバフ (2x)
+  const qlMult = aq.qlSpeedMult || 1;
+  const scrollMult = isBuffActive("scroll") ? 2 : 1;
+  const elapsed = (state.tickCount - aq.startedAtTick) * qlMult * scrollMult;
   const totalTicks = aq.durationWeeks * SECONDS_PER_WEEK;
   aq.progress = Math.min(1, elapsed / totalTicks);
   if (aq.progress >= 1) {
@@ -2097,8 +2103,47 @@ function tickActiveQuest() {
   }
 }
 
+/** Phase 1D-40: パーティ QL / ベース QL → 進行速度倍率
+ *  - ratio < 1.0: 1.0x (= 速度ボーナス無し)
+ *  - ratio 1.0 〜 2.0: 線形に 1.0x → 2.0x
+ *  - ratio 2.0 〜 3.0: 線形に 2.0x → 3.0x
+ *  - ratio >= 3.0: 3.0x で頭打ち
+ *  クエストでは スクロールバフが別に 2x かかる場合があるが、 そちらは
+ *  tickActiveQuest 側で別途 isBuffActive("scroll") で再度乗算される (= 重複可)。
+ */
+function questLvSpeedMultiplier(teamLv, baseLv) {
+  if (!baseLv || baseLv <= 0) return 1;
+  const ratio = teamLv / baseLv;
+  if (ratio < 1.0) return 1.0;
+  if (ratio < 2.0) return 1 + (ratio - 1);            // 1.0 → 2.0
+  if (ratio < 3.0) return 2 + (ratio - 2);            // 2.0 → 3.0
+  return 3.0;
+}
+
+/** Phase 1D-40: 商 (sho) 属性持ち seller が高 rarity を出品したときの取引期間短縮倍率
+ *  - Common / Uncommon: 1.0 (= 短縮なし)
+ *  - Rare:      2.0 (= 期間 1/2)
+ *  - Epic:      3.0 (= 期間 1/3)
+ *  - Legendary: 8.0 (= 期間 1/8)
+ *  非 商 seller は常に 1.0。 */
+function computeShoSpeedMult(seller, ext) {
+  if (!seller || !Array.isArray(seller.attributes)) return 1;
+  if (!seller.attributes.includes("sho")) return 1;
+  const r = (ext?.rarity || "common").toLowerCase();
+  if (r === "rare")      return 2;
+  if (r === "epic")      return 3;
+  if (r === "legendary") return 8;
+  return 1;
+}
+
 function triggerQuestComplete(aq) {
-  const success = Math.random() <= aq.successRate;
+  // Phase 1D-39: 成功率 100% を保証する。 浮動小数誤差や将来のバランス変更で
+  //   aq.successRate が ~0.999 になっても 100% 表示されたなら必ず成功させる。
+  //   (ユーザー報告: 100% 表示でクエスト失敗が発生)
+  //   尚、 アクティブクエスト中は HP が減少しないため successRate は出立時の値で
+  //   固定されている (= 道中で動的に下がることは無い)。
+  const r = aq.successRate;
+  const success = (r >= 1.0) ? true : (Math.random() <= r);
   const node = NODE_BY_ID[aq.nodeId];
   let rewards = {};
   if (success && node) rewards = rollQuestRewards(node, aq.difficulty);
@@ -2155,13 +2200,13 @@ function closeQuestView() {
   resumeTime();
 }
 
-/** Phase 1D-15: 指定ノード × 難易度で得られる素材の期待ドロップ数 (range)
+/** Phase 1D-15 → 1D-38: 指定ノード × 難易度で得られる素材の期待ドロップ数 (range)
  *  を計算する。
  *
- *  rollQuestRewards の生成モデル:
- *    - dropCount = 5 (= 5 戦闘)
- *    - hard なら 1〜2 個が highTier、それ以外は normal
- *    - normal slot は qty 1〜2、highTier slot は qty 1
+ *  rollQuestRewards (1D-38 仕様) との整合:
+ *    - easy:    5 ドロップ × qty 1〜2 (normal pool のみ)
+ *    - normal:  7 ドロップ × qty 1〜3 (normal pool のみ)
+ *    - hard:    9 ドロップ × qty 1〜3、 うち 2-3 が highTier (qty 1〜2)
  *
  *  各素材について [min, max] のドロップ数 range を返す。
  *
@@ -2169,29 +2214,33 @@ function closeQuestView() {
  */
 function expectedQuestRewardRanges(node, difficulty) {
   if (!node) return {};
-  const dropCount = 5;
-  const hasHigh = difficulty === "hard" && node.poolHighTier?.length > 0;
-  const minHigh = hasHigh ? 1 : 0;
-  const maxHigh = hasHigh ? 2 : 0;
+  const cfg = difficulty === "hard"
+    ? { dropCount: 9, normalMaxQty: 3, hardMaxQty: 2, minHigh: 2, maxHigh: 3 }
+    : difficulty === "normal"
+    ? { dropCount: 7, normalMaxQty: 3, hardMaxQty: 0, minHigh: 0, maxHigh: 0 }
+    : { dropCount: 5, normalMaxQty: 2, hardMaxQty: 0, minHigh: 0, maxHigh: 0 };
+  const hasHigh = cfg.maxHigh > 0 && node.poolHighTier?.length > 0;
   const out = {};
   // Normal pool 内の素材集合 (重複は 1 つにまとめる)
   const normalPool = node.poolNormal || [];
   const uniqueNormals = [...new Set(normalPool)];
-  const normalMaxSlots = dropCount - minHigh;       // 正規スロット最大個数 (= high 最少時)
-  const normalMinSlots = Math.max(0, dropCount - maxHigh); // 正規スロット最少個数 (= high 最多時)
+  const normalMaxSlots = cfg.dropCount - cfg.minHigh;
+  const normalMinSlots = Math.max(0, cfg.dropCount - cfg.maxHigh);
   for (const mat of uniqueNormals) {
     const occurrences = normalPool.filter(m => m === mat).length;
     const probPerSlot = normalPool.length > 0 ? occurrences / normalPool.length : 0;
     if (uniqueNormals.length === 1) {
       // pool に 1 種類しか無い場合 → 全 normal slot がこの素材
       out[mat] = {
-        min: normalMinSlots,             // 全 slot が qty 1
-        max: normalMaxSlots * 2,         // 全 slot が qty 2
+        min: normalMinSlots,                       // 全 slot qty 1
+        max: normalMaxSlots * cfg.normalMaxQty,    // 全 slot qty maxQty
         rare: false,
       };
     } else {
       // 複数種類 → 期待値ベースで ±1 の range を見積もる
-      const expected = (normalMinSlots + normalMaxSlots) / 2 * probPerSlot * 1.5;
+      const expectedSlots = (normalMinSlots + normalMaxSlots) / 2 * probPerSlot;
+      const avgQty = (1 + cfg.normalMaxQty) / 2;
+      const expected = expectedSlots * avgQty;
       out[mat] = {
         min: Math.max(0, Math.floor(expected - 0.5)),
         max: Math.max(1, Math.ceil(expected + 0.5)),
@@ -2206,9 +2255,14 @@ function expectedQuestRewardRanges(node, difficulty) {
       const occurrences = highPool.filter(m => m === mat).length;
       const probPerSlot = highPool.length > 0 ? occurrences / highPool.length : 0;
       if (uniqueHighs.length === 1) {
-        out[mat] = { min: minHigh, max: maxHigh, rare: true };
+        out[mat] = {
+          min: cfg.minHigh,
+          max: cfg.maxHigh * cfg.hardMaxQty,
+          rare: true,
+        };
       } else {
-        const expected = (minHigh + maxHigh) / 2 * probPerSlot * 1;
+        const avgQty = (1 + cfg.hardMaxQty) / 2;
+        const expected = (cfg.minHigh + cfg.maxHigh) / 2 * probPerSlot * avgQty;
         out[mat] = {
           min: Math.max(0, Math.floor(expected)),
           max: Math.max(1, Math.ceil(expected)),
@@ -2229,6 +2283,21 @@ function formatRewardRange(r) {
 
 function renderQuestView() {
   const lang = getLang() === "en" ? "en" : "ja";
+
+  // Phase 1D-38: 現在の素材インベントリ strip (= どのクエストに行くか判断材料)
+  //   craftMatStrip と同じ chip スタイルを再利用
+  const matStrip = $("questMatStrip");
+  if (matStrip) {
+    matStrip.innerHTML = ALL_MATERIAL_IDS.map(id => {
+      const qty = state.materials[id] || 0;
+      const cls = qty === 0 ? " craft-mat-chip--zero" : "";
+      return `<span class="craft-mat-chip${cls}" title="${escapeHtml(materialName(id, lang))}">
+        <img src="${materialIcon(id)}" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="craft-mat-chip__name">${escapeHtml(materialName(id, lang))}</span>
+        <span class="craft-mat-chip__qty">${qty}</span>
+      </span>`;
+    }).join("");
+  }
 
   // 1. ノードカード — 背景画像 + 名前 + 素材アイコン + 選択/購入 ボタン
   // Phase 1D-12: state.questNodeType で 通常ノード / ランドノード を切替
@@ -2531,6 +2600,8 @@ function startActiveQuest() {
     if (h) h.state = HERO_STATE.QUESTING;
   }
 
+  // Phase 1D-40: パーティ QL がベース QL を上回るほど進行速度がアップ
+  const qlSpeedMult = questLvSpeedMultiplier(teamLv, baseLv);
   state.activeQuest = {
     nodeId: node.id,
     difficulty: diff,
@@ -2538,6 +2609,7 @@ function startActiveQuest() {
     successRate: rate,
     startedAtTick: state.tickCount,
     durationWeeks: QUEST_DURATION_WEEKS[diff],
+    qlSpeedMult,
     progress: 0,
   };
   closeQuestView();
@@ -2759,6 +2831,12 @@ function renderHeader() {
     gumEl.textContent = state.gum.toLocaleString();
     // Phase 1D-32: 赤字 (gum < 0) は赤字表示クラスをトグル
     gumEl.classList.toggle("factory-gum--deficit", (state.gum || 0) < 0);
+  }
+  // Phase 1D-38: マーケット内の GUM 表示も同期
+  const marketGumNum = $("marketViewGumNum");
+  if (marketGumNum) {
+    marketGumNum.textContent = state.gum.toLocaleString();
+    marketGumNum.classList.toggle("market-gum--deficit", (state.gum || 0) < 0);
   }
   const gauge = $("weekGaugeFill");
   if (gauge) {
@@ -3600,7 +3678,13 @@ const ELEMENT_OF_STAT = { hp: "garuda", phy: "ifrit", int: "leviathan", agi: "ti
 function commonExtensions() {
   // Phase 1D-22: 「シリーズ解放済み + 工房 Lv 上限以下の rarity」を全件返す。
   // (関数名は legacy だが「現在クラフトできる ext 全件」の意味で使い続ける)
-  return EXTENSIONS.filter(e => isExtUnlocked(e, state.unlockedSeries, state.factoryLevel));
+  let arr = EXTENSIONS.filter(e => isExtUnlocked(e, state.unlockedSeries, state.factoryLevel));
+  // Phase 1D-39: rarity フィルタ chip
+  const rf = state.craftFilterRarity || "all";
+  if (rf !== "all") {
+    arr = arr.filter(e => (e.rarity || "common") === rf);
+  }
+  return arr;
 }
 
 /** Phase 1D-22: シリーズレシピを獲得する。
@@ -3710,6 +3794,40 @@ function renderCraftMatStrip() {
   }).join("");
 }
 
+/** Phase 1D-39: クラフト選択画面のレアリティフィルタ chips を描画する。
+ *  All + 5 rarity の chip を並べ、 active = state.craftFilterRarity と一致するもの。
+ *  解放済 ext のみカウントするので、 工房 Lv によって自動で 0 件タブはグレー表示。 */
+function renderCraftRarityFilter() {
+  const host = $("craftRarityFilter");
+  if (!host) return;
+  // 解放済み ext を rarity ごとに集計
+  const counts = { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+  for (const e of EXTENSIONS) {
+    if (!isExtUnlocked(e, state.unlockedSeries, state.factoryLevel)) continue;
+    const r = (e.rarity || "common");
+    if (counts[r] != null) counts[r]++;
+  }
+  const cur = state.craftFilterRarity || "all";
+  const lang = getLang() === "en" ? "en" : "ja";
+  const allLabel = lang === "en" ? "All" : "全部";
+  const chips = [
+    { key: "all",       label: allLabel, count: Object.values(counts).reduce((a,b)=>a+b,0) },
+    { key: "common",    label: ti18n("rarity.common"),    count: counts.common },
+    { key: "uncommon",  label: ti18n("rarity.uncommon"),  count: counts.uncommon },
+    { key: "rare",      label: ti18n("rarity.rare"),      count: counts.rare },
+    { key: "epic",      label: ti18n("rarity.epic"),      count: counts.epic },
+    { key: "legendary", label: ti18n("rarity.legendary"), count: counts.legendary },
+  ];
+  host.innerHTML = chips.map(c => {
+    const sel = c.key === cur ? " hero-filter__chip--active" : "";
+    const dim = (c.key !== "all" && c.count === 0) ? " hero-filter__chip--zero" : "";
+    return `<button type="button" class="hero-filter__chip${sel}${dim}" data-craft-rarity-filter="${c.key}" data-rarity="${c.key}">
+      <span class="hero-filter__chip-label">${escapeHtml(c.label)}</span>
+      <span class="hero-filter__chip-count">${c.count}</span>
+    </button>`;
+  }).join("");
+}
+
 function renderExtList() {
   const host = $("extList");
   if (!host) return;
@@ -3717,6 +3835,7 @@ function renderExtList() {
   const list = sortedExtensions();
   $("craftSelectCount").textContent = ti18n("craft.select.count").replace("{n}", list.length);
   renderCraftMatStrip();
+  renderCraftRarityFilter();
   host.innerHTML = list.map(ext => {
     const targets = extElementTargets(ext);
     const dur = estimateDurationWeeks(ext, team);
@@ -3745,7 +3864,7 @@ function renderExtList() {
     //   (Lv 不足は確認画面でマイがアドバイスする方針)
     const displayStatus = avail.status === "level" ? "ok" : avail.status;
     const availLabel = ti18n("craft.avail." + displayStatus);
-    return `<div class="ext-row" data-ext-id="${ext.extId}">
+    return `<div class="ext-row" data-ext-id="${ext.extId}" data-rarity="${ext.rarity || "common"}">
       <div class="ext-row__icon-col">
         <img class="ext-row__icon" src="${extIconUrl(ext.extId)}" alt="" onerror="this.style.opacity='0.2'" />
         <span class="ext-row__avail ext-row__avail--${displayStatus}" title="${escapeHtml(availLabel)}">${escapeHtml(availLabel)}</span>
@@ -4366,7 +4485,8 @@ function renderMarketCard() {
     const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
     const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
     const iconUrl = ext ? extIconUrl(ext.extId) : "";
-    const elapsed = state.tickCount - s.listedAtTick;
+    // Phase 1D-40: 商 seller × rarity 短縮を progress 表示にも反映
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
     const totalTicks = s.weeks * SECONDS_PER_WEEK;
     const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
     const speedDef = SALE_SPEED_BY_ID?.[s.speedId];
@@ -5138,7 +5258,8 @@ function renderMarketSell() {
         const w = state.warehouse[s.warehouseIdx];
         const ext = EXTENSION_BY_ID[String(w?.extId)];
         const seller = findHero(s.sellerId);
-        const elapsed = state.tickCount - s.listedAtTick;
+        // Phase 1D-40: 商 seller × rarity 短縮を progress に反映
+        const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
         const total = s.weeks * SECONDS_PER_WEEK;
         const pct = Math.min(100, Math.floor(elapsed / total * 100));
         return `<div class="active-sale">
@@ -5338,6 +5459,13 @@ function startSale() {
   state.lastSaleSellerId = seller.heroId;
   const speed = SALE_SPEED_BY_ID[_sellPickedSpeedId] || SALE_SPEED_OPTIONS[1];
   const expected = estimateSalePrice(w, ext, _sellPickedSpeedId, seller);
+  // Phase 1D-40: seller が「商」属性持ちなら、 ext rarity に応じて取引期間を短縮
+  //   - Rare:      1/2 期間 (= 倍速)
+  //   - Epic:      1/3 期間 (= 3 倍速)
+  //   - Legendary: 1/8 期間 (= 8 倍速)
+  //   - Common / Uncommon: 短縮無し (= 通常 sho 効果は価格 +10% のみ)
+  //  ロジックは listedAtTick からの elapsed に倍率を乗じて評価する。
+  const shoSpeedMult = computeShoSpeedMult(seller, ext);
   state.activeSales.push({
     id: ++_saleId,
     warehouseIdx: idx,
@@ -5346,6 +5474,7 @@ function startSale() {
     listedAtTick: state.tickCount,
     weeks: speed.weeks,
     expectedPrice: expected,
+    shoSpeedMult,            // 1, 2, 3, 8 のいずれか
     status: "listed",
   });
   // Phase 1D-19: 出品担当ヒーローの「いってくる！」「稼ぐぞー」系セリフ
@@ -5374,7 +5503,8 @@ function tickActiveSales() {
   const rollerMult = isBuffActive("roller") ? 2 : 1;
   const completed = [];
   for (const s of state.activeSales) {
-    const elapsed = (state.tickCount - s.listedAtTick) * rollerMult;
+    // Phase 1D-40 + 1D-34: 商 seller × rarity 短縮 × ローラーバフ
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1) * rollerMult;
     const total = s.weeks * SECONDS_PER_WEEK;
     if (elapsed >= total && s.status === "listed") {
       // 価格にランダム ±10% 変動
@@ -5471,29 +5601,38 @@ function renderMarketHire() {
   $("hirePlanList").innerHTML = HIRE_PLANS.map(p => {
     const lang = getLang() === "en" ? "en" : "ja";
     // 採用担当者として就任可能なヒーローが居るか?
+    // Phase 1D-39: クエスト編成 / クラフト編成 (= roster) に居るだけのヒーローは
+    //   実働しているわけではないので採用担当に就任可能。 ignoreCraftTeam /
+    //   ignoreQuestTeam を渡して roster の lock を無視。
+    //   (= 旧バグ: クエスト編成にいる Idle ヒーローが「担当者がいない」になる)
     const eligibleRecruiters = state.ownedHeroes.filter(h => {
       if (!canBeRecruiter(h, p)) return false;
       if (h.state === HERO_STATE.CRAFTING) return false;
       if (h.state === HERO_STATE.QUESTING) return false;
-      if (isHeroLocked(h.heroId)) return false;
+      if (isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true })) return false;
       return true;
     });
     let blockReason = null;
+    let warnReason = null;
     const reqLv = PLAN_REQUIRED_LV[p.id] || 1;
     if ((state.factoryLevel || 1) < reqLv) {
       blockReason = ti18n("hire.block.factoryLv").replace("{n}", reqLv);
-    } else if (state.gum < p.cost) {
-      blockReason = ti18n("hire.block.gum")
-        .replace("{cost}", p.cost.toLocaleString())
-        .replace("{cur}", state.gum.toLocaleString());
     } else if (eligibleRecruiters.length === 0) {
       blockReason = ti18n("hire.block.recruiter")
         .replace("{rarity}", ti18n("rarity." + p.recruiterMinRarity));
     }
+    // Phase 1D-32 → 1D-38: GUM 不足は赤字許容のため block ではなく warn として表示
+    if (state.gum < p.cost) {
+      warnReason = ti18n("hire.block.gum")
+        .replace("{cost}", p.cost.toLocaleString())
+        .replace("{cur}", state.gum.toLocaleString());
+    }
     const disabled = blockReason !== null;
     const reasonHtml = disabled
       ? `<p class="hire-plan__reason">${escapeHtml(blockReason)}</p>`
-      : "";
+      : warnReason
+        ? `<p class="hire-plan__reason hire-plan__reason--warn">⚠ ${escapeHtml(warnReason)}</p>`
+        : "";
     return `<div class="hire-plan ${disabled ? "hire-plan--disabled" : ""}" data-plan="${p.id}">
       <div class="hire-plan__head">
         <span class="hire-plan__name">${escapeHtml(lang === "en" ? p.nameEn : p.nameJa)}</span>
@@ -5527,13 +5666,15 @@ function renderRecruiterPicker(planId) {
   $("hireRecruitTitle").textContent = ti18n("hire.recruiterPickTitle")
     .replace("{plan}", getLang() === "en" ? plan.nameEn : plan.nameJa);
 
-  // 採用担当者として配属可能なヒーロー (rarity 要件 + idle/resting/(crafting? questing? 配属外限定))
-  // Phase 1D-24: トレード/クエスト/クラフト/別雇用 に既に割当済みのヒーローを除外
+  // 採用担当者として配属可能なヒーロー (rarity 要件 + 実働中以外)
+  // Phase 1D-39: roster (= craftTeam / questTeam) に登録されているだけの Idle
+  //   ヒーローは採用担当に就任可能。 active craft / quest 中 (= state CRAFTING /
+  //   QUESTING または activeCraft.team / activeQuest.team) のヒーローは除外。
   const eligible = state.ownedHeroes.filter(h => {
     if (!canBeRecruiter(h, plan)) return false;
     if (h.state === HERO_STATE.CRAFTING) return false;
     if (h.state === HERO_STATE.QUESTING) return false;
-    if (isHeroLocked(h.heroId)) return false;
+    if (isHeroLocked(h.heroId, { ignoreCraftTeam: true, ignoreQuestTeam: true })) return false;
     return true;
   });
 
@@ -5606,7 +5747,9 @@ function renderActiveHire() {
           // 候補は heroes.json の元データから派生 (まだ owned ではない)
           const def = HERO_ROSTER.find(h => h.heroId === c.heroId);
           const cost = hireCostFor(c);
-          const canAfford = state.gum >= cost;
+          // Phase 1D-32 → 1D-38: 雇用は GUM が足りなくても契約可 (= 赤字突入を許容)。
+          //   このため canAfford による disable は撤廃。 GUM 不足は警告表示で示すだけ。
+          const cantAfford = state.gum < cost;
           // 表示用に factory hero を組み立てる (attribute / element 値を引きたいので)
           const tmp = def ? makeFactoryHero(def) : null;
           const elementsHtml = tmp ? ELEMENTS.map(k => {
@@ -5640,8 +5783,8 @@ function renderActiveHire() {
             <div class="hire-cand-card__cl">${escapeHtml(ti18n("hero.craftLevel"))}: <strong>${cl.toLocaleString()}</strong></div>
             ${passiveLine}
             <div class="hire-cand-card__foot">
-              <span class="hire-cand-card__cost">${cost.toLocaleString()} GUM</span>
-              <button type="button" class="hire-cand-card__hire-btn" data-hire-cand="${c.heroId}" ${canAfford ? "" : "disabled"}>
+              <span class="hire-cand-card__cost ${cantAfford ? "hire-cand-card__cost--deficit" : ""}">${cost.toLocaleString()} GUM${cantAfford ? "  ⚠" : ""}</span>
+              <button type="button" class="hire-cand-card__hire-btn" data-hire-cand="${c.heroId}">
                 ${escapeHtml(ti18n("hire.hireBtn"))}
               </button>
             </div>
@@ -5981,11 +6124,12 @@ function renderSaleOverlay() {
     const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
     const seller = findHero(s.sellerId);
     const sellerName = seller ? tHero(seller.heroId, seller.nameJa) : "—";
-    const elapsed = state.tickCount - s.listedAtTick;
+    // Phase 1D-40: 商 seller × rarity 短縮を progress / 残り週数に反映
+    const elapsed = (state.tickCount - s.listedAtTick) * (s.shoSpeedMult || 1);
     const totalTicks = s.weeks * SECONDS_PER_WEEK;
     const pct = Math.min(100, Math.floor(elapsed / totalTicks * 100));
     const remainTicks = Math.max(0, totalTicks - elapsed);
-    const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK);
+    const remainWeeks = Math.ceil(remainTicks / SECONDS_PER_WEEK / (s.shoSpeedMult || 1));
     const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : `ext ${w?.extId ?? "?"}`;
     const iconUrl = ext ? extIconUrl(ext.extId) : "";
     return `<div class="sale-overlay__row">
@@ -6816,6 +6960,13 @@ async function init() {
     if (!btn) return;
     state.heroFilterRarity = btn.getAttribute("data-rarity-filter") || "all";
     renderHeroList();
+  });
+  // Phase 1D-39: クラフト選択画面のレアリティフィルタ chips
+  $("craftRarityFilter")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-craft-rarity-filter]");
+    if (!btn) return;
+    state.craftFilterRarity = btn.getAttribute("data-craft-rarity-filter") || "all";
+    renderExtList();
   });
   // Phase 1D-27: クラフト中介入イベント picker
   $("craftEventElements")?.addEventListener("click", (ev) => {

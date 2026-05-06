@@ -166,12 +166,40 @@ export function lockedSeriesList(unlockedSeries) {
   return out;
 }
 
+/** Phase 1D-40: rarity ごとの「快適に作れる」クラフトレベル目安 (= 内部要求値)。
+ *  チームの合計 craftLevel がこの値を上回るほどクラフト時間が短縮される。
+ *  数値は initial 4 commons の合計 craftLevel ~50 を基準として rarity の難度に
+ *  比例させた目安。 */
+export const REQUIRED_CRAFT_LV_BY_RARITY = {
+  common:      50,
+  uncommon:   200,
+  rare:       600,
+  epic:      1500,
+  legendary: 3000,
+};
+
+/** Phase 1D-40: チーム合計クラフト Lv ÷ rarity 要求 → 進行速度倍率
+ *  - ratio < 1.0: 1.0x (= 不十分。 完成はするが等倍速)
+ *  - ratio 1.0 〜 2.0: 線形に 1.0x → 2.0x
+ *  - ratio 2.0 〜 3.0: 線形に 2.0x → 3.0x
+ *  - ratio >= 3.0: 3.0x で頭打ち
+ *
+ *  estimateDurationWeeks (= 確認画面の予測値) と tickActiveCraft (= 実進行)
+ *  両方で同じ式を使う。 */
+export function craftLvSpeedMultiplier(total, required) {
+  if (!required || required <= 0) return 1;
+  const ratio = total / required;
+  if (ratio < 1.0) return 1.0;
+  if (ratio < 2.0) return 1 + (ratio - 1);
+  if (ratio < 3.0) return 2 + (ratio - 2);
+  return 3.0;
+}
+
 /**
  * 所要時間 (週) を rarity + チームのクラフトレベル合計から計算。
- * クラフトレベルが高いほど短縮。最大 50% 短縮まで。
- *
- * - Common デフォルト: 12 週
- * - チームクラフトレベル合計が 1000 で 50% 短縮 (フロアあり)
+ * Phase 1D-40: rarity ごとの内部要求 craft Lv を上回るほど短縮 (最大 1/3 = 3x)。
+ * 旧仕様 (= total / 2000 の上限 50%) より強くなり、 ヒーローランクアップの
+ * 効用が「より短期間で同じ ext を作れる」形でも明確に効く。
  *
  * @param {object} ext             ext entry from extensions.json
  * @param {Array<object>} team     factory hero objects (filled or null)
@@ -180,11 +208,10 @@ export function lockedSeriesList(unlockedSeries) {
 export function estimateDurationWeeks(ext, team) {
   const base = DEFAULT_DURATION_WEEKS[ext?.rarity] || 12;
   if (!Array.isArray(team)) return base;
-  // ガルーダ GARUDA_WEIGHT 重みでチーム合計 craftLevel を取得
   const total = teamCraftLevelTotal(team);
-  // 0 → 1.0 倍、1000 → 0.5 倍、それ以上は 0.5 倍で頭打ち
-  const speedup = Math.min(0.5, total / 2000);
-  return Math.max(1, Math.ceil(base * (1 - speedup)));
+  const required = REQUIRED_CRAFT_LV_BY_RARITY[ext?.rarity] || 50;
+  const speedMult = craftLvSpeedMultiplier(total, required);
+  return Math.max(1, Math.ceil(base / speedMult));
 }
 
 /** ext のアイコン URL (MCH master の image_file_path 規約に従う) */
