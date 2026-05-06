@@ -235,6 +235,7 @@
   "quest.startRest":           { "ja": "体力満タンにして出発 [{rate}]", "en": "Rest first, then depart [{rate}]" },
   "quest.detail.rateFullHp":   { "ja": "体力100%で {n}", "en": "at full HP {n}" },
   "quest.notif.restThenDeploy":{ "ja": "ヒーローの体力を満タンにしてから出発します", "en": "Resting heroes to full HP before departure" },
+  "quest.notif.redeployFailed":{ "ja": "編成 Lv 不足のため自動再派遣できませんでした。 編成し直してください", "en": "Auto-redeploy failed (team Lv too low). Please re-form the team." },
   "quest.mai.redeployBusy":    { "ja": "別のクエストが再派遣待ちです。", "en": "Another quest is awaiting redeploy." },
 
   "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Workshop Lv: {n}" },
