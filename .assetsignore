@@ -1,0 +1,8 @@
+node_modules
+.git
+.github
+.claude
+.wrangler
+docs
+tools
+CLAUDE.md
