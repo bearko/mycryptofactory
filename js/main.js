@@ -17,6 +17,7 @@
  *   - Hero assignment / params (Garuda / Ifrit / Leviathan / Tiamat)
  */
 
+import { initPlatform, reportProgress, weeksSinceStart } from "./platform.js";
 import {
   initI18n,
   getLang,
@@ -970,6 +971,9 @@ function tryFactoryLevelUp(targetLv) {
   }
   state.gum -= check.cost;
   state.factoryLevel = cur + 1;
+  // bearko.games 総合スコア：Lv 5 に着くまでの週数を残し、節目として送る
+  if (state.factoryLevel >= 5 && !state.lv5Weeks) state.lv5Weeks = Math.max(1, weeksSinceStart(state) + 1);
+  reportProgress(state, { milestone: true });
   // Phase 1D-23: 工房レベルアップ専用 SE (facilities.mp3)
   playSe("factoryLvDone");
   renderHeader();
@@ -3321,6 +3325,9 @@ function triggerQuestComplete(aq, questSlotIdx = 0) {
     for (const [matId, qty] of Object.entries(rewards)) {
       state.materials[matId] = (state.materials[matId] || 0) + qty;
     }
+    // bearko.games 総合スコア：攻略したクエストの数
+    state.questClearCount = (state.questClearCount || 0) + 1;
+    reportProgress(state);
   }
 
   // Phase 1D-42: ノード経験値 (= CE) 加算。 中級・上級ほど多く、 失敗でも一部入る。
@@ -8149,6 +8156,13 @@ function finalizeCraftCleanup() {
     });
     // Phase 1D-23: クラフト完了統計 + 査定スコアの最大値を更新 (工房レベルアップ条件で参照)
     state.craftCompletedCount = (state.craftCompletedCount || 0) + 1;
+    {
+      // bearko.games 総合スコア：作ったエクステンションのレアリティごとの数 (= 打ち直しは昇格後の rarity)
+      const r = pc.remakeTargetRarity || EXTENSION_BY_ID[String(pc.extId)]?.rarity || "common";
+      state.craftedByRarity = state.craftedByRarity || {};
+      state.craftedByRarity[r] = (state.craftedByRarity[r] || 0) + 1;
+      reportProgress(state);
+    }
     if (pa && pa.totalScore != null) {
       const ext = EXTENSION_BY_ID[String(pc.extId)];
       // Phase 1D-45: 打ち直しなら昇格後の rarity でベストスコアを集計
@@ -9046,6 +9060,7 @@ async function init() {
   });
 }
 
+initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア）。SDK がなければ何もしない
 init();
 
 // Expose APP_VERSION for debug / future ranking submit
