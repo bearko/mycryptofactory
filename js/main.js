@@ -8,7 +8,7 @@
 
 import {
   initPlatform, reportProgress, weeksSinceStart, finalizeScore,
-  isRtaAvailable, rtaStart, rtaMilestone, rtaAbort,
+  isRtaAvailable, rtaStart, rtaMilestone, rtaAbort, syncTrophies,
 } from "./platform.js";
 import {
   writeSave, readSave, clearSave, decodeState, saveSummary,
@@ -688,6 +688,7 @@ function applyLoadedSave(save) {
   // ID の採番をセーブの中の一番大きい ID の次から
   _commissionId = Math.max(_commissionId, ...(state.commissions || []).map(c => Number(c.id) || 0));
   _saleId = Math.max(_saleId, ...(state.activeSales || []).map(x => Number(x.id) || 0));
+  syncPlatformTrophies(); // SPEC-009: トロフィーが入る前のセーブでも、満たしている分を送る
   renderHeader();
   renderProgressCards();
   renderHeroTeam();
@@ -724,6 +725,12 @@ function pickContinue() {
   applyLoadedSave(_titleSave);
   _titleSave = null;
   dismissTitle();
+}
+
+/** SPEC-009: bearko.games のトロフィー。 debug では送らない (setLevel などで条件を作れるため) */
+function syncPlatformTrophies() {
+  if (isDebugMode()) return;
+  syncTrophies(state);
 }
 
 /** ?debug=1 か (SPEC-001 3.6。 そのときは RTA を出さない) */
@@ -780,6 +787,7 @@ function reachMilestone(id) {
   state.milestones[id] = weeks;
   // SPEC-003: RTA の区切り (lv2〜lv4・clear。 計測中のときだけ送られる)。 IGT は 1 週 = 7 秒で数える
   rtaMilestone(id, state.tickCount * TICK_INTERVAL_MS);
+  syncPlatformTrophies(); // SPEC-009: 工房 Lv・クリアのトロフィー
   if (/^year\d$/.test(id)) {
     const n = Number(id.slice(4));
     state.notifications.push({
@@ -8564,6 +8572,7 @@ function finalizeCraftCleanup() {
       state.craftedByRarity = state.craftedByRarity || {};
       state.craftedByRarity[r] = (state.craftedByRarity[r] || 0) + 1;
       reportProgress(state);
+      syncPlatformTrophies(); // SPEC-009: Legendary のクラフト
     }
     if (pa && pa.totalScore != null) {
       const ext = EXTENSION_BY_ID[String(pc.extId)];

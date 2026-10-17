@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 状態 | Accepted（作者の決定 2026-10-17：トロフィー 4 つと名前） |
+| 状態 | Done（作者の決定 2026-10-17：トロフィー 4 つと名前） |
 | 関連 | SPEC-001（期限・クリア・節目）、SPEC-002（セーブ）、SPEC-003（RTA）、bearko/MyCryptoPortfolio の SPEC-001 9.4（定義）・INTEGRATION.md 3.2 |
 
 ## 1. 背景
@@ -31,6 +31,7 @@
 
 - どれを満たしているかは純関数 `trophiesFor(state)`（`js/platform.js`）。送るのは `syncTrophies(state)` **1 か所だけ**
 - `syncTrophies` は、このページを開いてからまだ送っていないものだけを `unlockTrophy` に渡す（同じものは 1 回だけ。サーバーも同じものは二度数えない）。通知は SDK が出す（はじめて取ったときだけ）
+- **1 つずつ順に送る**（前の返事が来てから次）。未ログインで同時に送ると、Cookie がまだないので仮アカウントが送った数だけできてしまう
 - 呼ぶ場所：
   - `reachMilestone`（工房 Lv・クリア。SPEC-001 3.2）
   - クラフトが終わったとき（`craftedByRarity` を数えた直後）
