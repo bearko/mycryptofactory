@@ -4,3 +4,4 @@
 
 | SPEC | 題 | 状態 |
 |---|---|---|
+| [SPEC-001](SPEC-001-deadline-and-clear.md) | 期限 8 年・クリア（工房 Lv.5）・途中の節目 | Approved |
