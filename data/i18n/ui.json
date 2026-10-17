@@ -12,6 +12,13 @@
   "save.confirm":              { "ja": "セーブを消して最初から始めます。よろしいですか？", "en": "This deletes your save and starts over. Are you sure?" },
   "save.confirmOk":            { "ja": "消して始める", "en": "Delete and start" },
   "save.cancel":               { "ja": "やめる", "en": "Cancel" },
+  "settings.bgm":              { "ja": "BGM", "en": "BGM" },
+  "settings.se":               { "ja": "効果音", "en": "Sound effects" },
+  "settings.bgmVolume":        { "ja": "BGM の音量", "en": "BGM volume" },
+  "settings.seVolume":         { "ja": "効果音の音量", "en": "SE volume" },
+  "settings.motion":           { "ja": "演出を減らす", "en": "Reduce motion" },
+  "settings.motionAuto":       { "ja": "端末に合わせる", "en": "Follow device" },
+  "settings.lang":             { "ja": "言語 / Language", "en": "Language / 言語" },
   "rta.start":                 { "ja": "⏱ RTA で始める", "en": "⏱ Start RTA" },
 
   "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
@@ -255,7 +262,7 @@
   "marcoPolo.soldOut":         { "ja": "売切", "en": "Sold out" },
   "marcoPolo.noGum":           { "ja": "GUM 不足", "en": "Not enough GUM" },
 
-  "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Workshop Lv: {n}" },
+  "header.factoryLv":          { "ja": "工房Lv: {n}", "en": "Lv {n}" },
 
   "comp.title":                { "ja": "クラフト完了", "en": "Craft Complete" },
   "comp.maiNotice":            { "ja": "クラフト中のエクステンションが完成しました！", "en": "The extension you were crafting is complete!" },

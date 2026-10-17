@@ -9,8 +9,8 @@
  *        同じ SE が短時間に大量発火するケース (クラフト値獲得) には
  *        簡易スロットルを噛ませる。
  *
- * 音量や mute は将来 settings 画面から制御する想定で、API は外に出して
- * おく。
+ * 音量とオン／オフは設定 (SPEC-005、js/factory-settings.js) から
+ * setBgmEnabled / setSeEnabled / setBgmVolume / setSeVolume で変える。
  */
 
 /** 同梱の Audio フォルダへの相対パス。Vercel (Linux) は case-sensitive なので
@@ -82,7 +82,11 @@ const SE_THROTTLE_MS = {
 };
 
 let _bgmEl = null;
-let _muted = false;
+let _bgmOn = true;
+let _seOn = true;
+let _bgmScale = 1; // 設定の音量 (0..1)。既定の音量に掛ける
+let _seScale = 1;
+let _bgmUnlocked = false; // 最初のユーザー操作 (playBgm) のあとだけ鳴らす
 const _lastSeAt = {};
 
 /** BGM 用 Audio 要素を遅延作成 (file 取得前提) */
@@ -90,7 +94,7 @@ function ensureBgm() {
   if (_bgmEl) return _bgmEl;
   _bgmEl = new Audio(AUDIO_BASE + BGM_FILE);
   _bgmEl.loop = true;
-  _bgmEl.volume = BGM_VOLUME;
+  _bgmEl.volume = BGM_VOLUME * _bgmScale;
   // 初回 play 時の autoplay 拒否を握り潰すため、 silent catch にする想定
   return _bgmEl;
 }
@@ -99,7 +103,8 @@ function ensureBgm() {
  *  ブラウザの autoplay 制限により最初のユーザー操作後に呼ぶこと。
  *  promise を返さない (失敗時はサイレント)。 */
 export function playBgm() {
-  if (_muted) return;
+  _bgmUnlocked = true;
+  if (!_bgmOn || _bgmScale <= 0) return;
   const el = ensureBgm();
   if (!el.paused && !el.ended) return;
   const p = el.play();
@@ -113,19 +118,24 @@ export function pauseBgm() {
   if (_bgmEl) _bgmEl.pause();
 }
 
-/** mute トグル */
-export function setMuted(v) {
-  _muted = !!v;
-  if (_muted) pauseBgm();
-  else        playBgm();
+/** SPEC-005: BGM のオン／オフ。オンにしても、最初のユーザー操作の前は鳴らさない */
+export function setBgmEnabled(on) {
+  _bgmOn = !!on;
+  if (!_bgmOn) pauseBgm();
+  else if (_bgmUnlocked) playBgm();
 }
-export function isMuted() { return _muted; }
+/** SPEC-005: 効果音のオン／オフ */
+export function setSeEnabled(on) { _seOn = !!on; }
 
-/** BGM 音量設定 (0..1) */
+/** SPEC-005: BGM の音量 (0..1。既定の音量に掛ける) */
 export function setBgmVolume(v) {
-  const el = ensureBgm();
-  el.volume = Math.max(0, Math.min(1, v));
+  _bgmScale = Math.max(0, Math.min(1, Number(v) || 0));
+  if (_bgmEl) _bgmEl.volume = BGM_VOLUME * _bgmScale;
+  if (_bgmScale <= 0) pauseBgm();
+  else if (_bgmOn && _bgmUnlocked) playBgm();
 }
+/** SPEC-005: 効果音の音量 (0..1。既定の音量に掛ける) */
+export function setSeVolume(v) { _seScale = Math.max(0, Math.min(1, Number(v) || 0)); }
 
 /** SE を 1 ショット再生 (同時再生に対応するため毎回新しい Audio 要素を作る)。
  *  スロットルにより同じ key の連発は間引く。
@@ -133,7 +143,7 @@ export function setBgmVolume(v) {
  *  @param {keyof SE_FILES} seKey
  */
 export function playSe(seKey) {
-  if (_muted) return;
+  if (!_seOn || _seScale <= 0) return;
   const file = SE_FILES[seKey];
   if (!file) return;
   // 連発スロットル
@@ -148,7 +158,7 @@ export function playSe(seKey) {
   const src = /^https?:\/\//.test(file) ? file : AUDIO_BASE + file;
   const a = new Audio(src);
   // Phase 1D-23: per-key volume オーバーライド
-  a.volume = (seKey in SE_VOLUME_OVERRIDE) ? SE_VOLUME_OVERRIDE[seKey] : SE_VOLUME;
+  a.volume = ((seKey in SE_VOLUME_OVERRIDE) ? SE_VOLUME_OVERRIDE[seKey] : SE_VOLUME) * _seScale;
   a.play().catch(() => { /* user gesture not yet present, ignore */ });
 }
 
