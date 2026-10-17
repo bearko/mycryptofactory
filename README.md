@@ -1,66 +1,35 @@
-# MyCryptoFactory (Ver.2.0.0)
+# MyCryptoFactory
 
-MCH 経済圏をモチーフにした、カイロソフト「ゲーム発展国++」風の工房経営シム。マイクリ工房 (MyCryptoFactory) を 8 年以内に世界一の大工房にすることを目指す。GUM (ゲーム内通貨) を稼ぎ、投資して工房をパワーアップさせるサイクルを楽しむ。
+MCH 経済圏をモチーフにした、カイロソフト「ゲーム発展国++」風の工房経営シム。マイクリ工房（MyCryptoFactory）を **8 年以内に工房 Lv.5** に育てるのが目標です。GUM（ゲーム内通貨）を稼ぎ、ヒーローを雇い、クラフト・クエスト・出品で工房を大きくしていきます。
 
-## デプロイ
-- 単一ページのプレイ可能プロトタイプ。ブラウザで `index.html` を直接開けば動く。
-- Vercel デプロイ: ビルドステップ不要、root をそのまま配信。
-- ビルド/トランスパイルなし、プレーン ES Modules + バニラ JS。
+- **遊ぶ**：https://factory.bearko.games/
+- 版：β2（v1.0 に向けて仕上げ中。進み具合は [bearko/MyCryptoPortfolio の ROADMAP](https://github.com/bearko/mycryptoportfolio/blob/claude/game-portfolio-page-4afqbc/docs/ROADMAP.md)）
+- bearko.games 共通基盤の総合スコアに参加しています（[docs/platform-score.md](docs/platform-score.md)）
 
-## ディレクトリ構造
+## 遊び方
+
+- 1 週は 7 秒で進みます（設定で 2 倍速）。2018 年 12 月 1 週に始まります。メニューやお知らせを開いている間は時間が止まります
+- **クラフト**：ヒーローを配属してエクステンションを作ります。完成すると品評会で点が付き、倉庫に入ります
+- **クエスト**：ヒーローを 3 体まで派遣して素材を集めます。ランドのクエストには通行証が要ります
+- **マーケット**：倉庫のエクステンションを出品して GUM を得ます。ヒーローの雇用もここから
+- **ショップ**：工房を助けるアイテムを GUM で買えます
+- **工房レベルアップ**：条件と GUM がそろうと Lv が上がり、設備・並行で動かせる数・ヒーローの上限・作れるエクステンションが増えます
+- 3 月に年俸を払い、12 月にはコンテストがあります。赤字が長く続くとヒーローが去っていき、0 名になるとゲームオーバーです
+
+## 開発
+
+ビルドはありません。プレーン ES Modules + バニラ JS で、リポジトリのルートをそのまま配信します。
+
 ```
-index.html              エントリポイント
-js/
-  main.js               ブートストラップ + 状態 + 時間進行
-  factory-hero.js       ヒーローアダプタ (MCH stat → 4 元素 + 体力モデル)
-  i18n.js               JP/EN 切替コア
-  heroes.js             ヒーローデータローダ
-  constants.js          画像 URL ヘルパ
-  ranking-client.js     (将来用) GAS ランキング送信
-  scoring.js            (将来用) スコア計算
-  help.js               ヘルプオーバーレイ
-data/
-  heroes.json           MCH ヒーローマスタ
-  i18n/
-    ui.json             UI 文字列 (JA/EN ペア)
-    heroes-en.json      ヒーロー JA→EN ルックアップ
-    extensions-en.json  エクステンション JA→EN ルックアップ
-Image/
-  Factory/              工房・元素アイコン (bearko/mycryptoheroes 由来)
+npx http-server -c-1 .       # ローカルで開く（何でもよい静的サーバー）
+node --test tests/*.test.mjs # テスト（Node 22）
 ```
 
-## ゲーム仕様 (実装フェーズ)
+- 仕様：`docs/specs/`（SPEC-NNN）
+- 開発の決まり：[CLAUDE.md](CLAUDE.md)
+- デプロイ：`main` にマージすると、Cloudflare Workers Builds が factory.bearko.games に自動で公開します（`wrangler.jsonc`）
+- CI：`.github/workflows/ci.yml`（構文・JSON・テスト）
 
-### Phase 0 (✅ Done)
-- タイトル画面 + 言語トグル (JP/EN)
-- 工房 view (背景画像 + ヘッダー + メニュー)
-- ヘッダー: ゲーム内日付 / 円ゲージ (1 週 = 7 秒) / GUM 残高
-- メニュー (クラフト / ヒーロー / クエスト / ショップ / マーケット / 設定)
-- 時間進行ループ (メニュー開いている間は停止)
+## ライセンス
 
-### Phase 1A (✅ Done)
-- ヒーローデータアダプタ:
-  ```
-  MCH HP   → ガルーダ (緑)  ※ クラフト要素 + 体力 (stamina) を兼ねる
-  MCH PHY  → イフリート (赤)
-  MCH INT  → リヴァイアサン (青)
-  MCH AGI  → ティアマト (黄)
-  ```
-- ヒーロー一覧画面 (5 体までの編成スロット + 並び順切替)
-- ヒーロー状態: idle / crafting / questing / resting
-
-### Phase 1B+ (TODO)
-- クラフト: 受注リスト / レシピ / 配属 / 自動進捗 / 完成判定
-- ヒーロー stamina の tick ダウン (クラフト中) + resting 自動復帰
-- クエスト: ノード選択 / 3 体配属 / 素材報酬
-- ショップ / マーケット
-- ランド系クエスト + ランキング送信
-
-## 旧 React+TS scaffold
-旧 React+TS+Zustand+Vite scaffold は git tag `legacy-react-ts-scaffold` で保管。復元したい場合:
-```
-git checkout legacy-react-ts-scaffold
-```
-
-## アセット帰属
-キャラクター画像 / アイコンは [bearko/mycryptoheroes](https://github.com/bearko/mycryptoheroes) リポジトリ由来。利用は同リポジトリの README に従う。
+ソースコードと文書は [MIT](LICENSE) です。My Crypto Heroes のキャラクター・エクステンション・背景などの画像と、MCH の素材を含む画像（マイ・ロゴ・OGP 画像など）は対象外で、MCH Co., Ltd. に帰属します。`Audio/` の音声も対象外です。画像は [bearko/mycryptoheroes](https://github.com/bearko/mycryptoheroes) から参照しています。
