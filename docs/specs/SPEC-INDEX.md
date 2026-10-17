@@ -8,3 +8,4 @@
 | [SPEC-002](SPEC-002-save.md) | セーブ（月ごとの自動保存・つづきから） | Done |
 | [SPEC-003](SPEC-003-platform-rta.md) | bearko.games 共通基盤の RTA（工房 Lv.5） | Done |
 | [SPEC-004](SPEC-004-ui-foundation.md) | UI の土台（画面の器・トークン・部品・外向き） | Done |
+| [SPEC-005](SPEC-005-settings.md) | 設定（音・演出を減らす・言語） | Done |

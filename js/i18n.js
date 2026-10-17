@@ -14,10 +14,11 @@
  *   onLangChange(handler)        — register a callback fired when lang changes
  *   applyDataI18n(root?)         — apply [data-i18n] attributes to text content
  *
- * Lang code: "ja" or "en". Default "ja". Persisted in localStorage("mct.lang").
+ * Lang code: "ja" or "en". Default "ja". Persisted in localStorage("mcf.lang") (SPEC-005。旧 "mct.lang" は読んで移す).
  */
 
-const LANG_KEY = "mct.lang";
+const LANG_KEY = "mcf.lang";
+const LEGACY_LANG_KEY = "mct.lang"; // Tactics 由来の旧キー (SPEC-005 で mcf. に移した)
 const DEFAULT_LANG = "ja";
 
 let _lang = DEFAULT_LANG;
@@ -52,7 +53,12 @@ export function isReady() { return _ready; }
 /** Init: reads localStorage + fetches all i18n JSON files. */
 export async function initI18n() {
   try {
-    const stored = localStorage.getItem(LANG_KEY);
+    let stored = localStorage.getItem(LANG_KEY);
+    if (stored == null) {
+      stored = localStorage.getItem(LEGACY_LANG_KEY);
+      if (stored === "ja" || stored === "en") localStorage.setItem(LANG_KEY, stored);
+      localStorage.removeItem(LEGACY_LANG_KEY);
+    }
     if (stored === "ja" || stored === "en") _lang = stored;
   } catch (e) { /* ignore */ }
   document.documentElement.setAttribute("lang", _lang);

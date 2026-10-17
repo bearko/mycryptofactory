@@ -109,7 +109,12 @@ import {
   playBgm,
   playSe,
   preloadAllSe,
+  setBgmEnabled,
+  setSeEnabled,
+  setBgmVolume,
+  setSeVolume,
 } from "./factory-audio.js";
+import { readSettings, writeSettings, isReducedMotion } from "./factory-settings.js";
 import {
   SHOP_ITEMS,
   SHOP_ITEM_BY_ID,
@@ -443,6 +448,18 @@ function refreshSettingsSubmenu() {
     const st  = state.timeSpeed2x ? ti18n("settings.on") : ti18n("settings.off");
     btn.textContent = `${lbl}: ${st}`;
   }
+  // SPEC-005: 音・演出・言語
+  const onOff = (v) => ti18n(v ? "settings.on" : "settings.off");
+  const setText = (id, key, fallback, val) => { const el = $(id); if (el) el.textContent = `${ti18n(key, fallback)}: ${val}`; };
+  setText("settingBgm", "settings.bgm", "BGM", onOff(_settings.bgmOn));
+  setText("settingSe", "settings.se", "効果音", onOff(_settings.seOn));
+  setText("settingMotion", "settings.motion", "演出を減らす",
+    _settings.motion === "reduce" ? ti18n("settings.on") : ti18n("settings.motionAuto", "端末に合わせる"));
+  setText("settingLang", "settings.lang", "言語 / Language", getLang() === "en" ? "English" : "日本語");
+  const bgmVol = $("settingBgmVolume");
+  if (bgmVol) { bgmVol.value = String(Math.round(_settings.bgmVolume * 100)); bgmVol.disabled = !_settings.bgmOn; }
+  const seVol = $("settingSeVolume");
+  if (seVol) { seVol.value = String(Math.round(_settings.seVolume * 100)); seVol.disabled = !_settings.seOn; }
   // Phase 1D-21: 20x mode toggle
   const btn20 = $("settingSpeed20x");
   if (btn20) {
@@ -595,6 +612,41 @@ function gatherFactoryStats() {
     landPassCount: (state.landPasses instanceof Set) ? state.landPasses.size : 0,
     yearWeek: `${state.year}-${state.month}-${state.week}`,
   };
+}
+
+/** ─── SPEC-005: 設定 (音・演出を減らす・言語) ─────────────────────── */
+
+let _settings = readSettings(null);
+const _osReducedMq = (() => {
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)"); } catch (e) { return null; }
+})();
+
+/** 演出を減らすか (設定の「減らす」か、端末の設定) */
+function isMotionReduced() {
+  return isReducedMotion(_settings, _osReducedMq?.matches);
+}
+
+/** 設定を音と画面に反映する (起動時・変えたとき) */
+function applySettings() {
+  setBgmEnabled(_settings.bgmOn);
+  setSeEnabled(_settings.seOn);
+  setBgmVolume(_settings.bgmVolume);
+  setSeVolume(_settings.seVolume);
+  document.documentElement.classList.toggle("reduce-motion", isMotionReduced());
+}
+
+function pickSetting(patch) {
+  _settings = { ..._settings, ...patch };
+  const st = safeStorage();
+  if (st) writeSettings(st, _settings);
+  applySettings();
+  refreshSettingsSubmenu();
+}
+
+function initSettings() {
+  _settings = readSettings(safeStorage());
+  applySettings();
+  _osReducedMq?.addEventListener?.("change", applySettings);
 }
 
 /** ─── SPEC-002: セーブ (月ごとの自動保存・つづきから) ─────────────── */
@@ -8293,7 +8345,7 @@ function scheduleAppraisalReveal() {
       else              playSe("appraisalLow");
     }
     renderAppraisalScreen();
-  }, 700);
+  }, isMotionReduced() ? 200 : 700); // SPEC-005: 演出を減らすときは待ちを短く
 }
 
 function renderAppraisalScreen() {
@@ -8359,6 +8411,7 @@ function renderAppraisalScreen() {
 function triggerConfetti(count = 50, ms = 3000) {
   const layer = $("confettiLayer");
   if (!layer) return;
+  if (isMotionReduced()) return; // SPEC-005: 演出を減らすときは出さない
   layer.classList.remove("hidden");
   // 既存ピースを片付け (連続発火に備える)
   layer.innerHTML = "";
@@ -8476,6 +8529,8 @@ function closeHelp() {
 
 /** ─── Init ─────────────────────────────────────────────────────── */
 async function init() {
+  // SPEC-005: 設定 (音・演出) を最初に反映する
+  initSettings();
   // i18n bootstrap
   try {
     await initI18n();
@@ -8787,6 +8842,14 @@ async function init() {
     // tick interval を再起動
     restartTimeLoopWithSpeed();
   });
+  // SPEC-005: 音・演出・言語
+  $("settingBgm")?.addEventListener("click", () => pickSetting({ bgmOn: !_settings.bgmOn }));
+  $("settingSe")?.addEventListener("click", () => pickSetting({ seOn: !_settings.seOn }));
+  $("settingBgmVolume")?.addEventListener("input", (ev) => pickSetting({ bgmVolume: Number(ev.target.value) / 100 }));
+  $("settingSeVolume")?.addEventListener("input", (ev) => pickSetting({ seVolume: Number(ev.target.value) / 100 }));
+  $("settingSeVolume")?.addEventListener("change", () => playSe("buttonClick")); // 大きさを確かめる
+  $("settingMotion")?.addEventListener("click", () => pickSetting({ motion: _settings.motion === "reduce" ? "auto" : "reduce" }));
+  $("settingLang")?.addEventListener("click", () => { setLang(getLang() === "en" ? "ja" : "en"); refreshSettingsSubmenu(); });
   // Phase 1D-21: 時間 20x speed トグル (テスト/バランス調整用)
   $("settingSpeed20x")?.addEventListener("click", () => {
     state.timeSpeed20x = !state.timeSpeed20x;

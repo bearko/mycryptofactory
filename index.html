@@ -1041,6 +1041,15 @@
     }
     .menu-item:hover { background: #fdf3d3; }
     .menu-item--active { background: #fdf3d3; border-color: #1a1420; }
+    /* SPEC-005: 設定の音量スライダー */
+    .setting-range {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+      background: #fff; color: #1a1420;
+      border: 1.5px solid #4a3f33; border-radius: 4px;
+      padding: 0.45rem 0.8rem; font-size: 0.85rem; font-weight: 700;
+    }
+    .setting-range input[type="range"] { flex: 1; max-width: 60%; accent-color: var(--accent); touch-action: pan-y; }
+    .setting-range input[type="range"]:disabled { opacity: 0.4; }
     .menu-item:disabled {
       opacity: 0.5; cursor: not-allowed;
       background: #d2c7a8; color: #5a4f3f;
@@ -6084,7 +6093,15 @@
       padding-top: var(--safe-t); padding-bottom: var(--safe-b);
       padding-left: var(--safe-l); padding-right: var(--safe-r);
     }
-    .menu-overlay { padding-top: max(4rem, calc(var(--safe-t) + 3rem)); }
+    .menu-overlay { padding-top: max(4rem, calc(var(--safe-t) + 3rem)); padding-right: max(5%, var(--safe-r)); }
+    /* SPEC-005: 狭い画面ではサブメニュー (設定など) を画面の幅に収める */
+    @media (max-width: 480px) {
+      .menu-overlay { padding-left: max(3%, var(--safe-l)); padding-right: max(3%, var(--safe-r)); }
+      .menu-overlay > .menu-card { min-width: 0; }
+      .menu-overlay > .menu-card:first-child { flex: 0 0 38%; }
+      .menu-overlay > .menu-card + .menu-card { flex: 1 1 0; max-height: calc(100dvh - 5rem); overflow-y: auto; }
+      .menu-overlay .menu-item { padding: 0.6rem 0.5rem; font-size: 0.92rem; }
+    }
     .mai-modal { padding-bottom: var(--safe-b); }
     /* ヘッダー: 上と左右を safe-area の内側に。日付・Lv・GUM は折り返さない */
     .factory-header {
@@ -6135,6 +6152,12 @@
       .lang-toggle { gap: 0.35rem; }
     }
     /* OS の「視差効果を減らす」: アニメーションとトランジションをほぼ 0 に */
+    html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -6365,6 +6388,17 @@
     </div>
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
       <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
+      <!-- SPEC-005: 音・演出・言語 (localStorage mcf.settings / mcf.lang) -->
+      <button type="button" class="menu-item" id="settingBgm">BGM: ON</button>
+      <label class="setting-range"><span data-i18n="settings.bgmVolume">BGM の音量</span>
+        <input type="range" min="0" max="100" step="5" id="settingBgmVolume" value="100" />
+      </label>
+      <button type="button" class="menu-item" id="settingSe">効果音: ON</button>
+      <label class="setting-range"><span data-i18n="settings.seVolume">効果音の音量</span>
+        <input type="range" min="0" max="100" step="5" id="settingSeVolume" value="100" />
+      </label>
+      <button type="button" class="menu-item" id="settingMotion">演出を減らす: 端末に合わせる</button>
+      <button type="button" class="menu-item" id="settingLang">言語 / Language: 日本語</button>
       <!-- Phase α: 20倍速モードはテスト/バランス調整用のため main からは外す -->
     </div>
   </div>
