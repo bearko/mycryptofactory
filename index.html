@@ -73,6 +73,34 @@
       font-weight: 700;
     }
     @keyframes title-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .title-press.hidden, .title-save.hidden, .title-confirm.hidden { display: none !important; }
+    /* SPEC-002: つづきから / はじめから */
+    .title-save { display: flex; flex-direction: column; align-items: stretch; gap: 0.6rem; width: min(280px, 80vw); cursor: default; }
+    .title-save__btn {
+      appearance: none; border-radius: 10px; padding: 0.7rem 1rem;
+      font-size: 1rem; font-weight: 800; cursor: pointer;
+      background: #ffffff; color: #4a3f63; border: 2px solid #c4a35a;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      transition: transform 0.08s ease;
+    }
+    .title-save__btn:active { transform: scale(0.97); }
+    .title-save__btn--primary { background: #c4a35a; color: #1a1420; }
+    .title-save__btn--danger { background: #b5473a; border-color: #b5473a; color: #ffffff; }
+    .title-save__meta { font-size: 0.72rem; font-weight: 600; opacity: 0.8; }
+    .title-confirm {
+      position: fixed; inset: 0; z-index: 1100;
+      background: rgba(15, 12, 22, 0.6);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .title-confirm__card {
+      width: min(340px, 100%); background: #ffffff; border-radius: 12px;
+      padding: 1.2rem; display: flex; flex-direction: column; gap: 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .title-confirm__text { margin: 0; color: #2a2238; font-size: 0.95rem; line-height: 1.6; text-align: center; }
+    .title-confirm__actions { display: flex; gap: 0.6rem; }
+    .title-confirm__actions .title-save__btn { flex: 1; }
     /* Phase α: α 版バナー (タイトル画面 + ホームヘッダーで使い回す) */
     .alpha-badge {
       display: inline-block;
@@ -6020,9 +6048,17 @@
     <img class="title-logo" src="./Image/Factory/title-logo.jpg" alt="MyCryptoFactory" />
     <div class="title-alpha-stack">
       <span class="alpha-badge" data-i18n="alpha.badge">β2 版 / BETA2</span>
-      <p class="title-alpha-note" data-i18n="alpha.note">β2 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。</p>
+      <p class="title-alpha-note" data-i18n="alpha.note">β2 版です。フィードバック歓迎中。月の初めに、このブラウザへ自動で保存します。</p>
     </div>
     <p class="title-press" data-i18n="title.press">Press to Start</p>
+    <!-- SPEC-002: セーブがあるときだけ (つづきから / はじめから) -->
+    <div class="title-save hidden" id="titleSave">
+      <button type="button" class="title-save__btn title-save__btn--primary" id="titleContinueBtn">
+        <span data-i18n="save.continue">つづきから</span>
+        <small class="title-save__meta" id="titleContinueMeta"></small>
+      </button>
+      <button type="button" class="title-save__btn" id="titleNewGameBtn" data-i18n="save.newGame">はじめから</button>
+    </div>
     <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
       <span class="lang-toggle-label" data-i18n="lang.toggle.label">言語 / Language</span>
       <div class="lang-toggle-buttons">
@@ -6033,6 +6069,17 @@
     <!-- Phase 1D-46: タイトル画面からランキング閲覧 (= 開始前にトップ 50 を覗ける) -->
     <button type="button" class="title-ranking-btn" id="titleRankingBtn" data-i18n="ranking.viewer.openBtn">🏆 ランキング</button>
     <p class="title-version">© bearko / unofficial fan project</p>
+  </div>
+
+  <!-- SPEC-002: はじめからの確認 (セーブを消す) -->
+  <div class="title-confirm hidden" id="newGameConfirm" role="dialog" aria-modal="true" aria-labelledby="newGameConfirmText">
+    <div class="title-confirm__card">
+      <p class="title-confirm__text" id="newGameConfirmText" data-i18n="save.confirm">セーブを消して最初から始めます。よろしいですか？</p>
+      <div class="title-confirm__actions">
+        <button type="button" class="title-save__btn" id="newGameConfirmCancel" data-i18n="save.cancel">やめる</button>
+        <button type="button" class="title-save__btn title-save__btn--danger" id="newGameConfirmOk" data-i18n="save.confirmOk">消して始める</button>
+      </div>
+    </div>
   </div>
 
   <!-- ── Factory App ── -->

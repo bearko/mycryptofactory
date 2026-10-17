@@ -13,5 +13,5 @@ bearko.games の総合スコア（[bearko/mycryptoportfolio の SPEC-002](https:
 - 工房 Lv が上がったときはすぐ送って自己ベストの通知を出す。クラフト・クエストは通知なしで 1 分に 1 回までにまとめる（`js/platform.js`）
 - SDK（`https://bearko.games/sdk/v1.js`）が読めない・通信に失敗しても何もしない。ゲームの進行・pauseTime には触らない
 - 期限（8 年。SPEC-001）で送るのを止める（`finalizeScore`。待っている分を 1 回送ってから）。Lv 5 までの週数は 384 以下になる
-- いまのゲームはセーブがないので、読み込み直すと最初から。共通基盤には自己ベストが残る
+- セーブ（SPEC-002）から続けると、セーブの時点の成績から送り直す。共通基盤には自己ベストが残る
 - テスト：`node --test tests/*.test.mjs`
