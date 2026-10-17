@@ -463,6 +463,34 @@ function resumeTime() {
   state.pauseFlags = Math.max(0, state.pauseFlags - 1);
 }
 
+/** #117: 時間を止める画面（モーダル・ビュー）。 どれかが開いていれば、 時間が止まっているのは正しい */
+const PAUSE_OVERLAY_SELECTOR = '[aria-modal="true"], [id$="View"]:not(#workshopView), #craftEventPicker, #craftEventAnim, #helpOverlay, #menuOverlay, #recipePopup, #heroDetailPopup';
+function isAnyOverlayOpen() {
+  for (const el of document.querySelectorAll(PAUSE_OVERLAY_SELECTOR)) {
+    if (!el.classList.contains("hidden") && el.getClientRects().length > 0) return true;
+  }
+  return false;
+}
+
+/** #117: 時間が止まっているのに、 画面が 3 秒続けて 1 つも開いていなければ止まりを解く。
+ *  pauseTime / resumeTime の数がずれる経路が残っていても、 遊べなくならないための見張り。
+ *  ほんとうに止めたい短い間（演出の setTimeout の 0.2〜1.2 秒）は 3 秒より短い */
+const PAUSE_WATCHDOG_MS = 1000;
+const PAUSE_WATCHDOG_STRIKES = 3;
+let _pauseLeakStrikes = 0;
+function tickPauseWatchdog() {
+  if (state.pauseFlags > 0 && !isAnyOverlayOpen()) {
+    _pauseLeakStrikes++;
+    if (_pauseLeakStrikes >= PAUSE_WATCHDOG_STRIKES) {
+      console.warn(`[pause] 画面が開いていないのに止まっていたので戻した (pauseFlags=${state.pauseFlags})`);
+      state.pauseFlags = 0;
+      _pauseLeakStrikes = 0;
+    }
+  } else {
+    _pauseLeakStrikes = 0;
+  }
+}
+
 /** Phase 1D-21: 工房レベルアップ
  *  Phase 1D-23: 条件付き + 多段プレビュー対応 */
 const FACTORY_LV_UP_COST_TABLE = {
@@ -9536,6 +9564,7 @@ function installDebugHooks() {
   console.info("[debug] window.mcfDebug を有効にしました", Object.keys(window.mcfDebug));
 }
 installDebugHooks();
+setInterval(tickPauseWatchdog, PAUSE_WATCHDOG_MS); // #117: 止まったままの時間の見張り
 initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア）。SDK がなければ何もしない
 init();
 
