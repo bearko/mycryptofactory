@@ -65,6 +65,7 @@ import {
   lockedSeriesList,
   REQUIRED_CRAFT_LV_BY_RARITY,
   craftLvSpeedMultiplier,
+  craftEventCandidates,
 } from "./factory-craft.js";
 import {
   MATERIALS,
@@ -3038,12 +3039,12 @@ function tickActiveCraft(craftSlotIdx = 0) {
     if (!ac.event40Done && before < 0.40 && ac.timeProgress >= 0.40) {
       ac.event40Done = true;
       pauseTime();
-      setTimeout(() => triggerCraftEvent("soul"), 200);
+      setTimeout(() => triggerCraftEvent("soul", craftSlotIdx), 200);
     }
     if (!ac.event80Done && before < 0.80 && ac.timeProgress >= 0.80) {
       ac.event80Done = true;
       pauseTime();
-      setTimeout(() => triggerCraftEvent("aura"), 200);
+      setTimeout(() => triggerCraftEvent("aura", craftSlotIdx), 200);
     }
   }
   // 5. 完了判定 (時間進捗 100%)
@@ -3057,9 +3058,11 @@ function tickActiveCraft(craftSlotIdx = 0) {
 
 /** ─── Phase 1D-27: クラフト中ユーザー介入イベント ─────────────── */
 
-/** type = "soul" (40%) | "aura" (80%) */
-function triggerCraftEvent(type) {
+/** type = "soul" (40%) | "aura" (80%)、 slotIdx = イベントを起こしたクラフトの枠 (0..2) */
+function triggerCraftEvent(type, slotIdx = 0) {
   state.craftEventType = type;
+  // #115: どの枠のイベントか。 ピッカー・演出・完了はこの枠のクラフトを使う (1 枠目だけを見ていた)
+  state.craftEventSlotIdx = slotIdx;
   state.craftEventPickedElement = null;
   state.craftEventPickedHeroId = null;
   const lang = getLang() === "en" ? "en" : "ja";
@@ -3073,15 +3076,28 @@ function triggerCraftEvent(type) {
   maiSaysSequence(lines, { onClose: () => openCraftEventPicker(type) });
 }
 
+/** #115: いまのイベントを起こしたクラフト (= state.craftEventSlotIdx の枠) */
+function craftEventCraft() {
+  return getActiveCraftSlot(state.craftEventSlotIdx ?? 0);
+}
+
 function openCraftEventPicker(type) {
   // Phase β2 hotfix: maiSaysSequence の close で caller (tickActiveCraft) の
   //   pause が消費されてしまうため、 picker 自身が pauseTime() で固定する。
   //   finishCraftEventAnim の resumeTime とペアになる。
   pauseTime();
   const view = $("craftEventPicker");
+  // #116: 枠のクラフトが無い・編成ヒーローが 1 人もいないときは、 イベントを飛ばして時間を戻す
+  const acNow = craftEventCraft();
+  if (!acNow || !(acNow.team || []).some(id => id != null && findHero(id))) {
+    state.craftEventType = null;
+    state.craftEventSlotIdx = null;
+    resumeTime();
+    return;
+  }
   if (!view) {
     // フォールバック: 自動で適当な要素 + チームの先頭で実行
-    const ac = state.activeCraft;
+    const ac = craftEventCraft();
     if (!ac) { resumeTime(); return; }
     const heroId = ac.team.find(id => id != null);
     state.craftEventPickedElement = ELEMENTS[0];
@@ -3099,7 +3115,7 @@ function closeCraftEventPicker() {
 }
 
 function renderCraftEventPicker() {
-  const ac = state.activeCraft;
+  const ac = craftEventCraft();
   if (!ac) return;
   const lang = getLang() === "en" ? "en" : "ja";
   const type = state.craftEventType;
@@ -3136,9 +3152,12 @@ function renderCraftEventPicker() {
   const soulHeroId = ac.soulHeroId || null;
   const isAura = type === "aura";
   const allTeamHeroes = (ac.team || []).filter(id => id != null).map(id => findHero(id)).filter(Boolean);
-  const teamHeroes = isAura && soulHeroId != null
-    ? allTeamHeroes.filter(h => h.heroId !== soulHeroId)
-    : allTeamHeroes;
+  const { heroes: teamHeroes, sameAsSoul } = craftEventCandidates(allTeamHeroes, type, soulHeroId);
+  const sameNote = sameAsSoul
+    ? `<p class="craft-event__empty">${escapeHtml(lang === "en"
+        ? "No other team heroes, so the soul-injection hero bestows the aura too."
+        : "ほかに編成ヒーローがいないので、ソウル注入と同じヒーローが担当します。")}</p>`
+    : "";
   $("craftEventHeroes").innerHTML = teamHeroes.length === 0
     ? `<p class="craft-event__empty">${escapeHtml(
         isAura && soulHeroId != null
@@ -3154,7 +3173,7 @@ function renderCraftEventPicker() {
           <span class="craft-event__hero-cl">CL ${cl}</span>
           ${h.passiveName ? `<span class="craft-event__hero-passive">${escapeHtml(h.passiveName)}</span>` : ""}
         </button>`;
-      }).join("");
+      }).join("") + sameNote;
 
   // 3. 「注入開始」ボタン (両方選択時のみ有効)
   const startBtn = $("craftEventStart");
@@ -3175,7 +3194,7 @@ const CRAFT_EVENT_OUTRO_LINES_EN = ["How's that!", "Done.", "All finished!", "Ho
 /** 注入開始 → アニメーション → 完了 */
 function runCraftEventAnimation() {
   closeCraftEventPicker();
-  const ac = state.activeCraft;
+  const ac = craftEventCraft();
   const elKey = state.craftEventPickedElement;
   const heroId = state.craftEventPickedHeroId;
   const hero = findHero(heroId);
@@ -3300,7 +3319,7 @@ function finishCraftEventAnim(hero, elKey, total, lang) {
   // Phase 1D-31: 工房と同じ吹き出しなので「ヒーロー名:「」」装飾は不要 (= セリフのみ)
   showCraftEventBubble(outro[Math.floor(Math.random() * outro.length)]);
   // Phase 1D-41: ソウル注入を担当したヒーローを記録 (= オーラ付与で同じ hero を除外する)
-  const ac = state.activeCraft;
+  const ac = craftEventCraft();
   if (ac && state.craftEventType === "soul" && hero) {
     ac.soulHeroId = hero.heroId;
   }
@@ -3308,6 +3327,7 @@ function finishCraftEventAnim(hero, elKey, total, lang) {
   setTimeout(() => {
     $("craftEventAnim")?.classList.add("hidden");
     state.craftEventType = null;
+    state.craftEventSlotIdx = null;
     state.craftEventPickedElement = null;
     state.craftEventPickedHeroId = null;
     resumeTime();
