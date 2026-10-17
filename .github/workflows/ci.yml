@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: JS syntax check (node --check on every js/*.js)
         run: |
@@ -36,3 +36,6 @@ jobs:
             node -e "JSON.parse(require('fs').readFileSync('$f','utf-8'))" || fail=1
           done
           exit $fail
+
+      - name: Unit tests (node --test)
+        run: node --test tests/*.test.mjs
