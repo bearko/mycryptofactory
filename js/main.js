@@ -561,6 +561,8 @@ const FACTORY_LV_EQUIPMENT = {
 function maybeWorkshopLvPrompt() {
   const cur = state.factoryLevel || 1;
   if (cur >= 5) return;
+  // #114: ほかのマイ・画面が開いている間は重ねない (閉じたあとの処理が上書きされるため)。 あとでもう一度
+  if (state.pauseFlags > 0) { setTimeout(maybeWorkshopLvPrompt, 1000); return; }
   const target = cur + 1;
   state.factoryLvPrompted = state.factoryLvPrompted || new Set();
   if (state.factoryLvPrompted.has(target)) return;
@@ -2877,6 +2879,8 @@ function pickCommission(commissionId) {
 
 function onTick() {
   if (state.pauseFlags > 0) return;
+  // #114: 画面が出ないまま残った完成・品評会・クエスト結果を、 出し直す
+  if (recoverOrphanedDisplay()) return;
   // SPEC-002: 予約された保存は、 モーダルが開いていない tick で書く
   if (_saveDue) applyDueSave();
   state.tickCount += 1;
@@ -3035,12 +3039,15 @@ function tickActiveCraft(craftSlotIdx = 0) {
     const before = ac.timeProgress || 0;
     ac.timeProgress = Math.min(1, before + baseDelta * factor);
     // Phase 1D-27: 進捗 40% / 80% でクラフト中の介入イベント (魂注入 / オーラ付与) を起動
-    if (!ac.event40Done && before < 0.40 && ac.timeProgress >= 0.40) {
+    // #114: 同じ tick で先にマイ・画面が開いていたら (= pauseFlags > 0) 次の tick に回す。
+    //   重ねるとマイの「閉じたあとの処理」が上書きされ、完成画面などが開かなくなる。
+    //   進捗は止まっている間も 40% / 80% を越えたままなので、 次の tick で拾える
+    if (!ac.event40Done && ac.timeProgress >= 0.40 && state.pauseFlags === 0) {
       ac.event40Done = true;
       pauseTime();
       setTimeout(() => triggerCraftEvent("soul"), 200);
     }
-    if (!ac.event80Done && before < 0.80 && ac.timeProgress >= 0.80) {
+    if (!ac.event80Done && ac.timeProgress >= 0.80 && state.pauseFlags === 0) {
       ac.event80Done = true;
       pauseTime();
       setTimeout(() => triggerCraftEvent("aura"), 200);
@@ -3050,7 +3057,8 @@ function tickActiveCraft(craftSlotIdx = 0) {
   if ((ac.timeProgress || 0) >= 1) {
     // Phase β2-3: 完成画面の modal 表示は同時 1 件のみ。 既に他スロットの
     //   pendingCompletion / pendingAppraisal が flow 中なら次 tick まで待機。
-    if (state.pendingCompletion || state.pendingAppraisal) return;
+    // #114: 同じ tick で先にマイ・画面が開いていたら (= pauseFlags > 0) 次の tick に回す (クエストと同じ)
+    if (state.pendingCompletion || state.pendingAppraisal || state.pauseFlags > 0) return;
     triggerCraftCompletion(ac, craftSlotIdx);
   }
 }
@@ -7243,6 +7251,31 @@ function runTutorialOnce(key, opts = {}) {
   state.tutorial[key] = true;
   maiSaysSequence(lines, opts);
   return true;
+}
+
+/** #114: 時間が動いている (= どの画面も開いていない) のに、 完成・品評会・クエスト結果が残っていたら、
+ *  出し直す。 マイのメッセージが重なって「閉じたあとの処理」が消えたときの救済 (= 残っていると、
+ *  そのスロットのクラフト・クエストが二度と完了しない)。 出し直したら true */
+function recoverOrphanedDisplay() {
+  if (state.pendingAppraisal && state.pendingCompletion) {
+    console.warn("[recover] appraisal");
+    pauseTime();
+    $("appraisalModal")?.classList.remove("hidden");
+    renderAppraisalScreen();
+    scheduleAppraisalReveal();
+    return true;
+  }
+  if (state.pendingCompletion) {
+    console.warn("[recover] completion");
+    maiSays("comp.maiNotice", { onClose: openCompletionScreen });
+    return true;
+  }
+  if (state.pendingQuestResult) {
+    console.warn("[recover] questResult");
+    maiSays(state.pendingQuestResult.success ? "quest.mai.success" : "quest.mai.failure", { onClose: openQuestResultScreen });
+    return true;
+  }
+  return false;
 }
 
 /** ─── Craft completion screen (Phase 1B-3) ───────────────────────── */
