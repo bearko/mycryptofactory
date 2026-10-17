@@ -19,6 +19,9 @@
 
 import { initPlatform, reportProgress, weeksSinceStart, finalizeScore } from "./platform.js";
 import {
+  writeSave, readSave, clearSave, decodeState, saveSummary,
+} from "./factory-save.js";
+import {
   DEADLINE_WEEKS, yearEndMilestone, levelMilestone, isWithinDeadline, splitWeeks, remainingTime,
 } from "./factory-goal.js";
 import {
@@ -591,6 +594,110 @@ function gatherFactoryStats() {
   };
 }
 
+/** ─── SPEC-002: セーブ (月ごとの自動保存・つづきから) ─────────────── */
+
+/** localStorage (使えない環境では null) */
+function safeStorage() {
+  try { return window.localStorage; } catch (e) { return null; }
+}
+
+let _saveDue = false;
+/** 保存を予約する (書くのは onTick の先頭、 モーダルが開いていないとき) */
+function requestSave() {
+  if (state.gameOverTriggered) return;
+  _saveDue = true;
+}
+
+/** 表示待ちのもの (完成画面・結果画面など) が残っているか。 残っていれば保存を次の tick に回す */
+function hasPendingDisplay() {
+  const single = [state.pendingCompletion, state.pendingAppraisal, state.pendingQuestResult,
+    state.pendingContest, state.pendingSalaryReport, state.pendingMarcoPolo];
+  const extra = [...(state.pendingCompletionExtra || []), ...(state.pendingAppraisalExtra || []),
+    ...(state.pendingQuestResultExtra || [])];
+  return single.some(Boolean) || extra.some(Boolean);
+}
+
+function applyDueSave() {
+  if (hasPendingDisplay()) return;
+  _saveDue = false;
+  const storage = safeStorage();
+  if (storage) writeSave(storage, state);
+}
+
+/** セーブを state に重ねる (既定値の上に。 あとから足した項目は既定値のまま) */
+function applyLoadedSave(save) {
+  const loaded = decodeState(save.state, {
+    // ヒーローの img (関数) は保存しないので heroId から付け直す
+    reviveObject(o) {
+      if (typeof o.heroId !== "number" || !("nameJa" in o)) return;
+      const def = HERO_ROSTER.find(h => h.heroId === o.heroId);
+      if (def && typeof def.img === "function") o.img = def.img;
+      else o.img = () => "";
+    },
+  });
+  Object.assign(state, loaded);
+  state.pauseFlags = 0;
+  state.notifications = [];
+  state.spriteFloats = [];
+  state.heroFlavors = [];
+  // ID の採番をセーブの中の一番大きい ID の次から
+  _commissionId = Math.max(_commissionId, ...(state.commissions || []).map(c => Number(c.id) || 0));
+  _saleId = Math.max(_saleId, ...(state.activeSales || []).map(x => Number(x.id) || 0));
+  renderHeader();
+  renderProgressCards();
+  renderHeroTeam();
+  renderHeroList();
+  renderWorkshop();
+  renderNotifications();
+  renderQuestOverlay();
+  renderHireOverlay();
+  renderSaleOverlay();
+  renderHomeGoalBanner();
+}
+
+/** タイトル画面: セーブがあれば「つづきから」「はじめから」を出す */
+let _titleSave = null;
+function renderTitleSave() {
+  const host = $("titleSave");
+  const press = document.querySelector("#titleView .title-press");
+  if (!host) return;
+  host.classList.toggle("hidden", !_titleSave);
+  press?.classList.toggle("hidden", !!_titleSave);
+  if (!_titleSave) return;
+  const sum = saveSummary(_titleSave);
+  const lang = getLang() === "en" ? "en" : "ja";
+  const date = lang === "en"
+    ? `${sum.year} ${monthNameEn(sum.month)} W${sum.week} · Workshop Lv.${sum.factoryLevel}`
+    : `${sum.year} 年 ${sum.month} 月 ${sum.week} 週・工房 Lv.${sum.factoryLevel}`;
+  $("titleContinueMeta").textContent = sum.cleared
+    ? `${date}${lang === "en" ? " · Cleared" : "・クリア済み"}`
+    : date;
+}
+
+function pickContinue() {
+  if (!_titleSave) return;
+  applyLoadedSave(_titleSave);
+  _titleSave = null;
+  dismissTitle();
+}
+
+function openNewGameConfirm() {
+  const dlg = $("newGameConfirm");
+  if (!dlg) return;
+  dlg.classList.remove("hidden");
+  $("newGameConfirmCancel")?.focus();
+}
+function closeNewGameConfirm() {
+  $("newGameConfirm")?.classList.add("hidden");
+}
+function pickNewGame() {
+  closeNewGameConfirm();
+  clearSave(safeStorage());
+  _titleSave = null;
+  renderTitleSave();
+  dismissTitle();
+}
+
 /** ─── SPEC-001: 期限 8 年・クリア・途中の節目 ───────────────────── */
 
 /** ゲーム開始からの週数 (= 期限・節目・Lv 5 の週数の物差し) */
@@ -1103,6 +1210,7 @@ function tryFactoryLevelUp(targetLv) {
   reportProgress(state, { milestone: true });
   // SPEC-001: 工房 Lv の節目。 期限内の Lv 5 ならクリア画面を挟む
   const cleared = applyLevelMilestone(state.factoryLevel);
+  requestSave(); // SPEC-002
   // Phase 1D-23: 工房レベルアップ専用 SE (facilities.mp3)
   playSe("factoryLvDone");
   renderHeader();
@@ -1334,6 +1442,9 @@ function tickDeficitAttrition() {
 function triggerDeficitGameOver() {
   if (state.gameOverTriggered) return;
   state.gameOverTriggered = true;
+  // SPEC-002: ゲームオーバーのセーブは残さない (次は最初から)
+  _saveDue = false;
+  clearSave(safeStorage());
   pauseTime();
   maiSaysSequence([
     ti18n("mai.deficitGameOver"),
@@ -2687,6 +2798,8 @@ function pickCommission(commissionId) {
 
 function onTick() {
   if (state.pauseFlags > 0) return;
+  // SPEC-002: 予約された保存は、 モーダルが開いていない tick で書く
+  if (_saveDue) applyDueSave();
   state.tickCount += 1;
   state.weekProgress += 1;
   if (state.weekProgress >= SECONDS_PER_WEEK) {
@@ -4362,6 +4475,8 @@ function advanceWeek() {
     }
     // Phase 1D-32: 月初め (week=1 になった瞬間) に受注クラフトを再生成
     maybeRegenerateCommissions();
+    // SPEC-002: 月の初めに自動保存 (予約。 書くのは次の落ち着いた tick)
+    requestSave();
   }
   // Phase 1D-34: 11 月 4 週でショップ在庫補充
   maybeRestockShop();
@@ -8385,14 +8500,28 @@ async function init() {
       if (ev.target.closest("#langToggle")) return;
       // Phase 1D-46: ランキングボタン押下時はゲーム開始させない
       if (ev.target.closest("#titleRankingBtn")) return;
+      // SPEC-002: セーブがあるときは「つづきから」「はじめから」のボタンで始める
+      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm")) return;
       dismissTitle();
     });
     titleEl.addEventListener("keydown", (ev) => {
       if (ev.target.closest("#langToggle")) return;
       if (ev.target.closest("#titleRankingBtn")) return;
+      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm")) return;
       if (ev.key === "Enter" || ev.key === " ") dismissTitle();
     });
   }
+
+  // ── SPEC-002: セーブ (つづきから / はじめから) ──
+  _titleSave = (() => { const st = safeStorage(); return st ? readSave(st) : null; })();
+  renderTitleSave();
+  $("titleContinueBtn")?.addEventListener("click", pickContinue);
+  $("titleNewGameBtn")?.addEventListener("click", openNewGameConfirm);
+  $("newGameConfirmOk")?.addEventListener("click", pickNewGame);
+  $("newGameConfirmCancel")?.addEventListener("click", closeNewGameConfirm);
+  $("newGameConfirm")?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") { ev.stopPropagation(); closeNewGameConfirm(); }
+  });
 
   // ── Lang toggle (title) ──
   $("langToggle")?.addEventListener("click", (ev) => {
@@ -9138,6 +9267,7 @@ async function init() {
   // ── Lang change → re-render header (date format changes) ──
   onLangChange(() => {
     syncLangToggleActive();
+    renderTitleSave();
     renderHeader();
     renderOrderPanel();
     renderHeroTeam();
@@ -9220,6 +9350,8 @@ function installDebugHooks() {
       return state.factoryLevel;
     },
     addGum(n = 0) { state.gum += n; renderHeader(); return state.gum; },
+    /** 20 倍速 (1 tick = 50ms) の切り替え */
+    fast(on = true) { state.timeSpeed20x = !!on; restartTimeLoopWithSpeed(); return state.timeSpeed20x; },
     state,
   };
   console.info("[debug] window.mcfDebug を有効にしました", Object.keys(window.mcfDebug));

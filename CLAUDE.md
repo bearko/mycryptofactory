@@ -53,7 +53,7 @@ docs/                      SPEC・設計メモ
 - 赤字が 6 か月続くとヒーローが離職し、0 名でゲームオーバー
 - 期限は 8 年（384 週・2026/12/1）で、期限内に工房 Lv.5 でクリア（SPEC-001。`js/factory-goal.js`）。節目は `reachMilestone(id)` の 1 か所から知らせる。50 年エンディング（`triggerEndgame50y`）も残している
 - 確かめるときは `?debug=1` で `window.mcfDebug`（`jumpWeeks` / `setLevel` / `addGum`）
-- セーブはまだない（読み込み直すと最初から）。**SPEC-002 で入れる**
+- セーブ：月の初め・工房レベルアップで localStorage の `mcf.save` に自動保存（SPEC-002。`js/factory-save.js`）。state に項目を足すときは、保存してよいか（一時的なものなら `TRANSIENT_KEYS`）を考える。保存の形を変えたら `SAVE_VERSION` を上げる（古いセーブは捨てられる）
 
 ## 作法（暗黙の了解）
 

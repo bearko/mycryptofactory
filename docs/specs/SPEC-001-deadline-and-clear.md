@@ -77,6 +77,7 @@ reachMilestone(id)   // js/main.js。id は "year1"〜"year8" / "lv2"〜"lv4" / 
   - `jumpWeeks(n)`：暦を n 週進め、期限・年の終わりの判定だけを走らせる（月のイベントは飛ばす）
   - `setLevel(lv)`：工房 Lv を直接変える（節目の判定は通る）
   - `addGum(n)`
+  - `fast(on)`：20 倍速（1 tick = 50ms）の切り替え
 - 画面にボタンは置かない。`?debug=1` がなければ何も変わらない
 
 ## 4. 受け入れ基準

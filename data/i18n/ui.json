@@ -6,7 +6,12 @@
   "title.aria":                { "ja": "ゲームを始める",  "en": "Start the game" },
   "title.press":               { "ja": "Press to Start", "en": "Press to Start" },
   "alpha.badge":               { "ja": "β2 版 / BETA2", "en": "β2 / BETA2" },
-  "alpha.note":                { "ja": "β2 版です。フィードバック歓迎中。データはローカル保持のみで、リロードすると初期化されます。", "en": "Beta-2 build. Feedback welcome. Save data is local-only and resets on reload." },
+  "alpha.note":                { "ja": "β2 版です。フィードバック歓迎中。月の初めに、このブラウザへ自動で保存します。", "en": "Beta-2 build. Feedback welcome. Progress is saved to this browser at the start of each month." },
+  "save.continue":             { "ja": "つづきから", "en": "Continue" },
+  "save.newGame":              { "ja": "はじめから", "en": "New Game" },
+  "save.confirm":              { "ja": "セーブを消して最初から始めます。よろしいですか？", "en": "This deletes your save and starts over. Are you sure?" },
+  "save.confirmOk":            { "ja": "消して始める", "en": "Delete and start" },
+  "save.cancel":               { "ja": "やめる", "en": "Cancel" },
 
   "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
 
