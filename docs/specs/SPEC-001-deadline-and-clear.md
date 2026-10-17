@@ -33,8 +33,8 @@ DOM に触れない純関数だけを置き、`tests/goal.test.mjs` でテスト
 | `yearEndMilestone(weeks)` | 開始からの週数がちょうど 48 の倍数（1〜8 年）なら `"year1"`〜`"year8"`、それ以外は `null` |
 | `levelMilestone(lv)` | Lv 2〜4 → `"lv2"`〜`"lv4"`、Lv 5 → `"clear"`、それ以外は `null` |
 | `isWithinDeadline(weeks)` | `weeks < DEADLINE_WEEKS` |
+| `splitWeeks(weeks)` | 週数を `{ years, months, weeks }` に分ける（クリア画面の「N 年 M か月」） |
 | `remainingTime(weeks)` | 期限までの残り `{ years, months, weeks }`（期限を過ぎたら 0） |
-| `elapsedLabel(weeks)` | 開始からの `{ years, months, weeks }`（クリア画面の「N 年 M か月」） |
 
 開始からの週数は `js/platform.js` の `weeksSinceStart` を使う（Lv.5 の週数と同じ物差し）。
 
@@ -92,6 +92,6 @@ reachMilestone(id)   // js/main.js。id は "year1"〜"year8" / "lv2"〜"lv4" / 
 
 ## 5. テスト
 
-- `node --test tests/goal.test.mjs`：`yearEndMilestone`（47・48・96・384・385 週）、`levelMilestone`、`isWithinDeadline`（383・384）、`remainingTime`、`elapsedLabel`
+- `node --test tests/goal.test.mjs`：`yearEndMilestone`（47・48・96・384・385 週）、`levelMilestone`、`isWithinDeadline`（383・384）、`splitWeeks`、`remainingTime`
 - `node --test tests/platform.test.mjs`：止めたあとは送らないこと
 - ブラウザ（`?debug=1`）：`jumpWeeks(47)` → `jumpWeeks(1)` で 1 年目の終わり、`jumpWeeks(336)` で期限、`setLevel(5)` でクリア画面
