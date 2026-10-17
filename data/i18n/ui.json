@@ -121,6 +121,8 @@
   "ranking.viewer.fetchedCount": { "ja": "{n} 件取得", "en": "{n} entries" },
   "ranking.viewer.fetchFail":    { "ja": "取得失敗: ", "en": "Fetch failed: " },
   "ranking.viewer.empty":        { "ja": "まだランキング登録がありません。最新を取得 ボタンで再読み込みできます。", "en": "No ranking entries yet. Press Refresh to reload." },
+  "ranking.viewer.platform":     { "ja": "bearko.games の総合ランキング ↗", "en": "bearko.games overall ranking ↗" },
+  "ranking.viewer.platformNote": { "ja": "このランキングとは別の、bearko.games のタイトル共通のランキングです", "en": "A separate ranking shared by all bearko.games titles" },
   "ranking.viewer.noApi":        { "ja": "ランキング API URL が未設定です。下の上級設定から URL を登録してください。", "en": "Ranking API URL is not configured. Set it in the advanced section below." },
   "ranking.viewer.advancedTitle":{ "ja": "上級設定: 別のランキングサーバーを使う", "en": "Advanced: use a custom ranking server" },
   "ranking.viewer.advancedHelp": { "ja": "独自に GAS をデプロイした場合のみ利用してください。空欄で「保存」を押すと既定 URL に戻ります。", "en": "For developers who deployed their own GAS. Save empty value to revert to the default URL." },

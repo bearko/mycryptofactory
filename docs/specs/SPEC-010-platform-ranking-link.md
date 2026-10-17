@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 状態 | Accepted |
+| 状態 | Done |
 | 関連 | bearko/MyCryptoPortfolio#29、共通基盤の SPEC-001 3 章（既存のランキングは当面残す）・SPEC-002（総合スコア） |
 
 ## 1. 背景
