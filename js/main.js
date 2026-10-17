@@ -17,7 +17,10 @@
  *   - Hero assignment / params (Garuda / Ifrit / Leviathan / Tiamat)
  */
 
-import { initPlatform, reportProgress, weeksSinceStart } from "./platform.js";
+import { initPlatform, reportProgress, weeksSinceStart, finalizeScore } from "./platform.js";
+import {
+  DEADLINE_WEEKS, yearEndMilestone, levelMilestone, isWithinDeadline, splitWeeks, remainingTime,
+} from "./factory-goal.js";
 import {
   initI18n,
   getLang,
@@ -330,8 +333,14 @@ const state = {
   factoryLvPrompted: /** @type {Set<number>} */ (new Set()),
   /** Phase 1D-26: ランキング集計用統計 (累計) */
   heroHireCount: /** @type {number} */ (0),
-  /** Phase 1D-26: 10 年エンディング (2028年11月4週) を既に発火したか */
-  endgameTriggered10y: /** @type {boolean} */ (false),
+  /** SPEC-001: 期限 (8 年 = 2026/12/1) の流れを既に出したか */
+  deadlineTriggered: /** @type {boolean} */ (false),
+  /** SPEC-001: 通った節目 (id → 開始からの週数)。 reachMilestone だけが書く */
+  milestones: /** @type {Record<string, number>} */ ({}),
+  /** SPEC-001: 期限内に Lv 5 に達した週数 (= クリア)。 未クリアは null */
+  clearedWeeks: /** @type {number | null} */ (null),
+  /** SPEC-001: 期限で総合スコアを止めたか (platform.js が見る) */
+  scoreFrozen: /** @type {boolean} */ (false),
   /** Phase 1D-26: 50 年エンディング (2068年12月4週) を既に発火したか */
   endgameTriggered50y: /** @type {boolean} */ (false),
   /** Phase 1D-30: GUM 閾値到達によるスポット雇用の既発火マーカー (one-shot)。
@@ -564,7 +573,7 @@ function maybeWorkshopLvPrompt() {
   maiSaysSequence(lines, { onClose: () => openFactoryLvUpView() });
 }
 
-/** ─── Phase 1D-26: 10 年 / 50 年エンディング ──────────────────── */
+/** ─── Phase 1D-26: 期限 (SPEC-001 で 10 年 → 8 年) / 50 年エンディング ─── */
 
 /** 現在の活動データ (ランキング送信 + 活動レポート用) */
 function gatherFactoryStats() {
@@ -582,22 +591,127 @@ function gatherFactoryStats() {
   };
 }
 
-/** 10 年エンディング: マイ → スコア結果 → 活動レポート → 続行案内 */
-function triggerEndgame10y() {
+/** ─── SPEC-001: 期限 8 年・クリア・途中の節目 ───────────────────── */
+
+/** ゲーム開始からの週数 (= 期限・節目・Lv 5 の週数の物差し) */
+function currentWeeks() {
+  return weeksSinceStart(state);
+}
+
+/** 節目に達したことを知らせる唯一の関数 (SPEC-001 3.2)。 id ごとに 1 回だけ。
+ *  時間は止めない。 RTA の区切り (SPEC-003) もここから呼ぶ。 */
+function reachMilestone(id) {
+  if (!id) return;
+  state.milestones = state.milestones || {};
+  if (id in state.milestones) return;
+  const weeks = currentWeeks();
+  state.milestones[id] = weeks;
+  if (/^year\d$/.test(id)) {
+    const n = Number(id.slice(4));
+    state.notifications.push({
+      id: ++_notifId,
+      text: ti18n("goal.yearEnd", "{n} 年目が終わりました（工房 Lv.{lv}）")
+        .replace("{n}", String(n)).replace("{lv}", String(state.factoryLevel || 1)),
+      element: "garuda", value: 0,
+      createdTick: state.tickCount,
+    });
+  }
+}
+
+/** 工房 Lv が上がった直後の節目判定。 期限内の Lv 5 ならクリア (= true を返す) */
+function applyLevelMilestone(lv) {
+  const id = levelMilestone(lv);
+  if (!id) return false;
+  if (id === "clear") {
+    if (state.clearedWeeks != null || !isWithinDeadline(currentWeeks())) return false;
+    state.clearedWeeks = Math.max(1, currentWeeks() + 1); // lv5Weeks と同じ数え方 (= その週を含む)
+  }
+  reachMilestone(id);
+  return id === "clear";
+}
+
+/** 週が進んだ直後の節目・期限判定 (advanceWeek と debug の jumpWeeks から) */
+function checkWeekMilestones() {
+  const weeks = currentWeeks();
+  const yearId = yearEndMilestone(weeks);
+  if (yearId) reachMilestone(yearId);
+  if (!state.deadlineTriggered && weeks >= DEADLINE_WEEKS) {
+    state.deadlineTriggered = true;
+    finalizeScore(state);
+    setTimeout(triggerDeadline, 200);
+  }
+}
+
+/** 「N 年 M か月」 (週は端数として末尾に) */
+function formatSpan(weeks) {
+  const { years, months, weeks: w } = splitWeeks(weeks);
+  const lang = getLang() === "en" ? "en" : "ja";
+  if (lang === "en") {
+    const parts = [];
+    if (years) parts.push(`${years} yr`);
+    if (months) parts.push(`${months} mo`);
+    if (w || parts.length === 0) parts.push(`${w} wk`);
+    return parts.join(" ");
+  }
+  let out = "";
+  if (years) out += `${years} 年`;
+  if (months) out += `${out ? " " : ""}${months} か月`;
+  if (w || !out) out += `${out ? " " : ""}${w} 週`;
+  return out;
+}
+
+/** クリア画面 (期限内に工房 Lv 5)。 onClosed は閉じたあとに呼ぶ */
+let _clearOnClosed = null;
+function openClearView(onClosed) {
+  const view = $("clearView");
+  if (!view) { onClosed?.(); return; }
+  pauseTime();
+  _clearOnClosed = onClosed || null;
+  const weeks = state.clearedWeeks ?? currentWeeks();
+  const stats = gatherFactoryStats();
+  const lang = getLang() === "en" ? "en" : "ja";
+  $("clearViewTime").textContent = lang === "en"
+    ? `Reached in ${formatSpan(weeks)} (${weeks} weeks)`
+    : `${formatSpan(weeks)}（${weeks} 週）で達成`;
+  const rows = [
+    [lang === "en" ? "Crafts completed" : "クラフト完了数", stats.craftCount.toLocaleString()],
+    [lang === "en" ? "Quests cleared" : "クエスト攻略数", (state.questClearCount || 0).toLocaleString()],
+    [lang === "en" ? "Hired heroes" : "雇用ヒーロー数", stats.hireCount.toLocaleString()],
+    [lang === "en" ? "GUM held" : "保有 GUM", stats.gum.toLocaleString()],
+  ];
+  $("clearViewTable").innerHTML = rows.map(([k, v]) => `
+    <tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>
+  `).join("");
+  view.classList.remove("hidden");
+}
+function closeClearView() {
+  $("clearView")?.classList.add("hidden");
+  resumeTime();
+  const cb = _clearOnClosed;
+  _clearOnClosed = null;
+  cb?.();
+}
+
+/** 期限 (8 年) : マイ → スコア結果 → 活動レポート → 続行案内。 Lv 5 に届かなくてもゲームオーバーにしない */
+function triggerDeadline() {
   pauseTime();
   const lang = getLang() === "en" ? "en" : "ja";
-  maiSaysSequence(
-    lang === "en"
-      ? [
-          "10 years have passed! Thank you for the journey.",
-          "Let me tally up your achievements and calculate your score.",
-        ]
-      : [
-          "10 年間お疲れ様でした！",
-          "ここまでの実績を元にスコアを計算しますね。",
-        ],
-    { onClose: () => openRankingScoreView(true) }  // true = 10y mode (ランキング登録可能)
-  );
+  const lv = state.factoryLevel || 1;
+  const cleared = state.clearedWeeks != null;
+  const lines = lang === "en"
+    ? [
+        cleared
+          ? "8 years have passed! Workshop Lv 5 — goal achieved. Thank you for the journey."
+          : `8 years have passed! Your workshop grew to Lv ${lv}. Thank you for the journey.`,
+        "Let me tally up your achievements and calculate your score.",
+      ]
+    : [
+        cleared
+          ? "8 年間お疲れさまでした！ 工房 Lv.5、達成です。"
+          : `8 年間お疲れさまでした！ 工房は Lv.${lv} まで育ちました。`,
+        "ここまでの実績を元にスコアを計算しますね。",
+      ];
+  maiSaysSequence(lines, { onClose: () => openRankingScoreView(true) });
 }
 
 /** 50 年エンディング: マイ → 完全終局レポート (ランキング登録対象外) */
@@ -630,11 +744,13 @@ function openRankingScoreView(isRanking) {
     console.log("[ranking] score:", result.score, result.breakdown);
     return;
   }
+  pauseTime();
   view.classList.remove("hidden");
   renderRankingScoreView();
 }
 function closeRankingScoreView() {
   $("rankingScoreView")?.classList.add("hidden");
+  resumeTime();
 }
 
 function renderRankingScoreView() {
@@ -786,7 +902,7 @@ async function submitRankingNow() {
   }
 }
 
-/** スコア画面を閉じて活動レポートに進む (10 年エンドの場合 = 引き続きプレイ案内) */
+/** スコア画面を閉じて活動レポートに進む (期限の場合 = 引き続きプレイ案内) */
 function proceedToActivityReport() {
   closeRankingScoreView();
   openActivityReport(false);
@@ -798,6 +914,7 @@ function openActivityReport(isFinal50y) {
   state.endgameStats = stats;
   const view = $("activityReportView");
   if (!view) return;
+  pauseTime();
   view.classList.remove("hidden");
   view.setAttribute("data-final", isFinal50y ? "1" : "0");
   renderActivityReport(isFinal50y);
@@ -806,7 +923,7 @@ function closeActivityReport() {
   const isFinal = $("activityReportView")?.getAttribute("data-final") === "1";
   $("activityReportView")?.classList.add("hidden");
   resumeTime();
-  // 10 年エンドの場合のみ、引き続きプレイ可能の Mai 案内
+  // 期限 (8 年) の場合のみ、引き続きプレイ可能の Mai 案内
   if (!isFinal) {
     const lang = getLang() === "en" ? "en" : "ja";
     setTimeout(() => maiSaysSequence(
@@ -829,7 +946,7 @@ function renderActivityReport(isFinal50y) {
   const lang = getLang() === "en" ? "en" : "ja";
   const title = isFinal50y
     ? (lang === "en" ? "50-Year Activity Report" : "50 年間 活動レポート")
-    : (lang === "en" ? "10-Year Activity Report" : "10 年間 活動レポート");
+    : (lang === "en" ? "8-Year Activity Report" : "8 年間 活動レポート");
   $("activityReportTitle").textContent = title;
   const rows = [
     [lang === "en" ? "GUM held" : "保有 GUM", stats.gum.toLocaleString()],
@@ -946,7 +1063,17 @@ function renderHomeGoalBanner() {
     return;
   }
   const tmpl = ti18n("goal.label", "目標：工房を Lv.{n} にしよう！");
-  text.textContent = tmpl.replace("{n}", String(cur + 1));
+  let label = tmpl.replace("{n}", String(cur + 1));
+  // SPEC-001: 期限までの残り (期限のあとは出さない)
+  const weeks = currentWeeks();
+  if (isWithinDeadline(weeks)) {
+    const left = remainingTime(weeks);
+    const span = left.years || left.months
+      ? ti18n("goal.remainYM", "（のこり {y} 年 {m} か月）").replace("{y}", String(left.years)).replace("{m}", String(left.months))
+      : ti18n("goal.remainW", "（のこり {w} 週）").replace("{w}", String(left.weeks));
+    label += span;
+  }
+  text.textContent = label;
   host.classList.remove("hidden");
 }
 
@@ -974,6 +1101,8 @@ function tryFactoryLevelUp(targetLv) {
   // bearko.games 総合スコア：Lv 5 に着くまでの週数を残し、節目として送る
   if (state.factoryLevel >= 5 && !state.lv5Weeks) state.lv5Weeks = Math.max(1, weeksSinceStart(state) + 1);
   reportProgress(state, { milestone: true });
+  // SPEC-001: 工房 Lv の節目。 期限内の Lv 5 ならクリア画面を挟む
+  const cleared = applyLevelMilestone(state.factoryLevel);
   // Phase 1D-23: 工房レベルアップ専用 SE (facilities.mp3)
   playSe("factoryLvDone");
   renderHeader();
@@ -993,7 +1122,11 @@ function tryFactoryLevelUp(targetLv) {
     `工房 Lv ${state.factoryLevel} に到達しました！おめでとうございます♪`,
     "解放: " + unlocks.join(" / "),
   ], {
-    onClose: () => setTimeout(() => triggerSpontaneousHire(targetRarity, "factoryLv"), 200),
+    onClose: () => {
+      const hire = () => setTimeout(() => triggerSpontaneousHire(targetRarity, "factoryLv"), 200);
+      if (cleared) openClearView(hire);
+      else hire();
+    },
   });
   // ホーム画面の目標バナーも更新
   renderHomeGoalBanner();
@@ -4234,13 +4367,9 @@ function advanceWeek() {
   maybeRestockShop();
   // Phase 1D-42: 月次イベントトリガー (3 月 4 週: 年俸 / 4 月 4 週: 採用イベント)
   maybeTriggerMonthlyEvent();
-  // Phase 1D-26: 10 年エンディング (2028年11月4週 終了 = 2028/12/1 直前)
-  //   ランキング集計の締切。 集計画面 → 引き続きプレイ可能
-  if (!state.endgameTriggered10y &&
-      state.year === 2028 && state.month === 12 && state.week === 1) {
-    state.endgameTriggered10y = true;
-    setTimeout(triggerEndgame10y, 200);
-  }
+  // SPEC-001: 各年の終わりの節目と、期限 (8 年 = 2026/12/1 になった瞬間)。
+  //   期限で総合スコアを止め、 集計画面 → 引き続きプレイ可能
+  checkWeekMilestones();
   // Phase 1D-26: 50 年エンディング (2068年12月4週 終了)。完全終局のレポート。
   if (!state.endgameTriggered50y &&
       state.year === 2069 && state.month === 1 && state.week === 1) {
@@ -8769,6 +8898,7 @@ async function init() {
   $("rankingSubmitBtn")?.addEventListener("click", submitRankingNow);
   $("rankingScoreNext")?.addEventListener("click", proceedToActivityReport);
   $("activityReportClose")?.addEventListener("click", closeActivityReport);
+  $("clearViewClose")?.addEventListener("click", closeClearView);
   // Phase 1D-46: ランキング閲覧モーダル (タイトル + スコア後経由で開く)
   $("titleRankingBtn")?.addEventListener("click", (ev) => {
     ev.stopPropagation();  // titleView 全体の click (= ゲーム開始) を吸収
@@ -9060,6 +9190,41 @@ async function init() {
   });
 }
 
+/** SPEC-001 3.6: 期限・クリアを確かめるための日付送り。 ?debug=1 のときだけ (本番の画面には出さない) */
+function installDebugHooks() {
+  let on = false;
+  try { on = new URLSearchParams(location.search).get("debug") === "1"; } catch (e) { on = false; }
+  if (!on) return;
+  window.mcfDebug = {
+    /** 暦を n 週進め、 期限・年の終わりの判定だけを走らせる (月のイベントは飛ばす) */
+    jumpWeeks(n = 1) {
+      for (let i = 0; i < n; i++) {
+        state.week += 1;
+        if (state.week > WEEKS_PER_MONTH) {
+          state.week = 1;
+          state.month += 1;
+          if (state.month > 12) { state.month = 1; state.year += 1; }
+        }
+        checkWeekMilestones();
+      }
+      renderHeader();
+      return currentWeeks();
+    },
+    /** 工房 Lv を直接変える (節目・クリアの判定は通る) */
+    setLevel(lv) {
+      state.factoryLevel = Math.max(1, Math.min(5, lv | 0));
+      if (state.factoryLevel >= 5 && !state.lv5Weeks) state.lv5Weeks = Math.max(1, currentWeeks() + 1);
+      const cleared = applyLevelMilestone(state.factoryLevel);
+      renderHeader();
+      if (cleared) openClearView();
+      return state.factoryLevel;
+    },
+    addGum(n = 0) { state.gum += n; renderHeader(); return state.gum; },
+    state,
+  };
+  console.info("[debug] window.mcfDebug を有効にしました", Object.keys(window.mcfDebug));
+}
+installDebugHooks();
 initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア）。SDK がなければ何もしない
 init();
 

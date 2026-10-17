@@ -53,8 +53,18 @@ function send(state, quiet) {
  * クラフト・クエストは通知なしで、1 分に 1 回までにまとめる
  */
 export function reportProgress(state, { milestone = false } = {}) {
-  if (!sdk()) return;
+  if (state.scoreFrozen || !sdk()) return;
   if (timer) { clearTimeout(timer); timer = null; }
   if (milestone || Date.now() - lastSentAt >= SEND_EVERY) { send(state, !milestone); return; }
   timer = setTimeout(() => { timer = null; send(state, true); }, SEND_EVERY - (Date.now() - lastSentAt));
+}
+
+/**
+ * 期限（8 年。SPEC-001 3.4）で総合スコアを止める。待っている分を通知なしで 1 回送り、以降は送らない
+ */
+export function finalizeScore(state) {
+  if (state.scoreFrozen) return;
+  if (timer) { clearTimeout(timer); timer = null; }
+  send(state, true);
+  state.scoreFrozen = true;
 }

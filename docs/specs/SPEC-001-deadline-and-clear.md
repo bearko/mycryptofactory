@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 状態 | Approved（作者の決定 2026-10-16・Issue #94、提案の確認 2026-10-17） |
+| 状態 | Done（作者の決定 2026-10-16・Issue #94、提案の確認 2026-10-17） |
 | 関連 | Issue #94、bearko/MyCryptoPortfolio の ROADMAP 2 章・SPEC-002 3.9（総合スコア）・INTEGRATION.md 3.4（RTA）、SPEC-002（セーブ）、SPEC-003（RTA） |
 
 ## 1. 背景
