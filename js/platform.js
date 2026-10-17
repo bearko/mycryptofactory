@@ -122,3 +122,38 @@ export function rtaAbort() {
   if (!bg || !bg.rta) return;
   rtaCall("abort", () => bg.rta.abort());
 }
+
+/* ─── トロフィー（SPEC-009。定義は共通基盤の platform/trophies.js） ─────── */
+
+export const CLEAR_3Y_WEEKS = 144; // 3 年 (= 1 年 48 週)
+
+/** 満たしているトロフィーの ID。純関数 */
+export function trophiesFor(state) {
+  const out = [];
+  if ((state.factoryLevel || 1) >= 2) out.push("factory.lv2");
+  if ((state.craftedByRarity?.legendary || 0) > 0) out.push("factory.legendary");
+  if (state.clearedWeeks != null) {
+    out.push("factory.clear");
+    if (state.clearedWeeks <= CLEAR_3Y_WEEKS) out.push("factory.clear3y");
+  }
+  return out;
+}
+
+const trophiesSent = new Set(); // このページを開いてから送ったもの (state には入れない)
+// 1 つずつ順に送る。未ログインで同時に送ると、仮アカウントが送った数だけできてしまう (Cookie がまだないため)
+let trophyChain = Promise.resolve();
+
+/** まだ送っていないトロフィーを送る、ただ 1 か所。通知は SDK が出す */
+export function syncTrophies(state) {
+  const bg = sdk();
+  if (!bg || typeof bg.unlockTrophy !== "function") return trophyChain;
+  for (const id of trophiesFor(state)) {
+    if (trophiesSent.has(id)) continue;
+    trophiesSent.add(id);
+    trophyChain = trophyChain
+      .then(() => bg.unlockTrophy(id))
+      .then((r) => { if (r && r.ok === false) console.warn("[platform] trophy", id, r.error); })
+      .catch((e) => console.warn("[platform] trophy", id, e));
+  }
+  return trophyChain;
+}

@@ -12,4 +12,4 @@
 | [SPEC-006](SPEC-006-feedback.md) | 演出（画面の切り替え・GUM の手ごたえ・Lv・クリア） | Done |
 | [SPEC-007](SPEC-007-onboarding-help.md) | はじめての案内とヘルプ | Done |
 | [SPEC-008](SPEC-008-v1-release.md) | 公開版 v1.0.0 | Done |
-| [SPEC-009](SPEC-009-platform-trophies.md) | bearko.games 共通基盤のトロフィー | Accepted |
+| [SPEC-009](SPEC-009-platform-trophies.md) | bearko.games 共通基盤のトロフィー | Done |
