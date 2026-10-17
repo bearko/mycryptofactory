@@ -16,12 +16,12 @@ export const TUTORIALS = {
   /** 初回ホーム (タイトルから入った直後) */
   home: {
     ja: [
-      "はじめまして！本工房のアシスタント、マイです。一緒に工房を発展させましょう♪",
-      "まずはメニューから<span class=\"term\">クラフト</span>を始めてみてください。",
+      "はじめまして！本工房のアシスタント、マイです。目標は、<span class=\"term\">8 年</span>のうちに工房を <span class=\"term\">Lv.5</span> にすることです♪",
+      "まずは光っている MENU から<span class=\"term\">クラフト</span>を始めてみてください。",
     ],
     en: [
-      "Hi! I'm Mai, your workshop assistant. Let's grow this place together♪",
-      "Open the menu and try a <span class=\"term\">Craft</span> first.",
+      "Hi! I'm Mai, your workshop assistant. Our goal: reach <span class=\"term\">Workshop Lv.5</span> within <span class=\"term\">8 years</span>♪",
+      "Tap the glowing MENU and try a <span class=\"term\">Craft</span> first.",
     ],
   },
 
@@ -108,6 +108,8 @@ export function makeInitialTutorialState() {
     craftInProgress: false,
     /** Phase 1D-16: ランドタブ初回オープンで「初回ランド無料」のマイ説明 */
     landFirstFree: false,
+    /** SPEC-007: 最初のクラフトまでの指差し (MENU → クラフト → 新規開発) を終えたか */
+    coachDone: false,
   };
 }
 
