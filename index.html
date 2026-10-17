@@ -6151,6 +6151,35 @@
       .title-logo { max-width: min(340px, 80vw); }
       .lang-toggle { gap: 0.35rem; }
     }
+    /* ═══ SPEC-006: 演出 (0.6 秒以内・遊びを止めない) ═══ */
+    @keyframes view-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes card-rise-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+    .stub-view, .hero-detail, .craft-done, .appraisal, .active-effects-modal, .factory-lvup-view,
+    .ranking-score-view, .activity-report-view, .ranking-viewer, .shop-view, .commission-view,
+    .recipe-popup, .ql-info-modal, .quest-result, .salary-report, .marco-polo, .contest-modal,
+    .hire-success, .fire-modal, .fire-confirm, .sell-modal, #helpOverlay, .mai-help, .title-confirm,
+    .market-view, .quest-view, .hero-view, .craft-view {
+      animation: view-fade-in 0.2s var(--ease-out);
+    }
+    .activity-report-view__card, .ranking-score-view__card, .title-confirm__card, .help-card,
+    .menu-overlay > .menu-card {
+      animation: card-rise-in 0.24s var(--ease-out);
+    }
+    .clear-view .activity-report-view__card { animation-duration: 0.45s; }
+    /* GUM: 増えたときのポップと「+N」 */
+    .factory-header__gum { position: relative; }
+    @keyframes gum-pop { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
+    .factory-header__gum.is-pop #factoryGum { display: inline-block; animation: gum-pop 0.45s var(--ease-out); }
+    @keyframes gum-gain-up { from { opacity: 0; transform: translate(-50%, 4px); } 20% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -18px); } }
+    .gum-gain {
+      position: absolute; left: 60%; top: 100%;
+      font-family: var(--font-num); font-weight: 700; font-size: 0.78rem;
+      color: var(--good); white-space: nowrap; pointer-events: none;
+      animation: gum-gain-up 0.85s var(--ease-out) forwards;
+    }
+    /* 工房 Lv が上がったときの光 */
+    @keyframes lv-pop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(196,163,90,0.7); } 40% { transform: scale(1.15); } 100% { transform: scale(1); box-shadow: 0 0 0 10px rgba(196,163,90,0); } }
+    .factory-header__factory-lv.is-pop { animation: lv-pop 0.8s var(--ease-out); }
     /* OS の「視差効果を減らす」: アニメーションとトランジションをほぼ 0 に */
     html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
       animation-duration: 0.01ms !important;

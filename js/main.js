@@ -695,6 +695,7 @@ function applyLoadedSave(save) {
   state.notifications = [];
   state.spriteFloats = [];
   state.heroFlavors = [];
+  _gumShown = null; // SPEC-006: 読み込んだ GUM はカウントアップしない
   // ID の採番をセーブの中の一番大きい ID の次から
   _commissionId = Math.max(_commissionId, ...(state.commissions || []).map(c => Number(c.id) || 0));
   _saleId = Math.max(_saleId, ...(state.activeSales || []).map(x => Number(x.id) || 0));
@@ -868,6 +869,7 @@ function openClearView(onClosed) {
     <tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>
   `).join("");
   view.classList.remove("hidden");
+  triggerConfetti(60, 2600); // SPEC-006 (演出を減らすときは出ない)
 }
 function closeClearView() {
   $("clearView")?.classList.add("hidden");
@@ -1292,6 +1294,7 @@ function tryFactoryLevelUp(targetLv) {
   // Phase 1D-23: 工房レベルアップ専用 SE (facilities.mp3)
   playSe("factoryLvDone");
   renderHeader();
+  popClass($("factoryLvText"), "is-pop", 900); // SPEC-006
   renderFactoryLvUpView();
   // 解放内容 + 祝賀コメントをマイから
   const unlocks = factoryLvUpUnlocks(state.factoryLevel);
@@ -4573,6 +4576,64 @@ function advanceWeek() {
 }
 
 /** ─── Header rendering ──────────────────────────────────────────── */
+
+/** ─── SPEC-006: 手ごたえ (GUM のカウントアップ・ポップ) ─── */
+const GUM_COUNT_MS = 600;
+let _gumShown = null;   // いま画面に出している GUM
+let _gumAnim = null;    // { from, to, start, raf }
+
+/** GUM の表示。増えたときだけ 0.6 秒でカウントアップし、「+N」を浮かせる。減ったとき・演出を減らすときはすぐ */
+function renderGum(el) {
+  const target = state.gum || 0;
+  const instant = _gumShown == null || target < _gumShown || isMotionReduced() || document.hidden;
+  if (instant) {
+    if (_gumAnim) { cancelAnimationFrame(_gumAnim.raf); _gumAnim = null; }
+    _gumShown = target;
+    el.textContent = target.toLocaleString();
+    return;
+  }
+  if (target === (_gumAnim ? _gumAnim.to : _gumShown)) {
+    if (!_gumAnim) el.textContent = target.toLocaleString();
+    return;
+  }
+  // 増えた: 今の表示から新しい値までカウントアップ
+  const from = _gumShown;
+  if (_gumAnim) cancelAnimationFrame(_gumAnim.raf);
+  showGumGain(target - (_gumAnim ? _gumAnim.to : from));
+  _gumAnim = { from, to: target, start: performance.now(), raf: 0 };
+  const step = (now) => {
+    if (!_gumAnim) return;
+    const t = Math.min(1, (now - _gumAnim.start) / GUM_COUNT_MS);
+    const eased = 1 - Math.pow(1 - t, 3);
+    _gumShown = Math.round(_gumAnim.from + (_gumAnim.to - _gumAnim.from) * eased);
+    el.textContent = _gumShown.toLocaleString();
+    if (t < 1) _gumAnim.raf = requestAnimationFrame(step);
+    else _gumAnim = null;
+  };
+  _gumAnim.raf = requestAnimationFrame(step);
+  popClass(el.closest(".factory-header__gum"), "is-pop");
+}
+
+/** 「+N」を GUM の横に浮かせる (同時に 1 つだけ) */
+function showGumGain(diff) {
+  const host = document.querySelector(".factory-header__gum");
+  if (!host || diff <= 0) return;
+  host.querySelector(".gum-gain")?.remove();
+  const s = document.createElement("span");
+  s.className = "gum-gain";
+  s.textContent = `+${diff.toLocaleString()}`;
+  host.appendChild(s);
+  setTimeout(() => s.remove(), 900);
+}
+
+/** 要素に一瞬だけクラスを付ける (CSS のアニメーションを始め直す) */
+function popClass(el, cls, ms = 700) {
+  if (!el || isMotionReduced()) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), ms);
+}
 function formatDate(lang) {
   const { year, month, week } = state;
   if (lang === "en") return `${year} ${monthNameEn(month)} W${week}`;
@@ -4587,7 +4648,7 @@ function renderHeader() {
   if (dateEl) dateEl.textContent = formatDate(getLang());
   const gumEl = $("factoryGum");
   if (gumEl) {
-    gumEl.textContent = state.gum.toLocaleString();
+    renderGum(gumEl);
     // Phase 1D-32: 赤字 (gum < 0) は赤字表示クラスをトグル
     gumEl.classList.toggle("factory-gum--deficit", (state.gum || 0) < 0);
   }
