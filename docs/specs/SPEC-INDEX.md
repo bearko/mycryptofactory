@@ -14,3 +14,4 @@
 | [SPEC-008](SPEC-008-v1-release.md) | 公開版 v1.0.0 | Done |
 | [SPEC-009](SPEC-009-platform-trophies.md) | bearko.games 共通基盤のトロフィー | Done |
 | [SPEC-010](SPEC-010-platform-ranking-link.md) | bearko.games の総合ランキングへの導線 | Done |
+| [SPEC-011](SPEC-011-volume-steps.md) | 音量の 20 段階（BGM・効果音） | Done |

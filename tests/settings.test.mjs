@@ -1,8 +1,9 @@
-// 設定（SPEC-005）。実行: node --test tests/settings.test.mjs
+// 設定（SPEC-005・SPEC-011）。実行: node --test tests/settings.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SETTINGS_KEY, DEFAULT_SETTINGS, normalizeSettings, readSettings, writeSettings, isReducedMotion,
+  snapVolume, volumeLabel,
 } from "../js/factory-settings.js";
 
 const mem = (init = {}) => {
@@ -27,6 +28,32 @@ test("壊れた JSON・使えない localStorage でも既定値", () => {
   const bad = { getItem() { throw new Error("denied"); }, setItem() { throw new Error("quota"); } };
   assert.deepEqual(readSettings(bad), { ...DEFAULT_SETTINGS });
   assert.equal(writeSettings(bad, DEFAULT_SETTINGS), false);
+});
+
+test("SPEC-011：音量は 20 段階（5% 刻み）に丸め、0..1 に収める", () => {
+  assert.equal(snapVolume(0.37), 0.35);
+  assert.equal(snapVolume(0.62), 0.6);
+  assert.equal(snapVolume(0.999), 1);
+  assert.equal(snapVolume(0.024), 0);
+  assert.equal(snapVolume(-1), 0);
+  assert.equal(snapVolume(3), 1);
+  assert.equal(snapVolume(0.65), 0.65);
+  assert.equal(snapVolume("x", 0.5), 0.5);
+  assert.equal(snapVolume(NaN, 1), 1);
+  assert.equal(snapVolume(undefined), 0);
+  // 読み書きの途中でも丸める（いままでの保存はそのまま読める）
+  assert.deepEqual(normalizeSettings({ bgmVolume: 0.37, seVolume: 0.62 }), { ...DEFAULT_SETTINGS, bgmVolume: 0.35, seVolume: 0.6 });
+  assert.deepEqual(readSettings(mem({ [SETTINGS_KEY]: JSON.stringify({ bgmVolume: 0.5, seVolume: 1 }) })),
+    { ...DEFAULT_SETTINGS, bgmVolume: 0.5, seVolume: 1 });
+});
+
+test("SPEC-011：画面に出す段階。0 は OFF、ほかは「65%」", () => {
+  assert.equal(volumeLabel(0), "OFF");
+  assert.equal(volumeLabel(0, "オフ"), "オフ");
+  assert.equal(volumeLabel(0.65), "65%");
+  assert.equal(volumeLabel(1), "100%");
+  assert.equal(volumeLabel(0.37), "35%");
+  assert.equal(volumeLabel(0.02), "OFF");
 });
 
 test("演出を減らす：設定か端末のどちらかで", () => {

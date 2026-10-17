@@ -104,7 +104,7 @@ import {
   setBgmVolume,
   setSeVolume,
 } from "./factory-audio.js";
-import { readSettings, writeSettings, isReducedMotion } from "./factory-settings.js";
+import { readSettings, writeSettings, normalizeSettings, isReducedMotion, volumeLabel } from "./factory-settings.js";
 import {
   SHOP_ITEMS,
   SHOP_ITEM_BY_ID,
@@ -450,6 +450,12 @@ function refreshSettingsSubmenu() {
   if (bgmVol) { bgmVol.value = String(Math.round(_settings.bgmVolume * 100)); bgmVol.disabled = !_settings.bgmOn; }
   const seVol = $("settingSeVolume");
   if (seVol) { seVol.value = String(Math.round(_settings.seVolume * 100)); seVol.disabled = !_settings.seOn; }
+  // SPEC-011: いまの段階 (5% 刻み。0 は OFF)
+  const off = ti18n("settings.off", "OFF");
+  const bgmLbl = $("settingBgmVolumeValue");
+  if (bgmLbl) bgmLbl.textContent = volumeLabel(_settings.bgmVolume, off);
+  const seLbl = $("settingSeVolumeValue");
+  if (seLbl) seLbl.textContent = volumeLabel(_settings.seVolume, off);
   // Phase 1D-21: 20x mode toggle
   const btn20 = $("settingSpeed20x");
   if (btn20) {
@@ -656,7 +662,7 @@ function applySettings() {
 }
 
 function pickSetting(patch) {
-  _settings = { ..._settings, ...patch };
+  _settings = normalizeSettings({ ..._settings, ...patch }); // SPEC-011: 音量は 5% 刻みに揃える
   const st = safeStorage();
   if (st) writeSettings(st, _settings);
   applySettings();
