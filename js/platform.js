@@ -37,34 +37,59 @@ export function initPlatform(version) {
   }
 }
 
-// ---------------------------------------------------------------- SPEC-012: 全体チャット（共通基盤 SPEC-004。SDK 1.6.1 から）
-// 窓は SDK が描く（右下の 💬。どの画面でも出す）。このゲームの作法で、窓を開いているあいだは時間を止める。
+// ---------------------------------------------------------------- SPEC-012: 全体チャット（共通基盤 SPEC-004・SPEC-005。SDK 1.6.1 / 1.7.0）
+// 窓は SDK が描く（PC は右側のドック、スマホは 💬 → シート。どの画面でも出す）。このゲームの作法で、
+// 「チャットに向かっているあいだ」は時間を止める：窓・シートなら開いているあいだ、ドック（常に見えている）なら書いているあいだ。
 // 止める・戻すは main.js が onChatToggle で登録する（platform.js は pauseTime に触らない）
-let chatOpen = false;
+let chatOpen = false;        // 窓・シートが開いている（onToggle）
+let chatComposing = false;   // 入力欄に入っている（onCompose。SDK 1.7.0）
+let chatBusy = false;        // main.js に伝えている状態（上の 2 つから決める）
 const chatToggleFns = [];
 
-/** 窓が開いているか（main.js の pause の見張りが、止まっているのは正しいと判断するため） */
-export function isChatOpen() { return chatOpen; }
+/** チャットに向かっているか（main.js の pause の見張りが、止まっているのは正しいと判断するため） */
+export function isChatOpen() { return chatBusy; }
+
+/** ドックなら書いているあいだ、窓・シートなら開いているあいだ。純関数（tests/platform.test.mjs） */
+export function chatBusyFor(layout, open, composing) {
+  return layout === "dock" ? composing : (open || composing);
+}
 
 /** 窓を開いた（true）・閉じた（false）ときに呼ばれる関数を登録する */
 export function onChatToggle(fn) {
   if (typeof fn === "function") chatToggleFns.push(fn);
 }
 
+function chatRecompute(bg) {
+  const layout = bg.chat && typeof bg.chat.layout === "function" ? bg.chat.layout() : "float";
+  const next = chatBusyFor(layout, chatOpen, chatComposing);
+  if (next === chatBusy) return;
+  chatBusy = next;
+  for (const fn of chatToggleFns) {
+    try { fn(chatBusy); } catch (e) { console.warn("[platform] chat", e); }
+  }
+}
+
 function wireChat(bg) {
   if (!bg || !bg.chat || typeof bg.chat.onToggle !== "function") return;   // SDK が古い（1.6.0 まで）なら何もしない
   try {
-    bg.chat.onToggle((open) => {
-      const next = !!open;
-      if (next === chatOpen) return;
-      chatOpen = next;
-      for (const fn of chatToggleFns) {
-        try { fn(chatOpen); } catch (e) { console.warn("[platform] chat", e); }
-      }
-    });
+    bg.chat.onToggle((open) => { chatOpen = !!open; chatRecompute(bg); });
+    // SDK 1.7.0：ドックは常に見えているので、書いているあいだだけ止める
+    if (typeof bg.chat.onCompose === "function") bg.chat.onCompose((on) => { chatComposing = !!on; chatRecompute(bg); });
   } catch (e) {
     console.warn("[platform] chat", e);
   }
+}
+
+// ---------------------------------------------------------------- SPEC-012: bearko.games 共通のアイコン（SPEC-005 5.3。選ぶ窓は SDK 1.7.0）
+export function canPickAvatar() {
+  const bg = sdk();
+  return !!(bg && typeof bg.openAvatarPicker === "function");
+}
+export function openAvatarPicker() {
+  const bg = sdk();
+  if (!bg || typeof bg.openAvatarPicker !== "function") return false;
+  try { bg.openAvatarPicker(); } catch (e) { console.warn("[platform] avatar", e); }
+  return true;
 }
 
 function send(state, quiet) {

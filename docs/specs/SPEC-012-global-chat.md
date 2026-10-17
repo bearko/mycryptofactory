@@ -20,6 +20,14 @@ bearko.games の全体チャット（SDK 1.6.0 の `BearkoGames.chat`）は、`i
 - `isChatOpen()`：pause の見張り（#117 `tickPauseWatchdog`）が「画面が開いていないのに止まっている」と誤って戻さないよう、`isAnyOverlayOpen` が true を返す。窓は SDK の shadow DOM にあり、既存の selector には掛からない
 - SDK がない・古い（`onToggle` が無い。1.6.0 まで）なら何もしない。💬 は 1.6.0 でも出るが、時間は止まらない
 
+### 2.1 SDK 1.7.0（ドック）への追従と、共通のアイコン（2026-10-17）
+
+- PC では窓ではなく **右側のドックが常に見えている**（共通基盤 SPEC-005）。開いているあいだ止める、では常に止まってしまうので、
+  ドックのときは **入力欄に入っているあいだ**（`chat.onCompose`）だけ止める。窓・シートのときは 1.x のまま開いているあいだ
+  （`chatBusyFor(layout, open, composing)`。純関数）
+- 設定の一覧に「アイコンを変える（bearko.games 共通）」。SDK の選ぶ窓（`openAvatarPicker`）を開く。SDK が読めていないときは出さない。
+  設定の画面が開いているので時間は止まっている（窓のために止め直さない）
+
 ## 3. 非ゴール
 
 - 窓の見た目・発言の決まり（200 文字・連投・締め出し）は共通基盤 SPEC-004

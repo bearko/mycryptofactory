@@ -66,6 +66,7 @@
   "menu.quest.land":           { "ja": "ランドnode",   "en": "Land node" },
   "settings.speed2x":          { "ja": "時間2倍速", "en": "2x speed" },
   "settings.speed20x":         { "ja": "時間20倍速 (test)", "en": "20x speed (test)" },
+  "settings.avatar":           { "ja": "アイコンを変える（bearko.games 共通）", "en": "Change icon (shared on bearko.games)" },
   "settings.on":               { "ja": "ON",  "en": "ON" },
   "settings.off":              { "ja": "OFF", "en": "OFF" },
   "settings.factoryLvUp":      { "ja": "工房レベルアップ", "en": "Workshop level up" },
