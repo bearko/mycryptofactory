@@ -2,8 +2,8 @@
 
 | 項目 | 内容 |
 |---|---|
-| 状態 | Approved（作者の決定 2026-10-17：RTA を今回の範囲に入れる） |
-| 関連 | SPEC-001（期限・クリア・節目）、SPEC-002（セーブ）、bearko/MyCryptoPortfolio の SPEC-001 6.9（レギュレーション `factory-lv5`）・INTEGRATION.md 3.4 |
+| 状態 | Done（作者の決定 2026-10-17：RTA を今回の範囲に入れる） |
+| 関連 | SPEC-001（期限・クリア・節目）、SPEC-002（セーブ）、bearko/MyCryptoPortfolio の SPEC-001 6.10（レギュレーション `factory-lv5`）・INTEGRATION.md 3.4 |
 
 ## 1. 背景
 

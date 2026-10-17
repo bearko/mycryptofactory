@@ -68,3 +68,57 @@ export function finalizeScore(state) {
   send(state, true);
   state.scoreFrozen = true;
 }
+
+/* ─── RTA（SPEC-003。レギュレーション factory-lv5） ─────────────────── */
+
+export const RTA_REGULATION = "factory-lv5";
+const RTA_CHECKPOINTS = ["lv2", "lv3", "lv4", "clear"];
+let rtaRunning = false;
+
+/** 節目 (SPEC-001 の reachMilestone の id) → RTA の区切り。年の終わりは送らない。純関数 */
+export function rtaCheckpointFor(milestoneId) {
+  return RTA_CHECKPOINTS.includes(milestoneId) ? milestoneId : null;
+}
+
+/** 「RTA で始める」を出してよいか (SDK に rta があるとき) */
+export function isRtaAvailable() {
+  const bg = sdk();
+  return !!(bg && bg.rta && typeof bg.rta.start === "function");
+}
+
+export function isRtaRunning() { return rtaRunning; }
+
+function rtaCall(name, fn) {
+  try {
+    Promise.resolve(fn()).then((r) => { if (r && r.ok === false) console.warn(`[platform] rta.${name}`, r.error); })
+      .catch((e) => console.warn(`[platform] rta.${name}`, e));
+  } catch (e) {
+    console.warn(`[platform] rta.${name}`, e);
+  }
+}
+
+/** 計測を始める (はじめからのときだけ)。timerOffset はヘッダーの高さ (px) */
+export function rtaStart(timerOffset = 0) {
+  if (!isRtaAvailable()) return;
+  rtaRunning = true;
+  rtaCall("start", () => sdk().rta.start({ regulation: RTA_REGULATION, timerOffset }));
+}
+
+/** 節目に達した。計測中で RTA の区切りなら送る。clear で計測は終わる */
+export function rtaMilestone(milestoneId, igtMs) {
+  const cp = rtaCheckpointFor(milestoneId);
+  if (!rtaRunning || !cp) return;
+  if (cp === "clear") rtaRunning = false;
+  const bg = sdk();
+  if (!bg || !bg.rta) return;
+  rtaCall("checkpoint", () => bg.rta.checkpoint(cp, { igtMs }));
+}
+
+/** 計測をやめる (期限・ゲームオーバー) */
+export function rtaAbort() {
+  if (!rtaRunning) return;
+  rtaRunning = false;
+  const bg = sdk();
+  if (!bg || !bg.rta) return;
+  rtaCall("abort", () => bg.rta.abort());
+}
