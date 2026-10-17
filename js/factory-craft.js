@@ -346,3 +346,14 @@ export function sortByCraftability(team, inventory) {
     return a.extId - b.extId;
   };
 }
+
+/** #116: クラフト中のイベント（ソウル注入・オーラ付与）の担当にできるヒーロー。純関数
+ *  オーラ付与ではソウル注入の担当を除く（Phase 1D-41）が、ほかに編成ヒーローがいなければ
+ *  同じヒーローが担当する（候補が 0 人だと先へ進めなくなるため）。
+ *  @returns {{ heroes: object[], sameAsSoul: boolean }} sameAsSoul：ソウル注入と同じヒーローに戻したか */
+export function craftEventCandidates(teamHeroes, type, soulHeroId) {
+  if (type !== "aura" || soulHeroId == null) return { heroes: teamHeroes, sameAsSoul: false };
+  const others = teamHeroes.filter((h) => h.heroId !== soulHeroId);
+  if (others.length > 0) return { heroes: others, sameAsSoul: false };
+  return { heroes: teamHeroes, sameAsSoul: teamHeroes.length > 0 };
+}
