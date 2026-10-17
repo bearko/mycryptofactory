@@ -1048,8 +1048,10 @@
       border: 1.5px solid #4a3f33; border-radius: 4px;
       padding: 0.45rem 0.8rem; font-size: 0.85rem; font-weight: 700;
     }
-    .setting-range input[type="range"] { flex: 1; max-width: 60%; accent-color: var(--accent); touch-action: pan-y; }
+    .setting-range input[type="range"] { flex: 1 1 0; min-width: 4rem; accent-color: var(--accent); touch-action: pan-y; }
     .setting-range input[type="range"]:disabled { opacity: 0.4; }
+    /* SPEC-011: いまの段階 (5% 刻み。0 は OFF) */
+    .setting-range__value { flex: 0 0 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
     .menu-item:disabled {
       opacity: 0.5; cursor: not-allowed;
       background: #d2c7a8; color: #5a4f3f;
@@ -6426,14 +6428,16 @@
     </div>
     <div class="menu-card hidden" id="settingsSubmenu" aria-label="Settings submenu">
       <button type="button" class="menu-item" data-setting-toggle="speed2x" id="settingSpeed2x">時間2倍速: OFF</button>
-      <!-- SPEC-005: 音・演出・言語 (localStorage mcf.settings / mcf.lang) -->
+      <!-- SPEC-005: 音・演出・言語 (localStorage mcf.settings / mcf.lang)。SPEC-011: 音量は 20 段階 (5% 刻み。0 は OFF) -->
       <button type="button" class="menu-item" id="settingBgm">BGM: ON</button>
       <label class="setting-range"><span data-i18n="settings.bgmVolume">BGM の音量</span>
         <input type="range" min="0" max="100" step="5" id="settingBgmVolume" value="100" />
+        <span class="setting-range__value" id="settingBgmVolumeValue">100%</span>
       </label>
       <button type="button" class="menu-item" id="settingSe">効果音: ON</button>
       <label class="setting-range"><span data-i18n="settings.seVolume">効果音の音量</span>
         <input type="range" min="0" max="100" step="5" id="settingSeVolume" value="100" />
+        <span class="setting-range__value" id="settingSeVolumeValue">100%</span>
       </label>
       <button type="button" class="menu-item" id="settingMotion">演出を減らす: 端末に合わせる</button>
       <button type="button" class="menu-item" id="settingLang">言語 / Language: 日本語</button>
