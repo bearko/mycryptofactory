@@ -29,9 +29,41 @@ export function initPlatform(version) {
   const bg = sdk();
   if (!bg) return;
   try {
-    Promise.resolve(bg.init({ game: "factory", version })).catch((e) => console.warn("[platform] init", e));
+    Promise.resolve(bg.init({ game: "factory", version }))
+      .then(() => wireChat(bg))
+      .catch((e) => console.warn("[platform] init", e));
   } catch (e) {
     console.warn("[platform] init", e);
+  }
+}
+
+// ---------------------------------------------------------------- SPEC-012: 全体チャット（共通基盤 SPEC-004。SDK 1.6.1 から）
+// 窓は SDK が描く（右下の 💬。どの画面でも出す）。このゲームの作法で、窓を開いているあいだは時間を止める。
+// 止める・戻すは main.js が onChatToggle で登録する（platform.js は pauseTime に触らない）
+let chatOpen = false;
+const chatToggleFns = [];
+
+/** 窓が開いているか（main.js の pause の見張りが、止まっているのは正しいと判断するため） */
+export function isChatOpen() { return chatOpen; }
+
+/** 窓を開いた（true）・閉じた（false）ときに呼ばれる関数を登録する */
+export function onChatToggle(fn) {
+  if (typeof fn === "function") chatToggleFns.push(fn);
+}
+
+function wireChat(bg) {
+  if (!bg || !bg.chat || typeof bg.chat.onToggle !== "function") return;   // SDK が古い（1.6.0 まで）なら何もしない
+  try {
+    bg.chat.onToggle((open) => {
+      const next = !!open;
+      if (next === chatOpen) return;
+      chatOpen = next;
+      for (const fn of chatToggleFns) {
+        try { fn(chatOpen); } catch (e) { console.warn("[platform] chat", e); }
+      }
+    });
+  } catch (e) {
+    console.warn("[platform] chat", e);
   }
 }
 

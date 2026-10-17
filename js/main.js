@@ -9,6 +9,7 @@
 import {
   initPlatform, reportProgress, weeksSinceStart, finalizeScore,
   isRtaAvailable, rtaStart, rtaMilestone, rtaAbort, syncTrophies,
+  isChatOpen, onChatToggle,
 } from "./platform.js";
 import {
   writeSave, readSave, clearSave, decodeState, saveSummary,
@@ -473,6 +474,7 @@ function resumeTime() {
 /** #117: 時間を止める画面（モーダル・ビュー）。 どれかが開いていれば、 時間が止まっているのは正しい */
 const PAUSE_OVERLAY_SELECTOR = '[aria-modal="true"], [id$="View"]:not(#workshopView), #craftEventPicker, #craftEventAnim, #helpOverlay, #menuOverlay, #recipePopup, #heroDetailPopup';
 function isAnyOverlayOpen() {
+  if (isChatOpen()) return true;   // SPEC-012: 全体チャットの窓（SDK の shadow DOM。上の selector には掛からない）
   for (const el of document.querySelectorAll(PAUSE_OVERLAY_SELECTOR)) {
     if (!el.classList.contains("hidden") && el.getClientRects().length > 0) return true;
   }
@@ -9625,6 +9627,7 @@ function installDebugHooks() {
 installDebugHooks();
 setInterval(tickPauseWatchdog, PAUSE_WATCHDOG_MS); // #117: 止まったままの時間の見張り
 initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア）。SDK がなければ何もしない
+onChatToggle((open) => { if (open) pauseTime(); else resumeTime(); }); // SPEC-012: 全体チャットの窓を開いているあいだは時間を止める（モーダルの作法）
 init();
 
 // Expose APP_VERSION for debug / future ranking submit
