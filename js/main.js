@@ -5978,6 +5978,8 @@ function renderConfirm() {
 
 function openCraftView() {
   pauseTime();
+  // SPEC-007: 指差しはクラフト画面に着いたら終わり
+  if (state.tutorial && !state.tutorial.coachDone) { state.tutorial.coachDone = true; renderCoach(); }
   // Phase 1D-45: 打ち直し起動経由 (state.craftPickedRemakeIdx 設定済) なら
   //   ext picker を skip し confirm 画面の状態を保つ。 それ以外は通常 select。
   if (state.craftPickedRemakeIdx != null) {
@@ -6987,7 +6989,8 @@ function dismissTitle() {
       rtaStart(Math.round(Math.max(...bottoms)));
     }
     // Phase 1D-5: ホーム画面初回入りでマイのチュートリアル
-    runTutorialOnce("home");
+    runTutorialOnce("home", { onClose: renderCoach });
+    renderCoach();
   }, 380);
 }
 
@@ -7013,6 +7016,7 @@ function openMenu() {
     if (card.id) card.classList.add("hidden");  // submenu (id 付き) のみ
   });
   document.querySelectorAll(".menu-item[data-menu]").forEach(b => b.classList.remove("menu-item--active"));
+  renderCoach(); // SPEC-007
 }
 function closeMenu() {
   $("menuOverlay")?.classList.add("hidden");
@@ -7021,6 +7025,22 @@ function closeMenu() {
   });
   setMenuButtonLabel("open");
   resumeTime();
+  renderCoach();
+}
+
+/** SPEC-007: 最初のクラフトまでの指差し。 MENU → クラフト → 新規開発 の順に、次に押すところを光らせる。
+ *  ホームのチュートリアルを読んだあと、 クラフト画面を初めて開くまで */
+function renderCoach() {
+  document.querySelectorAll(".coach-pulse").forEach(el => el.classList.remove("coach-pulse"));
+  const tut = state.tutorial || {};
+  if (!tut.home || tut.coachDone) return;
+  if ((state.craftCompletedCount || 0) > 0 || state.activeCraft) { tut.coachDone = true; return; }
+  if (!$("maiModal")?.classList.contains("hidden")) return;
+  let target;
+  if ($("menuOverlay")?.classList.contains("hidden")) target = $("btnMenuOpen");
+  else if ($("craftSubmenu")?.classList.contains("hidden")) target = document.querySelector('.menu-item[data-menu="craft"]');
+  else target = document.querySelector('[data-craft-action="new-dev"]');
+  target?.classList.add("coach-pulse");
 }
 
 /** Phase 1D-7: workshop の MENU ボタンの label を切替。
@@ -8782,6 +8802,7 @@ async function init() {
       if (subId) $(subId)?.classList.remove("hidden");
       // 設定 submenu を開いたら現在の toggle 状態を反映
       if (key === "settings") refreshSettingsSubmenu();
+      renderCoach(); // SPEC-007
     });
   });
 
