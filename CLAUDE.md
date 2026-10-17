@@ -7,6 +7,7 @@ MCH 経済圏をモチーフにした、カイロソフト「ゲーム発展国+
 - 本番：https://factory.bearko.games/ （`main` にマージすると Cloudflare Workers Builds が自動で公開する）
 - bearko.games 共通基盤に参加している：総合スコア（[docs/platform-score.md](docs/platform-score.md)）と RTA（SPEC-003、レギュレーション `factory-lv5`）。窓口は `js/platform.js`
 - 仕様は `docs/specs/`（SPEC-NNN）。**コードを変える前に SPEC を書く／直す**
+- 版を上げるときは `js/main.js` の `APP_VERSION`・`CHANGELOG.md`・`data/i18n/ui.json` の `alpha.badge` / `footer.meta`（とその HTML の既定文）をそろえる
 
 ## 技術スタック（変えない）
 
@@ -42,7 +43,7 @@ tools/sim/                 バランスのシミュレーター（quest-balance.
 docs/                      SPEC・設計メモ
 ```
 
-## いまのゲーム（Phase 1D-47・β2-3・Phase 2B まで）
+## いまのゲーム（v1.0.0。更新履歴は CHANGELOG.md）
 
 - 時間：1 週 = 7 秒（設定で 2 倍速）。2018 年 12 月 1 週に始まる。モーダルを開いている間は止まる
 - クラフト（工房 Lv で 1〜3 並行）・品評会・打ち直し・受注クラフト

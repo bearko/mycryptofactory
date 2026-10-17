@@ -1,20 +1,9 @@
 /**
- * main.js — MyCryptoFactory v2.0.0 (Phase 0 shell)
+ * main.js — MyCryptoFactory v1.0.0 の本体
  *
- * Phase 0 scope:
- *   - Title screen (legacy) → workshop view
- *   - Header: week + GUM + circle gauge + lang/help buttons
- *   - Workshop view: background + (placeholder) hero sprites + MENU button
- *   - Order panel (currently always "no order"; orders come in Phase 1)
- *   - Time progression: 1 week = 7 seconds, paused while menu/stub open
- *   - Menu modal with 6 items (all but Settings → "coming soon" stub)
- *
- * Out of scope (Phase 1+):
- *   - Crafting (orders / recipes / progress / hero assignment)
- *   - Quests (node selection, materials)
- *   - Shop (buy materials)
- *   - Market (sell crafted exts)
- *   - Hero assignment / params (Garuda / Ifrit / Leviathan / Tiamat)
+ * state (ゲームの状態)・時間のループ (1 週 = 7 秒。モーダルを開いている間は止まる)・
+ * 全画面の描画とイベント。純ロジックは factory-*.js と platform.js に切り出してある。
+ * 仕様は docs/specs/ (SPEC-001 期限・クリア、SPEC-002 セーブ、SPEC-003 RTA、SPEC-004〜007 UI/UX)。
  */
 
 import {
@@ -174,7 +163,7 @@ import {
   rollQuestRewards,
 } from "./factory-quest.js";
 
-const APP_VERSION = "alpha";
+const APP_VERSION = "1.0.0"; // SPEC-008。版を上げるときは CHANGELOG.md・タイトル・フッター (data/i18n/ui.json) もそろえる
 const TEAM_SIZE = 5;
 
 /** ─── State ──────────────────────────────────────────────────────── */

@@ -11,3 +11,4 @@
 | [SPEC-005](SPEC-005-settings.md) | 設定（音・演出を減らす・言語） | Done |
 | [SPEC-006](SPEC-006-feedback.md) | 演出（画面の切り替え・GUM の手ごたえ・Lv・クリア） | Done |
 | [SPEC-007](SPEC-007-onboarding-help.md) | はじめての案内とヘルプ | Done |
+| [SPEC-008](SPEC-008-v1-release.md) | 公開版 v1.0.0 | Done |
