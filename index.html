@@ -2,12 +2,15 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MyCryptoFactory — β2 version</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#121018" />
+  <title>MyCryptoFactory — 工房経営シム</title>
   <meta name="description" content="My Crypto Heroes 経済圏モチーフの工房経営シム。GUM を稼いで世界一の工房を目指そう。" />
 
-  <!-- favicon -->
-  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/bearko/mycryptoheroes/main/MAI_SD.png" />
+  <!-- favicon・アイコン・manifest (SPEC-004: ホーム画面に追加できる) -->
+  <link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-48.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="manifest" href="./manifest.json" />
 
   <!-- Open Graph / Twitter Card -->
   <meta property="og:type" content="website" />
@@ -15,6 +18,8 @@
   <meta property="og:description" content="MCH 経済圏ベースの工房経営シム。クラフト受注・クエストで素材調達・GUM を稼ぐサイクルを楽しもう。" />
   <meta property="og:url" content="https://factory.bearko.games/" />
   <meta property="og:image" content="https://factory.bearko.games/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="MyCryptoFactory" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="MyCryptoFactory — β2 version" />
@@ -23,6 +28,11 @@
 
   <style>html, body { background: #121018; color: #e6e0f0; margin: 0; }</style>
   <link rel="preconnect" href="https://raw.githubusercontent.com" />
+  <!-- SPEC-004: 見出し (Zen Maru Gothic) と数字 (Chakra Petch)。読み込みを待たない -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Zen+Maru+Gothic:wght@700;900&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Zen+Maru+Gothic:wght@700;900&display=swap" /></noscript>
 
   <style>
     :root {
@@ -37,12 +47,29 @@
       --ifrit: #e76060;    /* PHY 系 — 赤 */
       --leviathan: #5ab4c4;/* INT 系 — 青 */
       --tiamat: #f0c14b;   /* AGI 系 — 黄 */
+      /* SPEC-004: 共通の基準のトークン (触った部分から順に使う) */
+      --good: #5ecf8a;
+      --bad: #e76060;
+      --danger: #b5473a;
+      --radius: 6px;
+      --radius-lg: 12px;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      --ease-out: cubic-bezier(.2, .8, .2, 1);
+      --font-body: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      --font-display: "Zen Maru Gothic", var(--font-body);
+      --font-num: "Chakra Petch", ui-monospace, var(--font-body);
+      --safe-t: env(safe-area-inset-top, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+      min-height: 100dvh;
+      overscroll-behavior: none;
+      font-family: var(--font-body);
       /* Phase 1D-32 hotfix: タイトル以外は従来通りのダークグラデーション背景に戻す。
        *   タイトル (.title-screen) のみ白背景でロゴと馴染ませる。 */
       background: radial-gradient(ellipse at top, #1f1a2e 0%, var(--bg) 55%);
@@ -1808,7 +1835,7 @@
     .active-effects-modal.hidden { display: none !important; }
     .active-effects-modal__card {
       max-width: 480px; width: 100%;
-      max-height: 85vh; overflow-y: auto;
+      max-height: 85vh; max-height: 85dvh; overflow-y: auto;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -2477,7 +2504,7 @@
     .factory-lvup-view.hidden { display: none !important; }
     .factory-lvup-view__card {
       max-width: 720px; width: 100%;
-      max-height: 92vh;
+      max-height: 92vh; max-height: 92dvh;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -2643,7 +2670,7 @@
     .ranking-viewer.hidden { display: none !important; }
     .ranking-viewer__card {
       max-width: 560px; width: 100%;
-      max-height: 92vh;
+      max-height: 92vh; max-height: 92dvh;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -2692,7 +2719,7 @@
     .ranking-viewer__list-wrap {
       flex: 1;
       overflow-y: auto;
-      max-height: 50vh;
+      max-height: 50vh; max-height: 50dvh;
     }
     .ranking-viewer__list {
       list-style: none; padding: 0; margin: 0;
@@ -2807,7 +2834,7 @@
     .clear-view__lead { margin: 0; font-size: 0.85rem; color: var(--muted); text-align: center; line-height: 1.6; }
     .ranking-score-view__card, .activity-report-view__card {
       max-width: 520px; width: 100%;
-      max-height: 92vh;
+      max-height: 92vh; max-height: 92dvh;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -2922,7 +2949,7 @@
       border-radius: 12px;
       padding: 1rem 1.1rem 1.1rem;
       display: flex; flex-direction: column; gap: 0.6rem;
-      max-height: 92vh;
+      max-height: 92vh; max-height: 92dvh;
       overflow-y: auto;
     }
     .craft-event-picker__title, .craft-event-anim__title {
@@ -3151,7 +3178,7 @@
     .shop-view.hidden { display: none !important; }
     .shop-view__card {
       max-width: 640px; width: 100%;
-      max-height: 92vh;
+      max-height: 92vh; max-height: 92dvh;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -3280,7 +3307,7 @@
     .commission-view.hidden { display: none !important; }
     .commission-view__card {
       max-width: 540px; width: 100%;
-      max-height: 92vh;
+      max-height: 92vh; max-height: 92dvh;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -3883,7 +3910,7 @@
     .salary-report.hidden { display: none !important; }
     .salary-report__card {
       max-width: 520px; width: 100%;
-      max-height: 90vh; overflow-y: auto;
+      max-height: 90vh; max-height: 90dvh; overflow-y: auto;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -3906,7 +3933,7 @@
     }
     .salary-report__summary strong { color: var(--accent); font-variant-numeric: tabular-nums; }
     .salary-report__list-wrap {
-      max-height: 50vh; overflow-y: auto;
+      max-height: 50vh; max-height: 50dvh; overflow-y: auto;
     }
     .salary-report__list {
       list-style: none; padding: 0; margin: 0;
@@ -3962,7 +3989,7 @@
     .marco-polo.hidden { display: none !important; }
     .marco-polo__card {
       max-width: 560px; width: 100%;
-      max-height: 92vh; overflow-y: auto;
+      max-height: 92vh; max-height: 92dvh; overflow-y: auto;
       background: linear-gradient(180deg, #2c2440 0%, var(--panel) 100%);
       border: 2px solid var(--accent);
       border-radius: 12px;
@@ -3993,7 +4020,7 @@
     .marco-polo__list {
       list-style: none; padding: 0; margin: 0;
       display: flex; flex-direction: column; gap: 0.35rem;
-      max-height: 60vh; overflow-y: auto;
+      max-height: 60vh; max-height: 60dvh; overflow-y: auto;
     }
     .marco-polo__item {
       display: grid;
@@ -4069,7 +4096,7 @@
     .contest-modal.hidden { display: none !important; }
     .contest-modal__card {
       max-width: 460px; width: 100%;
-      max-height: 90vh;
+      max-height: 90vh; max-height: 90dvh;
       overflow-y: auto;
       background: var(--panel);
       border: 1px solid var(--accent);
@@ -4567,7 +4594,7 @@
       border-radius: 12px;
       padding: 1rem;
       display: flex; flex-direction: column; gap: 0.7rem;
-      max-height: 90vh; overflow-y: auto;
+      max-height: 90vh; max-height: 90dvh; overflow-y: auto;
       color: var(--text);
     }
     .fire-modal__title {
@@ -4800,7 +4827,7 @@
       padding: 1rem 1.1rem 0.9rem;
       display: flex; flex-direction: column; gap: 0.7rem;
       color: var(--text);
-      max-height: 90vh; overflow-y: auto;
+      max-height: 90vh; max-height: 90dvh; overflow-y: auto;
     }
     .sell-modal__title {
       margin: 0; font-size: 1.1rem;
@@ -5604,7 +5631,7 @@
     .help-card {
       background: var(--panel); border: 1px solid var(--border);
       border-radius: 12px; padding: 1.25rem; max-width: 420px;
-      max-height: 80vh; overflow-y: auto;
+      max-height: 80vh; max-height: 80dvh; overflow-y: auto;
     }
     .help-card h2 { margin: 0 0 0.5rem; color: var(--accent); }
     .help-card p { font-size: 0.85rem; line-height: 1.5; color: var(--text); }
@@ -6039,6 +6066,82 @@
     .order-panel__icon img,
     .workshop__hero {
       image-rendering: pixelated;
+    }
+
+    /* ═══ SPEC-004: UI の土台 (画面の器・部品・タイトル・ヘッダー・演出を減らす) ═══ */
+    button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    button:not(:disabled):active { transform: scale(0.97); transition: transform 0.08s var(--ease-out); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    /* 全画面のモーダル: 四方の余白を safe-area の内側に */
+    .title-confirm, .stub-view, .hero-detail, .craft-done, .appraisal, .active-effects-modal,
+    .factory-lvup-view, .ranking-score-view, .activity-report-view, .craft-event-picker, .craft-event-anim,
+    .ranking-viewer, .shop-view, .commission-view, .recipe-popup, .ql-info-modal, .quest-result,
+    .salary-report, .marco-polo, .contest-modal, .hire-success, .fire-modal, .fire-confirm, .sell-modal,
+    #helpOverlay, .mai-help {
+      padding: max(1rem, var(--safe-t)) max(1rem, var(--safe-r)) max(1rem, var(--safe-b)) max(1rem, var(--safe-l));
+    }
+    .market-view, .quest-view, .hero-view, .craft-view {
+      padding-top: var(--safe-t); padding-bottom: var(--safe-b);
+      padding-left: var(--safe-l); padding-right: var(--safe-r);
+    }
+    .menu-overlay { padding-top: max(4rem, calc(var(--safe-t) + 3rem)); }
+    .mai-modal { padding-bottom: var(--safe-b); }
+    /* ヘッダー: 上と左右を safe-area の内側に。日付・Lv・GUM は折り返さない */
+    .factory-header {
+      padding-top: max(0.5rem, var(--safe-t));
+      padding-left: max(0.75rem, var(--safe-l));
+      padding-right: max(0.75rem, var(--safe-r));
+    }
+    .factory-header__date, .factory-header__factory-lv, .factory-header__gum, .factory-header__btn { white-space: nowrap; flex-shrink: 0; }
+    .factory-header__gum-icon { width: 18px; height: 18px; overflow: hidden; }
+    #factoryDate, #factoryGum, .factory-header__factory-lv { font-family: var(--font-num); font-weight: 700; }
+    footer { padding-bottom: max(0.6rem, var(--safe-b)); }
+    @media (max-width: 420px) {
+      .factory-header { gap: 0.4rem; padding-left: max(0.5rem, var(--safe-l)); padding-right: max(0.5rem, var(--safe-r)); }
+      .alpha-badge--header { display: none; }
+      .factory-header__btn { width: 28px; height: 28px; font-size: 0.8rem; }
+      .factory-header__date { gap: 0.3rem; font-size: 0.8rem; }
+      /* 言語はタイトルと設定 (SPEC-005) から変えられる */
+      #btnLangToggle { display: none; }
+    }
+    @media (max-width: 380px) {
+      .factory-header__factory-lv { padding: 0.15rem 0.35rem; font-size: 0.72rem; }
+      .factory-header__btn { width: 26px; }
+      /* 旧ランキング (GAS) はタイトルから開ける */
+      #headerRankingBtn { display: none; }
+    }
+    /* 見出しのフォント */
+    .activity-report-view__title, .ranking-score-view__title, .flv__lv-label, .clear-view__title {
+      font-family: var(--font-display);
+    }
+    .ranking-score-view__score-num, .activity-report-view__table td, .clear-view__time { font-family: var(--font-num); }
+    .clear-view .activity-report-view__card, .title-confirm__card { box-shadow: var(--shadow); border-radius: var(--radius-lg); }
+    .title-save__btn--danger { background: var(--danger); border-color: var(--danger); }
+    /* タイトル: 固定配置をやめて縦に流す。はみ出したらタイトルの中だけスクロール */
+    .title-screen {
+      justify-content: safe center;
+      gap: 1.4rem;
+      overflow-y: auto;
+      padding: max(1.2rem, var(--safe-t)) max(1rem, var(--safe-r)) max(1rem, var(--safe-b)) max(1rem, var(--safe-l));
+    }
+    .title-ranking-btn, .lang-toggle, .title-version {
+      position: static; transform: none; left: auto; bottom: auto;
+    }
+    .title-version { margin-top: 0.2rem; }
+    .title-logo { max-width: min(420px, 88vw); }
+    @media (max-height: 700px) {
+      .title-screen { gap: 0.9rem; }
+      .title-logo { max-width: min(340px, 80vw); }
+      .lang-toggle { gap: 0.35rem; }
+    }
+    /* OS の「視差効果を減らす」: アニメーションとトランジションをほぼ 0 に */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>

@@ -9340,6 +9340,7 @@ async function init() {
   document.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
     if (!$("craftDoneModal")?.classList.contains("hidden")) return; // 明示閉じ専用
+    if (!$("clearView")?.classList.contains("hidden")) { closeClearView(); return; } // SPEC-004
     if (!$("appraisalModal")?.classList.contains("hidden")) return; // 明示閉じ専用
     if (!$("qlInfoModal")?.classList.contains("hidden")) { closeQlInfoModal(); return; }
     if (!$("sellModal")?.classList.contains("hidden")) { closeSellModal(); return; }

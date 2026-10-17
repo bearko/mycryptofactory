@@ -1,0 +1,17 @@
+{
+  "name": "MyCryptoFactory",
+  "short_name": "Factory",
+  "description": "My Crypto Heroes 経済圏モチーフの工房経営シム。8 年以内に工房 Lv.5 を目指そう。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121018",
+  "theme_color": "#121018",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
