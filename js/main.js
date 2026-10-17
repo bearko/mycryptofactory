@@ -17,7 +17,10 @@
  *   - Hero assignment / params (Garuda / Ifrit / Leviathan / Tiamat)
  */
 
-import { initPlatform, reportProgress, weeksSinceStart, finalizeScore } from "./platform.js";
+import {
+  initPlatform, reportProgress, weeksSinceStart, finalizeScore,
+  isRtaAvailable, rtaStart, rtaMilestone, rtaAbort,
+} from "./platform.js";
 import {
   writeSave, readSave, clearSave, decodeState, saveSummary,
 } from "./factory-save.js";
@@ -681,6 +684,23 @@ function pickContinue() {
   dismissTitle();
 }
 
+/** ?debug=1 か (SPEC-001 3.6。 そのときは RTA を出さない) */
+function isDebugMode() {
+  try { return new URLSearchParams(location.search).get("debug") === "1"; } catch (e) { return false; }
+}
+
+/** SPEC-003: 「RTA で始める」 (SDK があるときだけ・ debug では出さない) */
+let _rtaPending = false;
+function renderTitleRta() {
+  $("titleRtaBtn")?.classList.toggle("hidden", !isRtaAvailable() || isDebugMode());
+}
+function pickRtaStart() {
+  if (!isRtaAvailable() || isDebugMode()) return;
+  _rtaPending = true;
+  if (_titleSave) { openNewGameConfirm(); return; }
+  dismissTitle();
+}
+
 function openNewGameConfirm() {
   const dlg = $("newGameConfirm");
   if (!dlg) return;
@@ -689,9 +709,12 @@ function openNewGameConfirm() {
 }
 function closeNewGameConfirm() {
   $("newGameConfirm")?.classList.add("hidden");
+  _rtaPending = false;
 }
 function pickNewGame() {
+  const rta = _rtaPending;
   closeNewGameConfirm();
+  _rtaPending = rta;
   clearSave(safeStorage());
   _titleSave = null;
   renderTitleSave();
@@ -713,6 +736,8 @@ function reachMilestone(id) {
   if (id in state.milestones) return;
   const weeks = currentWeeks();
   state.milestones[id] = weeks;
+  // SPEC-003: RTA の区切り (lv2〜lv4・clear。 計測中のときだけ送られる)。 IGT は 1 週 = 7 秒で数える
+  rtaMilestone(id, state.tickCount * TICK_INTERVAL_MS);
   if (/^year\d$/.test(id)) {
     const n = Number(id.slice(4));
     state.notifications.push({
@@ -745,6 +770,7 @@ function checkWeekMilestones() {
   if (!state.deadlineTriggered && weeks >= DEADLINE_WEEKS) {
     state.deadlineTriggered = true;
     finalizeScore(state);
+    rtaAbort(); // SPEC-003: 期限を過ぎたら計測をやめる (クリア済みならもう終わっている)
     setTimeout(triggerDeadline, 200);
   }
 }
@@ -1445,6 +1471,7 @@ function triggerDeficitGameOver() {
   // SPEC-002: ゲームオーバーのセーブは残さない (次は最初から)
   _saveDue = false;
   clearSave(safeStorage());
+  rtaAbort(); // SPEC-003
   pauseTime();
   maiSaysSequence([
     ti18n("mai.deficitGameOver"),
@@ -6838,6 +6865,14 @@ function dismissTitle() {
     titleEl.classList.remove("title-out");
     // Time starts only after the player taps in
     startTimeLoop();
+    // SPEC-003: RTA の計測は時間が動き出すときから。 経過時間の表示はヘッダーの下へ
+    if (_rtaPending) {
+      _rtaPending = false;
+      // ヘッダーと目標バナーの下に出す (重なると日付・目標が読めない)
+      const bottoms = [".factory-header", "#homeGoalBanner"]
+        .map(q => document.querySelector(q)?.getBoundingClientRect().bottom || 0);
+      rtaStart(Math.round(Math.max(...bottoms)));
+    }
     // Phase 1D-5: ホーム画面初回入りでマイのチュートリアル
     runTutorialOnce("home");
   }, 380);
@@ -8501,13 +8536,13 @@ async function init() {
       // Phase 1D-46: ランキングボタン押下時はゲーム開始させない
       if (ev.target.closest("#titleRankingBtn")) return;
       // SPEC-002: セーブがあるときは「つづきから」「はじめから」のボタンで始める
-      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm")) return;
+      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm, #titleRtaBtn")) return;
       dismissTitle();
     });
     titleEl.addEventListener("keydown", (ev) => {
       if (ev.target.closest("#langToggle")) return;
       if (ev.target.closest("#titleRankingBtn")) return;
-      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm")) return;
+      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm, #titleRtaBtn")) return;
       if (ev.key === "Enter" || ev.key === " ") dismissTitle();
     });
   }
@@ -8516,6 +8551,8 @@ async function init() {
   _titleSave = (() => { const st = safeStorage(); return st ? readSave(st) : null; })();
   renderTitleSave();
   $("titleContinueBtn")?.addEventListener("click", pickContinue);
+  renderTitleRta();
+  $("titleRtaBtn")?.addEventListener("click", pickRtaStart);
   $("titleNewGameBtn")?.addEventListener("click", openNewGameConfirm);
   $("newGameConfirmOk")?.addEventListener("click", pickNewGame);
   $("newGameConfirmCancel")?.addEventListener("click", closeNewGameConfirm);
@@ -9322,9 +9359,7 @@ async function init() {
 
 /** SPEC-001 3.6: 期限・クリアを確かめるための日付送り。 ?debug=1 のときだけ (本番の画面には出さない) */
 function installDebugHooks() {
-  let on = false;
-  try { on = new URLSearchParams(location.search).get("debug") === "1"; } catch (e) { on = false; }
-  if (!on) return;
+  if (!isDebugMode()) return;
   window.mcfDebug = {
     /** 暦を n 週進め、 期限・年の終わりの判定だけを走らせる (月のイベントは飛ばす) */
     jumpWeeks(n = 1) {

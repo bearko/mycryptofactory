@@ -1,7 +1,10 @@
 // bearko.games 共通基盤（総合スコア）に送る成績。実行: node --test tests/platform.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { weeksSinceStart, scoreMetrics, reportProgress, finalizeScore } from "../js/platform.js";
+import {
+  weeksSinceStart, scoreMetrics, reportProgress, finalizeScore,
+  rtaCheckpointFor, isRtaAvailable, isRtaRunning, rtaStart, rtaMilestone, rtaAbort,
+} from "../js/platform.js";
 
 test("ゲーム開始（2018 年 12 月 1 週）からの週数", () => {
   assert.equal(weeksSinceStart({ year: 2018, month: 12, week: 1, startYear: 2018 }), 0);
@@ -32,6 +35,55 @@ test("期限で止めたあとは送らない", () => {
     reportProgress(st, { milestone: true });
     finalizeScore(st);
     assert.equal(sent.length, 1);
+  } finally {
+    delete globalThis.window;
+  }
+});
+
+test("RTA：節目 → 区切り。年の終わりは送らない", () => {
+  assert.equal(rtaCheckpointFor("lv2"), "lv2");
+  assert.equal(rtaCheckpointFor("lv4"), "lv4");
+  assert.equal(rtaCheckpointFor("clear"), "clear");
+  assert.equal(rtaCheckpointFor("year1"), null);
+  assert.equal(rtaCheckpointFor("year8"), null);
+});
+
+test("RTA：計測中だけ区切り・中断を送り、clear で終わる", () => {
+  const calls = [];
+  const rta = {
+    start: (o) => { calls.push(["start", o]); return Promise.resolve({ ok: true }); },
+    checkpoint: (id, o) => { calls.push(["checkpoint", id, o]); return Promise.resolve({ ok: true }); },
+    abort: () => { calls.push(["abort"]); return Promise.resolve({ ok: true }); },
+  };
+  globalThis.window = { BearkoGames: { rta } };
+  try {
+    rtaMilestone("lv2", 1); // 計測していない
+    rtaAbort();
+    assert.equal(calls.length, 0);
+    assert.equal(isRtaAvailable(), true);
+    rtaStart(60);
+    assert.deepEqual(calls[0], ["start", { regulation: "factory-lv5", timerOffset: 60 }]);
+    rtaMilestone("year1", 1000);
+    rtaMilestone("lv2", 2000);
+    rtaMilestone("clear", 3000);
+    assert.equal(isRtaRunning(), false);
+    rtaMilestone("lv3", 4000);
+    rtaAbort();
+    assert.deepEqual(calls.slice(1), [["checkpoint", "lv2", { igtMs: 2000 }], ["checkpoint", "clear", { igtMs: 3000 }]]);
+    rtaStart(0);
+    rtaAbort();
+    assert.deepEqual(calls.at(-1), ["abort"]);
+  } finally {
+    delete globalThis.window;
+  }
+});
+
+test("RTA：SDK がない・例外を出すときも例外を出さない", () => {
+  assert.equal(isRtaAvailable(), false);
+  assert.doesNotThrow(() => { rtaStart(); rtaMilestone("lv2", 1); rtaAbort(); });
+  globalThis.window = { BearkoGames: { rta: { start() { throw new Error("x"); }, checkpoint() { throw new Error("x"); }, abort() { throw new Error("x"); } } } };
+  try {
+    assert.doesNotThrow(() => { rtaStart(); rtaMilestone("lv2", 1); rtaAbort(); });
   } finally {
     delete globalThis.window;
   }

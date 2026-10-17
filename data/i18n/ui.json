@@ -12,6 +12,7 @@
   "save.confirm":              { "ja": "セーブを消して最初から始めます。よろしいですか？", "en": "This deletes your save and starts over. Are you sure?" },
   "save.confirmOk":            { "ja": "消して始める", "en": "Delete and start" },
   "save.cancel":               { "ja": "やめる", "en": "Cancel" },
+  "rta.start":                 { "ja": "⏱ RTA で始める", "en": "⏱ Start RTA" },
 
   "res.help.title":            { "ja": "ヘルプ", "en": "Help" },
 

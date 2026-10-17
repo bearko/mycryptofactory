@@ -73,7 +73,8 @@
       font-weight: 700;
     }
     @keyframes title-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-    .title-press.hidden, .title-save.hidden, .title-confirm.hidden { display: none !important; }
+    .title-press.hidden, .title-save.hidden, .title-confirm.hidden, .title-rta-btn.hidden { display: none !important; }
+    .title-rta-btn { width: min(280px, 80vw); font-size: 0.9rem; padding: 0.5rem 1rem; }
     /* SPEC-002: つづきから / はじめから */
     .title-save { display: flex; flex-direction: column; align-items: stretch; gap: 0.6rem; width: min(280px, 80vw); cursor: default; }
     .title-save__btn {
@@ -6059,6 +6060,8 @@
       </button>
       <button type="button" class="title-save__btn" id="titleNewGameBtn" data-i18n="save.newGame">はじめから</button>
     </div>
+    <!-- SPEC-003: bearko.games 共通基盤の SDK があるときだけ -->
+    <button type="button" class="title-save__btn title-rta-btn hidden" id="titleRtaBtn" data-i18n="rta.start">⏱ RTA で始める</button>
     <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
       <span class="lang-toggle-label" data-i18n="lang.toggle.label">言語 / Language</span>
       <div class="lang-toggle-buttons">

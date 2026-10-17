@@ -5,7 +5,7 @@
 MCH 経済圏をモチーフにした、カイロソフト「ゲーム発展国++」風の工房経営シム。マイクリ工房（MyCryptoFactory）を **8 年以内に工房 Lv.5** に育てるのが目標。GUM を稼ぎ、ヒーローを雇い、クラフト・クエスト・出品で工房を大きくしていく。
 
 - 本番：https://factory.bearko.games/ （`main` にマージすると Cloudflare Workers Builds が自動で公開する）
-- bearko.games 共通基盤（総合スコア）に参加している：[docs/platform-score.md](docs/platform-score.md)
+- bearko.games 共通基盤に参加している：総合スコア（[docs/platform-score.md](docs/platform-score.md)）と RTA（SPEC-003、レギュレーション `factory-lv5`）。窓口は `js/platform.js`
 - 仕様は `docs/specs/`（SPEC-NNN）。**コードを変える前に SPEC を書く／直す**
 
 ## 技術スタック（変えない）
