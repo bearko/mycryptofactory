@@ -2774,6 +2774,12 @@
       padding: 1rem 0.5rem;
     }
     .ranking-viewer__empty.hidden { display: none; }
+    .ranking-viewer__platform {
+      margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.15rem;
+      font-size: 0.85rem; text-align: center;
+    }
+    .ranking-viewer__platform a { color: var(--accent); font-weight: 700; }
+    .ranking-viewer__platform span { color: var(--muted); font-size: 0.72rem; }
     .ranking-viewer__settings {
       margin-top: 0.4rem;
       padding: 0.55rem 0.7rem;
@@ -6987,6 +6993,11 @@
         <ol class="ranking-viewer__list" id="rankingViewerList"></ol>
         <p class="ranking-viewer__empty hidden" id="rankingViewerEmpty" data-i18n="ranking.viewer.empty">まだランキング登録がありません。最新を取得 ボタンで再読み込みできます。</p>
       </div>
+      <!-- SPEC-010: bearko.games の総合ランキングへ (新しいタブ。再読み込みすると RTA の計測が消えるため) -->
+      <p class="ranking-viewer__platform">
+        <a href="https://bearko.games/score/?game=factory" target="_blank" rel="noopener" data-i18n="ranking.viewer.platform">bearko.games の総合ランキング ↗</a>
+        <span data-i18n="ranking.viewer.platformNote">このランキングとは別の、bearko.games のタイトル共通のランキングです</span>
+      </p>
       <details class="ranking-viewer__settings">
         <summary data-i18n="ranking.viewer.advancedTitle">上級設定: 別のランキングサーバーを使う</summary>
         <p class="ranking-viewer__settings-help" data-i18n="ranking.viewer.advancedHelp">独自に GAS をデプロイした場合のみ利用してください。空欄で「保存」を押すと既定 URL に戻ります。</p>

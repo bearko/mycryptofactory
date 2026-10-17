@@ -13,4 +13,4 @@
 | [SPEC-007](SPEC-007-onboarding-help.md) | はじめての案内とヘルプ | Done |
 | [SPEC-008](SPEC-008-v1-release.md) | 公開版 v1.0.0 | Done |
 | [SPEC-009](SPEC-009-platform-trophies.md) | bearko.games 共通基盤のトロフィー | Done |
-| [SPEC-010](SPEC-010-platform-ranking-link.md) | bearko.games の総合ランキングへの導線 | Accepted |
+| [SPEC-010](SPEC-010-platform-ranking-link.md) | bearko.games の総合ランキングへの導線 | Done |
