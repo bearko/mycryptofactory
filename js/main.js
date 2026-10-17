@@ -9,7 +9,7 @@
 import {
   initPlatform, reportProgress, weeksSinceStart, finalizeScore,
   isRtaAvailable, rtaStart, rtaMilestone, rtaAbort, syncTrophies,
-  isChatOpen, onChatToggle,
+  isChatOpen, onChatToggle, canPickAvatar, openAvatarPicker,
 } from "./platform.js";
 import {
   writeSave, readSave, clearSave, decodeState, saveSummary,
@@ -442,6 +442,8 @@ function refreshSettingsSubmenu() {
   // SPEC-005: 音・演出・言語
   const onOff = (v) => ti18n(v ? "settings.on" : "settings.off");
   const setText = (id, key, fallback, val) => { const el = $(id); if (el) el.textContent = `${ti18n(key, fallback)}: ${val}`; };
+  const avatarBtn = $("settingAvatar");
+  if (avatarBtn) { avatarBtn.hidden = !canPickAvatar(); avatarBtn.textContent = ti18n("settings.avatar", "アイコンを変える（bearko.games 共通）"); }   // SPEC-012
   setText("settingBgm", "settings.bgm", "BGM", onOff(_settings.bgmOn));
   setText("settingSe", "settings.se", "効果音", onOff(_settings.seOn));
   setText("settingMotion", "settings.motion", "演出を減らす",
@@ -9019,6 +9021,7 @@ async function init() {
   $("settingSeVolume")?.addEventListener("change", () => playSe("buttonClick")); // 大きさを確かめる
   $("settingMotion")?.addEventListener("click", () => pickSetting({ motion: _settings.motion === "reduce" ? "auto" : "reduce" }));
   $("settingLang")?.addEventListener("click", () => { setLang(getLang() === "en" ? "ja" : "en"); refreshSettingsSubmenu(); });
+  $("settingAvatar")?.addEventListener("click", () => { openAvatarPicker(); });   // SPEC-012: 窓は SDK（時間はモーダルが止めている）
   // Phase 1D-21: 時間 20x speed トグル (テスト/バランス調整用)
   $("settingSpeed20x")?.addEventListener("click", () => {
     state.timeSpeed20x = !state.timeSpeed20x;
@@ -9627,7 +9630,7 @@ function installDebugHooks() {
 installDebugHooks();
 setInterval(tickPauseWatchdog, PAUSE_WATCHDOG_MS); // #117: 止まったままの時間の見張り
 initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア）。SDK がなければ何もしない
-onChatToggle((open) => { if (open) pauseTime(); else resumeTime(); }); // SPEC-012: 全体チャットの窓を開いているあいだは時間を止める（モーダルの作法）
+onChatToggle((busy) => { if (busy) pauseTime(); else resumeTime(); }); // SPEC-012: 窓・シートは開いているあいだ、ドックは書いているあいだ時間を止める（モーダルの作法）
 init();
 
 // Expose APP_VERSION for debug / future ranking submit

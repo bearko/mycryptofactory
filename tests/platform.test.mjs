@@ -5,7 +5,7 @@ import {
   weeksSinceStart, scoreMetrics, reportProgress, finalizeScore,
   rtaCheckpointFor, isRtaAvailable, isRtaRunning, rtaStart, rtaMilestone, rtaAbort,
   trophiesFor, syncTrophies, CLEAR_3Y_WEEKS,
-  initPlatform, isChatOpen, onChatToggle,
+  initPlatform, isChatOpen, onChatToggle, chatBusyFor,
 } from "../js/platform.js";
 
 test("ゲーム開始（2018 年 12 月 1 週）からの週数", () => {
@@ -18,6 +18,14 @@ test("送る成績：Lv 5 の週数は Lv 5 のときだけ、クラフトは 0 
   assert.deepEqual(scoreMetrics({ factoryLevel: 3, lv5Weeks: 99, questClearCount: 4, craftedByRarity: { common: 3, rare: 0 } }),
     { factoryLevel: 3, weeksToLv5: null, questsCleared: 4, crafted: { common: 3 } });
   assert.deepEqual(scoreMetrics({ factoryLevel: 5, lv5Weeks: 150 }), { factoryLevel: 5, weeksToLv5: 150, questsCleared: 0, crafted: {} });
+});
+
+test("全体チャット：ドックは書いているあいだ、窓・シートは開いているあいだ（純関数）", () => {
+  assert.equal(chatBusyFor("dock", true, false), false, "ドックは開いているだけでは止めない");
+  assert.equal(chatBusyFor("dock", true, true), true);
+  assert.equal(chatBusyFor("sheet", true, false), true);
+  assert.equal(chatBusyFor("float", false, true), true, "窓でも書いていれば止める（開いているはず）");
+  assert.equal(chatBusyFor("float", false, false), false);
 });
 
 test("全体チャット：SDK が古い（onToggle が無い）なら何もせず、開いた・閉じたを 1 回ずつ伝える", async () => {
