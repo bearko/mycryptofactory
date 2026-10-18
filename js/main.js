@@ -890,7 +890,7 @@ function checkWeekMilestones() {
     state.deadlineTriggered = true;
     finalizeScore(state);
     rtaAbort(); // SPEC-003: 期限を過ぎたら計測をやめる (クリア済みならもう終わっている)
-    setTimeout(triggerDeadline, 200);
+    runWhenUnpaused(triggerDeadline);
   }
 }
 
@@ -1113,7 +1113,8 @@ function closeActivityReport() {
   // 期限 (8 年) の場合のみ、引き続きプレイ可能の Mai 案内
   if (!isFinal) {
     const lang = getLang() === "en" ? "en" : "ja";
-    setTimeout(() => maiSaysSequence(
+    // 集計画面のあいだに予約されたクラフトのイベントなどが開いていたら、 閉じるまで待つ (重ねると pause を奪う)
+    runWhenUnpaused(() => maiSaysSequence(
       lang === "en"
         ? [
             "Ranking entries close at this point, but you can keep playing!",
@@ -1124,7 +1125,7 @@ function closeActivityReport() {
             "最初からやり直したい場合はブラウザリロードをお願いします。",
           ],
       { onClose: () => {} }
-    ), 200);
+    ));
   }
 }
 
@@ -1665,6 +1666,16 @@ function annualSalaryOf(hero) {
   return Math.round(base * rankBoost);
 }
 
+/** 月のイベント・期限のマイは、 週が進んだ tick から 200ms 遅れて出る。 その間に (同じ tick の完成・
+ *  クエスト結果などで) マイや画面が開いていたら、 閉じるまで待ってから出す。 重ねると、 先のマイの
+ *  「閉じたあとの処理」が消え (結果画面が出ない)、 自前の pauseTime が 1 つ残る (時間が止まったまま) */
+function runWhenUnpaused(fn, delayMs = 200) {
+  setTimeout(() => {
+    if (state.pauseFlags > 0) { runWhenUnpaused(fn, 200); return; }
+    fn();
+  }, delayMs);
+}
+
 /** 月次イベント発火判定。 advanceWeek の毎週末 (= week=1 になった直後) に呼ぶ。
  *  - 3 月 4 週終了 (= 4/1 直前) → 年俸支払い (2 年目以降のみ)
  *  - 4 月 4 週終了 (= 5/1 直前) → 採用イベント
@@ -1683,7 +1694,7 @@ function maybeTriggerMonthlyEvent() {
       // 初年度 (= 1 周目 1 月) は支払いそのものが免除のため警告も出さない
       const isFirstYear = startY != null ? (state.year === startY + 1) : false;
       if (!isFirstYear || startY == null) {
-        setTimeout(triggerSalaryAdvanceWarning, 200);
+        runWhenUnpaused(triggerSalaryAdvanceWarning);
       }
     }
   }
@@ -1700,10 +1711,10 @@ function maybeTriggerMonthlyEvent() {
       // ↑ 「2 年目から」 = 開始年の翌年 (= state.year === startY + 1) で初支払い、
       //   そこから毎年。 startY 不明のときは保守的に支払う (= 旧 save 互換)。
       if (!isFirstYear || startY == null) {
-        setTimeout(triggerAnnualSalary, 200);
+        runWhenUnpaused(triggerAnnualSalary);
       } else {
         // Phase 1D-47: 初年度 → Mai popup でイントロ + 補助金セリフ + 来年予告 (旧仕様の通知タイルから昇格)
-        setTimeout(triggerFirstYearSalarySubsidy, 200);
+        runWhenUnpaused(triggerFirstYearSalarySubsidy);
       }
     }
   }
@@ -1712,7 +1723,7 @@ function maybeTriggerMonthlyEvent() {
     const key = `${state.year}-recruit`;
     if (!state.monthlyEventsFired.has(key)) {
       state.monthlyEventsFired.add(key);
-      setTimeout(triggerRecruitmentEvent, 200);
+      runWhenUnpaused(triggerRecruitmentEvent);
     }
   }
   // Phase β2-3 part 2: 5 月 3 週 → 行商人マルコ・ポーロ訪問 (= 半額ショップ、
@@ -1721,7 +1732,7 @@ function maybeTriggerMonthlyEvent() {
     const key = `${state.year}-marcopolo`;
     if (!state.monthlyEventsFired.has(key)) {
       state.monthlyEventsFired.add(key);
-      setTimeout(triggerMarcoPoloVisit, 200);
+      runWhenUnpaused(triggerMarcoPoloVisit);
     }
   }
   // Phase 1D-44: 12/1 直前 (= 11 月 4 週終了) の検知 → エクステンションコンテスト
@@ -1734,7 +1745,7 @@ function maybeTriggerMonthlyEvent() {
       const startY = state.startYear ?? null;
       const isYr1  = startY != null ? (state.year <= startY + 1) : false;
       if (!isYr1 || startY == null) {
-        setTimeout(triggerExtensionContest, 200);
+        runWhenUnpaused(triggerExtensionContest);
       }
     }
   }
@@ -4596,7 +4607,7 @@ function advanceWeek() {
   if (!state.endgameTriggered50y &&
       state.year === 2069 && state.month === 1 && state.week === 1) {
     state.endgameTriggered50y = true;
-    setTimeout(triggerEndgame50y, 200);
+    runWhenUnpaused(triggerEndgame50y);
   }
 }
 
