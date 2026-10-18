@@ -307,13 +307,6 @@
     "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of this hero's PHY. / Increase the PHY of the enemy with the lowest PHY by 20% of target's PHY. / Increase this hero's PHY by 5% of this hero's PHY. / Increase this hero's AGI by 5% of this hero's PHY.",
     "attributes": "Soft Science; Greece"
   },
-  "2035": {
-    "name": "Sarutahiko",
-    "faction": "KOURYU",
-    "passiveName": "AD 3344 years",
-    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the first enemy's INT by 20% of this hero's PHY. / Increase this hero's INT by 20 ~ 30% of this hero's INT.",
-    "attributes": "Hard Science; Japan; Traditional; TEZUKA"
-  },
   "2036": {
     "name": "Higuchi Ichiyō",
     "faction": "BYAKKO",
@@ -1762,13 +1755,6 @@
     "passiveName": "Theory of Ideas",
     "passiveText": "At the start of battle, {triggerRate}% chance to trigger. / Decrease the PHY of the enemy with the highest PHY by 30% of this hero's PHY. / Increase the PHY of the enemy with the lowest PHY by 20% of target's PHY. / Increase this hero's PHY by 5% of this hero's PHY. / Increase this hero's AGI by 5% of this hero's PHY.",
     "attributes": "Soft Science; Greece"
-  },
-  "12035": {
-    "name": "Sarutahiko",
-    "faction": "KOURYU",
-    "passiveName": "AD 3344 years",
-    "passiveText": "After this hero uses an Active Skill, {triggerRate}% chance to trigger. / Increase the first enemy's INT by 20% of this hero's PHY. / Increase this hero's INT by 20 ~ 30% of this hero's INT.",
-    "attributes": "Hard Science; Japan; Traditional; TEZUKA"
   },
   "12036": {
     "name": "Higuchi Ichiyō",

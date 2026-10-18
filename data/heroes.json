@@ -528,18 +528,6 @@
     "passiveDesc": "戦闘開始時に発動・自身のPHY+1／自身のAGI+1／敵のPHY-3"
   },
   {
-    "heroId": 2035,
-    "nameJa": "猿田彦",
-    "rarity": "uncommon",
-    "hpMax": 85,
-    "basePhy": 9,
-    "baseInt": 12,
-    "baseAgi": 13,
-    "passiveKey": "sarutahiko",
-    "passiveName": "西暦3344年",
-    "passiveDesc": "カード使用後に発動・自身のINT+3"
-  },
-  {
     "heroId": 2036,
     "nameJa": "樋口一葉",
     "rarity": "uncommon",

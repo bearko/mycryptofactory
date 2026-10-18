@@ -12,7 +12,7 @@ import {
   isChatOpen, onChatToggle, canPickAvatar, openAvatarPicker,
 } from "./platform.js";
 import {
-  writeSave, readSave, clearSave, decodeState, saveSummary,
+  writeSave, readSave, clearSave, decodeState, saveSummary, dropExcludedHeroes,
 } from "./factory-save.js";
 import {
   DEADLINE_WEEKS, yearEndMilestone, levelMilestone, isWithinDeadline, splitWeeks, remainingTime,
@@ -26,7 +26,7 @@ import {
   t as ti18n,
   tHero,
 } from "./i18n.js";
-import { loadHeroes, HERO_ROSTER, HERO_DEFS } from "./heroes.js";
+import { loadHeroes, HERO_ROSTER, HERO_DEFS, EXCLUDED_HERO_IDS } from "./heroes.js";
 import {
   buildOwnedHeroes,
   makeFactoryHero,
@@ -720,6 +720,7 @@ function applyLoadedSave(save) {
       else o.img = () => "";
     },
   });
+  dropExcludedHeroes(loaded, EXCLUDED_HERO_IDS); // SPEC-014: 前のセーブで雇っていても外す
   Object.assign(state, loaded);
   state.pauseFlags = 0;
   state.notifications = [];
