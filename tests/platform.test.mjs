@@ -6,6 +6,7 @@ import {
   rtaCheckpointFor, isRtaAvailable, isRtaRunning, rtaStart, rtaMilestone, rtaAbort,
   trophiesFor, syncTrophies, CLEAR_3Y_WEEKS,
   initPlatform, isChatOpen, onChatToggle, chatBusyFor,
+  chatOffsetAbove, placeChat, CHAT_DEFAULT_OFFSET,
 } from "../js/platform.js";
 
 test("ゲーム開始（2018 年 12 月 1 週）からの週数", () => {
@@ -158,6 +159,36 @@ test("トロフィー：まだ送っていないものだけ送る・SDK がな�
     globalThis.window.BearkoGames.unlockTrophy = () => Promise.reject(new Error("x"));
     assert.doesNotThrow(() => syncTrophies({ factoryLevel: 5, clearedWeeks: 100 }));
     await new Promise((r) => setTimeout(r, 0));
+  } finally {
+    delete globalThis.window;
+  }
+});
+
+test("💬 を MENU の上に置く offset（SPEC-016）", () => {
+  // 390×844 で MENU が右下 (left 300 / right 380 / top 580 / bottom 620)
+  assert.deepEqual(chatOffsetAbove({ left: 300, right: 380, top: 580, bottom: 620, width: 80 }, 390, 844), { x: 10, y: 272 });
+  // MENU が画面の外・まだ描かれていない → null（既定の右下）
+  assert.equal(chatOffsetAbove({ left: 0, right: 0, top: 0, bottom: 0, width: 0 }, 390, 844), null);
+  assert.equal(chatOffsetAbove({ left: 300, right: 380, top: 900, bottom: 940, width: 80 }, 390, 844), null);
+  assert.equal(chatOffsetAbove({ left: 300, right: 380, top: -80, bottom: -40, width: 80 }, 390, 844), null);
+  // MENU が画面の上端に近い → 💬 は画面に収める
+  assert.deepEqual(chatOffsetAbove({ left: 300, right: 380, top: 10, bottom: 50, width: 80 }, 390, 844), { x: 10, y: 844 - 48 - 16 });
+  // MENU が画面の下端より下にはみ出し気味でも、既定より下には置かない
+  assert.equal(chatOffsetAbove({ left: 300, right: 380, top: 840, bottom: 880, width: 80 }, 390, 844).y >= CHAT_DEFAULT_OFFSET.y, true);
+});
+
+test("💬 の置き場所：同じ場所なら呼ばない・SDK がなくても例外を出さない", () => {
+  assert.doesNotThrow(() => placeChat({ x: 1, y: 2 }));
+  const calls = [];
+  globalThis.window = { BearkoGames: { chat: { setPosition: (o) => calls.push(o) } } };
+  try {
+    placeChat({ x: 10, y: 272 });
+    placeChat({ x: 10, y: 272 });
+    placeChat(null);
+    assert.deepEqual(calls, [
+      { position: "bottom-right", offset: { x: 10, y: 272 } },
+      { position: "bottom-right", offset: { x: 16, y: 16 } },
+    ]);
   } finally {
     delete globalThis.window;
   }

@@ -30,7 +30,7 @@ export function initPlatform(version) {
   if (!bg) return;
   try {
     Promise.resolve(bg.init({ game: "factory", version }))
-      .then(() => wireChat(bg))
+      .then(() => { wireChat(bg); for (const fn of chatReadyFns) { try { fn(); } catch (e) { console.warn("[platform] chat", e); } } })
       .catch((e) => console.warn("[platform] init", e));
   } catch (e) {
     console.warn("[platform] init", e);
@@ -75,6 +75,43 @@ function wireChat(bg) {
     bg.chat.onToggle((open) => { chatOpen = !!open; chatRecompute(bg); });
     // SDK 1.7.0：ドックは常に見えているので、書いているあいだだけ止める
     if (typeof bg.chat.onCompose === "function") bg.chat.onCompose((on) => { chatComposing = !!on; chatRecompute(bg); });
+  } catch (e) {
+    console.warn("[platform] chat", e);
+  }
+}
+
+// ---------------------------------------------------------------- SPEC-016: 💬 の置き場所（MENU ボタンのすぐ上）
+// 既定の右下だと、マイのセリフの「次へ／閉じる」ボタンに重なっていた。置き場所は SDK の chat.setPosition（1.7.0）
+export const CHAT_DEFAULT_OFFSET = { x: 16, y: 16 };
+const CHAT_BTN = 48;   // SDK の 💬 の大きさ
+const chatReadyFns = [];
+let chatOffset = null;
+
+/** SDK の init が済んだら呼ぶ（💬 は init のあとに出るため） */
+export function onChatReady(fn) {
+  if (typeof fn === "function") chatReadyFns.push(fn);
+}
+
+/**
+ * 💬 を目印（MENU ボタン）の右端にそろえ、そのすぐ上に置くときの offset（右下から）。純関数
+ * 目印が画面に見えていないときは null（既定の右下に戻す）
+ */
+export function chatOffsetAbove(rect, vw, vh, gap = 8) {
+  if (!rect || !(rect.width > 0) || rect.bottom <= 0 || rect.top >= vh) return null;
+  const x = Math.max(0, Math.round(vw - rect.right));
+  const y = Math.round(Math.min(vh - rect.top + gap, vh - CHAT_BTN - CHAT_DEFAULT_OFFSET.y));
+  return { x, y: Math.max(CHAT_DEFAULT_OFFSET.y, y) };
+}
+
+/** 💬 を動かす（同じ場所なら何もしない）。SDK がない・古いときは何もしない */
+export function placeChat(offset) {
+  const bg = sdk();
+  if (!bg || !bg.chat || typeof bg.chat.setPosition !== "function") return;
+  const o = offset || CHAT_DEFAULT_OFFSET;
+  if (chatOffset && chatOffset.x === o.x && chatOffset.y === o.y) return;
+  try {
+    bg.chat.setPosition({ position: "bottom-right", offset: { x: o.x, y: o.y } });
+    chatOffset = { x: o.x, y: o.y };
   } catch (e) {
     console.warn("[platform] chat", e);
   }
