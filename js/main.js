@@ -6072,7 +6072,10 @@ function pickExtForConfirm(extId) {
     state.tutorial.craftConfirm = true;  // どちらでも 1 回限り
     const lang = getLang() === "en" ? "en" : "ja";
     const lines = TUTORIALS[key]?.[lang] || TUTORIALS[key]?.ja || [];
-    if (lines.length > 0) maiSaysSequence(lines);
+    if (lines.length > 0) {
+      holdPauseForMai();
+      maiSaysSequence(lines, { onLine: (i, n) => coachTutorialLine(key, i, n) });   // SPEC-020
+    }
   }
 }
 
@@ -7110,7 +7113,8 @@ function requestChatAnchor() {
 /** SPEC-007: 最初のクラフトまでの指差し。 MENU → クラフト → 新規開発 の順に、次に押すところを光らせる。
  *  ホームのチュートリアルを読んだあと、 クラフト画面を初めて開くまで */
 function renderCoach({ duringMai = false } = {}) {
-  document.querySelectorAll(".coach-pulse").forEach(el => el.classList.remove("coach-pulse"));
+  // 画面ごとの指差し (SPEC-020。 .coach-pulse--screen) は消さない
+  document.querySelectorAll(".coach-pulse:not(.coach-pulse--screen)").forEach(el => el.classList.remove("coach-pulse"));
   hideCoachHit();
   const tut = state.tutorial || {};
   if (!tut.home || tut.coachDone) return;
@@ -7157,6 +7161,67 @@ function pickCoachTarget() {
     closeMaiModal();
   }
   target.click();
+}
+
+/** ─── SPEC-020: 画面ごとのチュートリアルでも、次に押すボタンを光らせて直接押せるようにする ───
+ *  チュートリアルの最後の行で光らせ (セリフ中でも押せる)、 セリフを閉じたあとも押すまで光らせておく。
+ *  next は、そのボタンを押したあとに続けて光らせるボタン (例：ヒーローを選んだら「戻る」) */
+const TUTORIAL_COACH = {
+  // クラフト選択：作れるエクステンションの先頭
+  craftSelect: () => ({
+    el: document.querySelector("#extList .ext-row__avail--ok")?.closest(".ext-row")
+      || document.querySelector("#extList .ext-row"),
+  }),
+  // クラフト確認 (未編成)：空いている「+」の枠。 選んだら「戻る」→「クラフト開始」と続ける
+  craftConfirmNoTeam: () => ({
+    el: [...document.querySelectorAll("#confirmTeamSlots .craft-confirm__team-slot")].find(s => s.textContent.trim() === "+")
+      || $("confirmChangeTeamBtn"),
+  }),
+  // クラフト確認 (編成済み)：クラフト開始
+  craftConfirmWithTeam: () => ({ el: $("confirmStartBtn") }),
+  // ヒーロー画面：編成が空なら選べるヒーローの先頭 (選んだら「戻る」)、 編成済みなら「戻る」
+  heroTeam: () => {
+    if ((state.craftTeam || []).some(id => id != null)) return { el: $("heroViewBack"), next: "#confirmStartBtn" };
+    return { el: document.querySelector('#heroList .hero-card[data-assigned="0"]'), next: "#heroViewBack" };
+  },
+  // craftInProgress (見ているだけ)・landFirstFree (どのランドを選ぶかは本人が決める) は光らせない
+};
+
+/** el を光らせる。 duringMai ならマイの重ねの上に当たり判定も置く */
+function coachScreen(el, { next = null, duringMai = false } = {}) {
+  if (!el || el.disabled || el.offsetParent === null) return;
+  document.querySelectorAll(".coach-pulse--screen").forEach(x => x.classList.remove("coach-pulse", "coach-pulse--screen"));
+  el.classList.add("coach-pulse", "coach-pulse--screen");
+  if (next) el.dataset.coachNext = next; else delete el.dataset.coachNext;
+  try { el.scrollIntoView({ block: "nearest" }); } catch (e) { /* 古いブラウザ */ }
+  if (duringMai && !$("maiModal")?.classList.contains("hidden")) showCoachHit(el);
+}
+
+/** チュートリアルのセリフの行が変わったとき (maiSaysSequence の onLine)。 最後の行で光らせる */
+function coachTutorialLine(key, idx, total) {
+  if (idx !== total - 1 || !TUTORIAL_COACH[key]) return;
+  const { el, next } = TUTORIAL_COACH[key]() || {};
+  coachScreen(el, { next, duringMai: true });
+}
+
+/** SPEC-020: 画面 (クラフト・ヒーローなど) を開いたまま出すマイのセリフの前に呼ぶ。
+ *  マイは閉じるときに必ず resumeTime を 1 回呼ぶので、 すでに止まっているとき (= 画面が開いている) は
+ *  その分を先に足しておく。 これがないと、 セリフを閉じた時点で画面の pause が消費され、 画面を開いたまま時間が進んでいた */
+function holdPauseForMai() {
+  if (state.pauseFlags > 0) pauseTime();
+}
+
+/** 続けて光らせたボタンの、 さらに次 (ヒーロー画面の「戻る」→ 確認画面の「クラフト開始」) */
+const COACH_CHAIN = { "#heroViewBack": "#confirmStartBtn" };
+
+/** 光っているボタンが押されたら光を消し、 続きがあれば少し待って次を光らせる (画面が切り替わるのを待つ) */
+function onCoachedClick(ev) {
+  const el = ev.target.closest?.(".coach-pulse--screen");
+  if (!el) return;
+  const next = el.dataset.coachNext;
+  el.classList.remove("coach-pulse", "coach-pulse--screen");
+  delete el.dataset.coachNext;
+  if (next) setTimeout(() => coachScreen(document.querySelector(next), { next: COACH_CHAIN[next] }), 250);
 }
 
 /** Phase 1D-7: workshop の MENU ボタンの label を切替。
@@ -7294,6 +7359,7 @@ function closeMaiModal() {
     const seqCb = _maiSeqOnClose;
     _maiSeqOnClose = null;
     $("maiModal")?.classList.add("hidden");
+    hideCoachHit();   // SPEC-020: 光っているボタンの当たり判定はセリフのあいだだけ
     const closeBtn = $("maiModalClose");
     if (closeBtn) closeBtn.textContent = ti18n("btn.close");
     // 必ず resume を 1 回 (= 呼出側 pre-pause 時はその pause を消費する)
@@ -7306,6 +7372,7 @@ function closeMaiModal() {
   }
   // ── 通常 (単行 maiSays) の閉じ処理 ──
   $("maiModal")?.classList.add("hidden");
+  hideCoachHit();
   resumeTime();
   const next = _maiNextAction;
   _maiNextAction = null;
@@ -7365,7 +7432,10 @@ function runTutorialOnce(key, opts = {}) {
   const lines = TUTORIALS[key][lang] || TUTORIALS[key].ja || [];
   if (lines.length === 0) return false;
   state.tutorial[key] = true;
-  maiSaysSequence(lines, opts);
+  // SPEC-020: 最後の行で、 次に押すボタンを光らせる (home は SPEC-016 の onLine を使う)
+  const onLine = opts.onLine || ((i, n) => coachTutorialLine(key, i, n));
+  holdPauseForMai();
+  maiSaysSequence(lines, { ...opts, onLine });
   return true;
 }
 
@@ -9323,6 +9393,8 @@ async function init() {
   // どこを押しても closeMaiModal が呼ばれる)。closeMaiModal はシーケンス
   // 進行中なら次行に進める、最終行 (= 「閉じる」 ラベル時) なら modal を閉じる。
   $("maiModal")?.addEventListener("click", () => closeMaiModal());
+  // SPEC-020: 光っているボタンが押されたら光を消し、 続きを光らせる (各ボタンのハンドラより先に)
+  document.addEventListener("click", onCoachedClick, true);
   // SPEC-017: マイのセリフ中に光っているボタンを直接押す
   $("coachHit")?.addEventListener("click", (ev) => { ev.stopPropagation(); pickCoachTarget(); });
   window.addEventListener("resize", positionCoachHit, { passive: true });
