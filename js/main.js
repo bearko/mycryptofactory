@@ -1,5 +1,5 @@
 /**
- * main.js — MyCryptoFactory v1.0.0 の本体
+ * main.js — MyCryptoFactory v1.1.0 の本体
  *
  * state (ゲームの状態)・時間のループ (1 週 = 7 秒。モーダルを開いている間は止まる)・
  * 全画面の描画とイベント。純ロジックは factory-*.js と platform.js に切り出してある。
@@ -169,7 +169,7 @@ import {
   rollQuestRewards,
 } from "./factory-quest.js";
 
-const APP_VERSION = "1.0.0"; // SPEC-008。版を上げるときは CHANGELOG.md・タイトル・フッター (data/i18n/ui.json) もそろえる
+const APP_VERSION = "1.1.0"; // SPEC-008。版を上げるときは CHANGELOG.md・タイトル・フッター (data/i18n/ui.json) もそろえる
 const TEAM_SIZE = 5;
 
 /** ─── State ──────────────────────────────────────────────────────── */
