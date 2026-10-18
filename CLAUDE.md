@@ -100,4 +100,4 @@ function closeMyModal() { $("myModal").classList.add("hidden"); resumeTime(); }
 - MCH の画像をリポジトリに足す（raw URL を参照する）
 - `.env`・認証情報のコミット、`main` への force push
 - `.claude/settings.json` を勝手に書き換える
-- localStorage のキーは `mcf.` で始める（いまは `mcf.save`・`mcf.settings`・`mcf.lang`・旧ランキングの `mcf.rankingApiUrl` / `mcf.playerName`）
+- localStorage のキーは `mcf.` で始める（いまは `mcf.save`・`mcf.settings`・`mcf.lang`・旧ランキングの `mcf.rankingApiUrl`（読むだけ。`mcf.playerName` は SPEC-019 から使わない））
