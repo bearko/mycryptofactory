@@ -4,10 +4,11 @@ import assert from "node:assert/strict";
 import {
   weeksSinceStart, scoreMetrics, reportProgress, finalizeScore,
   rtaCheckpointFor, isRtaAvailable, isRtaRunning, rtaStart, rtaMilestone, rtaAbort,
-  trophiesFor, syncTrophies, CLEAR_3Y_WEEKS,
+  trophiesFor, syncTrophies, CLEAR_3Y_WEEKS, MASTERPIECE_SCORE, CRAFTS_MANY, maxHeroRank, landPassCount,
   initPlatform, isChatOpen, onChatToggle, chatBusyFor,
   chatOffsetAbove, placeChat, CHAT_DEFAULT_OFFSET,
 } from "../js/platform.js";
+import { LAND_NODES } from "../js/factory-quest.js";
 
 test("ゲーム開始（2018 年 12 月 1 週）からの週数", () => {
   assert.equal(weeksSinceStart({ year: 2018, month: 12, week: 1, startYear: 2018 }), 0);
@@ -124,18 +125,57 @@ test("RTA：SDK がない・例外を出すときも例外を出さない", () =
   }
 });
 
-test("トロフィー：条件（SPEC-009 3.1）", () => {
+test("アチーブメント：工房 Lv・Legendary・クリア（SPEC-009 3.1・SPEC-021 3.1）", () => {
   assert.deepEqual(trophiesFor({}), []);
   assert.deepEqual(trophiesFor({ factoryLevel: 1, craftedByRarity: { epic: 9, legendary: 0 } }), []);
   assert.deepEqual(trophiesFor({ factoryLevel: 2 }), ["factory.lv2"]);
-  assert.deepEqual(trophiesFor({ factoryLevel: 3, craftedByRarity: { legendary: 1 } }), ["factory.lv2", "factory.legendary"]);
-  assert.deepEqual(trophiesFor({ factoryLevel: 5, clearedWeeks: CLEAR_3Y_WEEKS }), ["factory.lv2", "factory.clear", "factory.clear3y"]);
-  assert.deepEqual(trophiesFor({ factoryLevel: 5, clearedWeeks: CLEAR_3Y_WEEKS + 1 }), ["factory.lv2", "factory.clear"]);
-  assert.deepEqual(trophiesFor({ factoryLevel: 5, clearedWeeks: null }), ["factory.lv2"], "期限を過ぎた Lv.5 はクリアではない");
+  assert.deepEqual(trophiesFor({ factoryLevel: 3, craftedByRarity: { legendary: 1 } }), ["factory.lv2", "factory.lv3", "factory.legendary"]);
+  assert.deepEqual(trophiesFor({ factoryLevel: 4 }), ["factory.lv2", "factory.lv3", "factory.lv4"]);
+  const lv5 = ["factory.lv2", "factory.lv3", "factory.lv4"];
+  assert.deepEqual(trophiesFor({ factoryLevel: 5, clearedWeeks: CLEAR_3Y_WEEKS }), [...lv5, "factory.clear", "factory.clear3y"]);
+  assert.deepEqual(trophiesFor({ factoryLevel: 5, clearedWeeks: CLEAR_3Y_WEEKS + 1 }), [...lv5, "factory.clear"]);
+  assert.deepEqual(trophiesFor({ factoryLevel: 5, clearedWeeks: null }), lv5, "期限を過ぎた Lv.5 はクリアではない");
   assert.equal(CLEAR_3Y_WEEKS, weeksSinceStart({ year: 2021, month: 12, week: 1, startYear: 2018 }));
 });
 
-test("トロフィー：まだ送っていないものだけ送る・SDK がない・失敗しても例外を出さない", async () => {
+test("アチーブメント：ランク・通行証・傑作・50 年（SPEC-021 3.1）", () => {
+  const has = (state, id) => trophiesFor(state).includes(id);
+  // ランク (雇っているヒーローの最大)
+  assert.equal(maxHeroRank({}), 0);
+  assert.equal(maxHeroRank({ ownedHeroes: [{ rank: 2 }, {}, { rank: 4 }] }), 4);
+  assert.equal(has({ ownedHeroes: [{ rank: 2 }, { rank: 2 }] }, "factory.rank3"), false);
+  assert.equal(has({ ownedHeroes: [{ rank: 0 }, { rank: 3 }] }, "factory.rank3"), true);
+  assert.equal(has({ ownedHeroes: [{ rank: 4 }] }, "factory.rank5"), false);
+  assert.deepEqual(trophiesFor({ ownedHeroes: [{ rank: 5 }] }), ["factory.rank3", "factory.rank5"]);
+  // 通行証 (LAND_NODES の 9 ランド。Set でも配列でも。知らない id は数えない)
+  assert.equal(LAND_NODES.length, 9);
+  const ids = LAND_NODES.map((n) => n.id);
+  assert.equal(landPassCount({ landPasses: new Set(ids.slice(0, 8)) }), 8);
+  assert.equal(has({ landPasses: new Set([...ids.slice(0, 8), "nowhere"]) }, "factory.passes"), false);
+  assert.equal(has({ landPasses: new Set(ids) }, "factory.passes"), true);
+  assert.equal(has({ landPasses: ids }, "factory.passes"), true);
+  assert.equal(has({}, "factory.passes"), false);
+  // 品評会の傑作 (どのレアリティでも 45 点以上)
+  assert.equal(MASTERPIECE_SCORE, 45);
+  assert.equal(has({ appraisalBest: { common: 44, rare: 44 } }, "factory.masterpiece"), false);
+  assert.equal(has({ appraisalBest: { common: 30, epic: 45 } }, "factory.masterpiece"), true);
+  // 50 年
+  assert.equal(has({ endgameTriggered50y: false }, "factory.y50"), false);
+  assert.deepEqual(trophiesFor({ endgameTriggered50y: true }), ["factory.y50"]);
+});
+
+test("アチーブメント：エクステンション（初めてのクラフト・クエスト・通算 50 回。SPEC-021 3.1）", () => {
+  assert.equal(CRAFTS_MANY, 50);
+  assert.deepEqual(trophiesFor({ craftCompletedCount: 0, questClearCount: 0 }), []);
+  assert.deepEqual(trophiesFor({ craftCompletedCount: 1 }), ["factory.firstcraft"]);
+  assert.deepEqual(trophiesFor({ craftCompletedCount: 49 }), ["factory.firstcraft"]);
+  assert.deepEqual(trophiesFor({ craftCompletedCount: 50 }), ["factory.firstcraft", "factory.crafts50"]);
+  assert.deepEqual(trophiesFor({ questClearCount: 1 }), ["factory.firstquest"]);
+  assert.ok(!trophiesFor({ factoryLevel: 5, clearedWeeks: 1, craftCompletedCount: 99, questClearCount: 99 }).includes("factory.visit"),
+    "来訪は SDK が送る");
+});
+
+test("アチーブメント：まだ送っていないものだけ送る・SDK がない・失敗しても例外を出さない", async () => {
   assert.doesNotThrow(() => syncTrophies({ factoryLevel: 5, clearedWeeks: 100 }));
   const sent = [];
   globalThis.window = { BearkoGames: { unlockTrophy: (id) => { sent.push(id); return Promise.resolve({ ok: true }); } } };
@@ -143,17 +183,19 @@ test("トロフィー：まだ送っていないものだけ送る・SDK がな�
     syncTrophies({ factoryLevel: 2 });
     syncTrophies({ factoryLevel: 2 });
     await syncTrophies({ factoryLevel: 3, craftedByRarity: { legendary: 2 } });
-    assert.deepEqual(sent, ["factory.lv2", "factory.legendary"]);
+    assert.deepEqual(sent, ["factory.lv2", "factory.lv3", "factory.legendary"]);
     // 1 つずつ順に送る (前の返事が来てから次)
     const order = [];
     let release;
     globalThis.window.BearkoGames.unlockTrophy = (id) => { order.push(`start ${id}`); return new Promise((r) => { release = () => { order.push(`end ${id}`); r({ ok: true }); }; }); };
-    const done = syncTrophies({ factoryLevel: 5, clearedWeeks: 100 });
+    const done = syncTrophies({ factoryLevel: 4, clearedWeeks: 100 });
     await new Promise((r) => setTimeout(r, 0));
-    assert.deepEqual(order, ["start factory.clear"]);
+    assert.deepEqual(order, ["start factory.lv4"]);
+    release(); await new Promise((r) => setTimeout(r, 0));
     release(); await new Promise((r) => setTimeout(r, 0));
     release(); await done;
-    assert.deepEqual(order, ["start factory.clear", "end factory.clear", "start factory.clear3y", "end factory.clear3y"]);
+    assert.deepEqual(order, ["start factory.lv4", "end factory.lv4", "start factory.clear", "end factory.clear",
+      "start factory.clear3y", "end factory.clear3y"]);
     globalThis.window.BearkoGames.unlockTrophy = () => { throw new Error("x"); };
     assert.doesNotThrow(() => syncTrophies({ factoryLevel: 5, clearedWeeks: 300 }));
     globalThis.window.BearkoGames.unlockTrophy = () => Promise.reject(new Error("x"));

@@ -738,7 +738,7 @@ function applyLoadedSave(save) {
   // ID の採番をセーブの中の一番大きい ID の次から
   _commissionId = Math.max(_commissionId, ...(state.commissions || []).map(c => Number(c.id) || 0));
   _saleId = Math.max(_saleId, ...(state.activeSales || []).map(x => Number(x.id) || 0));
-  syncPlatformTrophies(); // SPEC-009: トロフィーが入る前のセーブでも、満たしている分を送る
+  syncPlatformTrophies(); // SPEC-009・SPEC-021: アチーブメントが入る前のセーブでも、満たしている分を送る
   renderHeader();
   renderProgressCards();
   renderHeroTeam();
@@ -776,7 +776,7 @@ function pickContinue() {
   dismissTitle();
 }
 
-/** SPEC-009: bearko.games のトロフィー。 debug では送らない (setLevel などで条件を作れるため) */
+/** SPEC-009・SPEC-021: bearko.games のアチーブメント。 debug では送らない (setLevel などで条件を作れるため) */
 function syncPlatformTrophies() {
   if (isDebugMode()) return;
   syncTrophies(state);
@@ -867,7 +867,7 @@ function reachMilestone(id) {
   state.milestones[id] = weeks;
   // SPEC-003: RTA の区切り (lv2〜lv4・clear。 計測中のときだけ送られる)。 IGT は 1 週 = 7 秒で数える
   rtaMilestone(id, state.tickCount * TICK_INTERVAL_MS);
-  syncPlatformTrophies(); // SPEC-009: 工房 Lv・クリアのトロフィー
+  syncPlatformTrophies(); // SPEC-009・SPEC-021: 工房 Lv・クリアのアチーブメント
   if (/^year\d$/.test(id)) {
     const n = Number(id.slice(4));
     state.notifications.push({
@@ -2763,6 +2763,7 @@ function applyShopItemEffect(item, view) {
       }
       const target = pool[Math.floor(Math.random() * pool.length)];
       target.rank = (target.rank || 0) + 1;
+      syncPlatformTrophies(); // SPEC-021: ランク 3・5
       const heroName = tHero(target.heroId, target.nameJa);
       state.notifications.push({
         id: ++_notifId,
@@ -3704,6 +3705,7 @@ function triggerQuestComplete(aq, questSlotIdx = 0) {
     // bearko.games 総合スコア：攻略したクエストの数
     state.questClearCount = (state.questClearCount || 0) + 1;
     reportProgress(state);
+    syncPlatformTrophies(); // SPEC-021: 初めてのクエスト
   }
 
   // Phase 1D-42: ノード経験値 (= CE) 加算。 中級・上級ほど多く、 失敗でも一部入る。
@@ -4247,6 +4249,7 @@ function buyLandPass(landId) {
   }
   state.gum -= LAND_PASS_COST;
   state.landPasses.add(landId);
+  syncPlatformTrophies(); // SPEC-021: ランド通行証 9 つ
   state.questPickedNodeId = landId;
   maiSays("quest.land.mai.bought", { onClose: () => {} });
   renderHeader();
@@ -4623,6 +4626,7 @@ function advanceWeek() {
   if (!state.endgameTriggered50y &&
       state.year === 2069 && state.month === 1 && state.week === 1) {
     state.endgameTriggered50y = true;
+    syncPlatformTrophies(); // SPEC-021: 工房を 50 年続ける
     runWhenUnpaused(triggerEndgame50y);
   }
 }
@@ -5427,6 +5431,7 @@ function rankUpHero(heroId) {
   }
   state.gum -= cost;
   hero.rank = cur + 1;
+  syncPlatformTrophies(); // SPEC-021: ランク 3・5
   // ガルーダ (= stamina max) もランク連動で再計算 → 体力上限が伸びる感を出す
   // (current は割合保持) — オプション: rank 反映を体力 max にも適用
   // → ここでは element の garuda は不変、表示用 elementValueForCraft で
@@ -9025,7 +9030,6 @@ function finalizeCraftCleanup() {
       state.craftedByRarity = state.craftedByRarity || {};
       state.craftedByRarity[r] = (state.craftedByRarity[r] || 0) + 1;
       reportProgress(state);
-      syncPlatformTrophies(); // SPEC-009: Legendary のクラフト
     }
     if (pa && pa.totalScore != null) {
       const ext = EXTENSION_BY_ID[String(pc.extId)];
@@ -9034,6 +9038,7 @@ function finalizeCraftCleanup() {
       state.appraisalBest = state.appraisalBest || {};
       state.appraisalBest[r] = Math.max(state.appraisalBest[r] || 0, pa.totalScore);
     }
+    syncPlatformTrophies(); // SPEC-021: Legendary・品評会の傑作・初めて／通算 50 回のクラフト
     for (const id of pc.team) {
       if (id == null) continue;
       const h = findHero(id);
