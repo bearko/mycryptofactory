@@ -743,14 +743,13 @@ function applyLoadedSave(save) {
   renderHomeGoalBanner();
 }
 
-/** タイトル画面: セーブがあれば「つづきから」「はじめから」を出す */
+/** タイトル画面: セーブがあれば「つづきから」を出して強調し、なければ「はじめから」を強調する (SPEC-015) */
 let _titleSave = null;
 function renderTitleSave() {
-  const host = $("titleSave");
-  const press = document.querySelector("#titleView .title-press");
-  if (!host) return;
-  host.classList.toggle("hidden", !_titleSave);
-  press?.classList.toggle("hidden", !!_titleSave);
+  const cont = $("titleContinueBtn");
+  if (!cont) return;
+  cont.classList.toggle("hidden", !_titleSave);
+  $("titleNewGameBtn")?.classList.toggle("title-save__btn--primary", !_titleSave);
   if (!_titleSave) return;
   const sum = saveSummary(_titleSave);
   const lang = getLang() === "en" ? "en" : "ja";
@@ -790,6 +789,37 @@ function pickRtaStart() {
   _rtaPending = true;
   if (_titleSave) { openNewGameConfirm(); return; }
   dismissTitle();
+}
+
+/** SPEC-015: 「はじめから」。 セーブがあれば消してよいか確かめる */
+function pickNewGameFromTitle() {
+  if (_titleSave) { openNewGameConfirm(); return; }
+  dismissTitle();
+}
+
+/** SPEC-015: タイトルの設定。 部品はゲームの設定 (#settingsSubmenu) から開いているあいだだけ借りる
+ *  (2 つ作ると食い違うため)。 時間 2 倍速はセーブごとの設定なので借りない。
+ *  タイトルでは時間がまだ動いていないので pauseTime は呼ばない */
+let _borrowedSettings = [];
+function openTitleSettings() {
+  const dlg = $("titleSettings");
+  const body = $("titleSettingsBody");
+  const src = $("settingsSubmenu");
+  if (!dlg || !body || !src) return;
+  _borrowedSettings = [...src.children].filter(el => el.id !== "settingSpeed2x");
+  _borrowedSettings.forEach(el => body.appendChild(el));
+  refreshSettingsSubmenu();
+  dlg.classList.remove("hidden");
+  $("titleSettingsClose")?.focus();
+}
+function closeTitleSettings() {
+  const dlg = $("titleSettings");
+  const src = $("settingsSubmenu");
+  if (!dlg || dlg.classList.contains("hidden")) return;
+  _borrowedSettings.forEach(el => src?.appendChild(el));
+  _borrowedSettings = [];
+  dlg.classList.add("hidden");
+  $("titleSettingsBtn")?.focus();
 }
 
 function openNewGameConfirm() {
@@ -7063,11 +7093,6 @@ function dismissTitle() {
 
 function syncLangToggleActive() {
   const cur = getLang();
-  document.querySelectorAll("#langToggle .lang-btn").forEach(btn => {
-    const isActive = btn.getAttribute("data-lang") === cur;
-    btn.classList.toggle("lang-btn--active", isActive);
-    btn.setAttribute("aria-pressed", isActive ? "true" : "false");
-  });
   const headerBtn = $("btnLangToggle");
   if (headerBtn) headerBtn.textContent = cur === "en" ? "EN" : "JP";
 }
@@ -8757,44 +8782,26 @@ async function init() {
   // Phase 1D-13: 進捗カードカルーセルの矢印 / dots / scroll listener を一度だけ初期化
   _initProgressCarousel();
 
-  // ── Title screen → tap to start ──
-  const titleEl = $("titleView");
-  if (titleEl) {
-    titleEl.addEventListener("click", (ev) => {
-      if (ev.target.closest("#langToggle")) return;
-      // Phase 1D-46: ランキングボタン押下時はゲーム開始させない
-      if (ev.target.closest("#titleRankingBtn")) return;
-      // SPEC-002: セーブがあるときは「つづきから」「はじめから」のボタンで始める
-      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm, #titleRtaBtn")) return;
-      dismissTitle();
-    });
-    titleEl.addEventListener("keydown", (ev) => {
-      if (ev.target.closest("#langToggle")) return;
-      if (ev.target.closest("#titleRankingBtn")) return;
-      if (_titleSave || ev.target.closest("#titleSave, #newGameConfirm, #titleRtaBtn")) return;
-      if (ev.key === "Enter" || ev.key === " ") dismissTitle();
-    });
-  }
-
+  // ── Title screen: ボタンを押したときだけ始まる (SPEC-015。 画面全体の当たり判定は持たない) ──
   // ── SPEC-002: セーブ (つづきから / はじめから) ──
   _titleSave = (() => { const st = safeStorage(); return st ? readSave(st) : null; })();
   renderTitleSave();
   $("titleContinueBtn")?.addEventListener("click", pickContinue);
   renderTitleRta();
   $("titleRtaBtn")?.addEventListener("click", pickRtaStart);
-  $("titleNewGameBtn")?.addEventListener("click", openNewGameConfirm);
+  $("titleNewGameBtn")?.addEventListener("click", pickNewGameFromTitle);
+  // SPEC-015: 設定・遊び方
+  $("titleSettingsBtn")?.addEventListener("click", openTitleSettings);
+  $("titleSettingsClose")?.addEventListener("click", closeTitleSettings);
+  $("titleSettings")?.addEventListener("click", (ev) => { if (ev.target.id === "titleSettings") closeTitleSettings(); });
+  $("titleSettings")?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") { ev.stopPropagation(); closeTitleSettings(); }
+  });
+  $("titleHelpBtn")?.addEventListener("click", openHelp);
   $("newGameConfirmOk")?.addEventListener("click", pickNewGame);
   $("newGameConfirmCancel")?.addEventListener("click", closeNewGameConfirm);
   $("newGameConfirm")?.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") { ev.stopPropagation(); closeNewGameConfirm(); }
-  });
-
-  // ── Lang toggle (title) ──
-  $("langToggle")?.addEventListener("click", (ev) => {
-    const btn = ev.target.closest("button[data-lang]");
-    if (!btn) return;
-    ev.stopPropagation();
-    setLang(btn.getAttribute("data-lang"));
   });
 
   // ── Header lang toggle (always available) ──

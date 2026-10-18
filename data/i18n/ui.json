@@ -1,10 +1,8 @@
 {
   "lang.toggle.label":         { "ja": "言語 / Language", "en": "Language / 言語" },
-  "lang.ja":                   { "ja": "JP：日本語",     "en": "JP：日本語" },
-  "lang.en":                   { "ja": "EN：English",    "en": "EN：English" },
 
-  "title.aria":                { "ja": "ゲームを始める",  "en": "Start the game" },
-  "title.press":               { "ja": "Press to Start", "en": "Press to Start" },
+  "title.settings":            { "ja": "⚙ 設定", "en": "⚙ Settings" },
+  "title.help":                { "ja": "? 遊び方", "en": "? How to play" },
   "alpha.badge":               { "ja": "v1.0.0", "en": "v1.0.0" },
   "alpha.note":                { "ja": "8 年のうちに工房 Lv.5 を目指そう。月の初めに、このブラウザへ自動で保存します。", "en": "Reach Workshop Lv.5 within 8 years. Progress is saved to this browser at the start of each month." },
   "save.continue":             { "ja": "つづきから", "en": "Continue" },

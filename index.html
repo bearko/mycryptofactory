@@ -94,13 +94,22 @@
     .title-screen.title-out { animation: title-fade-out 0.38s ease forwards; }
     @keyframes title-fade-out { to { opacity: 0; } }
     .title-logo { max-width: min(420px, 88vw); border-radius: 12px; }
-    .title-press {
-      font-size: 1.05rem; color: #6c5e8a; letter-spacing: 0.2em;
-      text-transform: uppercase; animation: title-blink 1.3s ease-in-out infinite;
-      font-weight: 700;
+    .title-save__btn.hidden, .title-confirm.hidden, .title-rta-btn.hidden { display: none !important; }
+    /* SPEC-015: 設定・遊び方・ランキング (小さめのボタンを 1 行に) */
+    .title-sub { display: flex; gap: 0.5rem; width: min(320px, 88vw); }
+    .title-sub__btn {
+      flex: 1 1 0; appearance: none; cursor: pointer;
+      padding: 0.55rem 0.3rem; border-radius: 999px;
+      background: rgba(15, 12, 22, 0.86); color: var(--accent);
+      border: 1.5px solid var(--accent);
+      font-size: 0.82rem; font-weight: 800; white-space: nowrap;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
     }
-    @keyframes title-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-    .title-press.hidden, .title-save.hidden, .title-confirm.hidden, .title-rta-btn.hidden { display: none !important; }
+    .title-sub__btn:hover { background: var(--accent); color: #1a1420; }
+    /* SPEC-015: タイトルの設定ダイアログ (部品はゲームの設定から借りる) */
+    .title-settings__card { width: min(380px, 100%); max-height: 90vh; max-height: 90dvh; overflow-y: auto; background: #ece6d6; }
+    .title-settings__title { margin: 0; text-align: center; color: #1a1420; font-family: var(--font-display); font-size: 1.15rem; }
+    .title-settings__body { display: flex; flex-direction: column; gap: 0.5rem; }
     .title-rta-btn { width: min(280px, 80vw); font-size: 0.9rem; padding: 0.5rem 1rem; }
     /* SPEC-002: つづきから / はじめから */
     .title-save { display: flex; flex-direction: column; align-items: stretch; gap: 0.6rem; width: min(280px, 80vw); cursor: default; }
@@ -156,26 +165,6 @@
       font-size: 0.68rem; color: #8c7fb0; letter-spacing: 0.16em;
       pointer-events: none;
     }
-    /* Phase 1D-46: タイトル画面のランキング閲覧ボタン (ロゴ - 言語トグル の中央位置) */
-    .title-ranking-btn {
-      position: fixed; bottom: 6rem; left: 50%;
-      transform: translateX(-50%);
-      appearance: none;
-      padding: 0.55rem 1.4rem;
-      background: rgba(15, 12, 22, 0.86);
-      color: var(--accent);
-      border: 1.5px solid var(--accent);
-      border-radius: 999px;
-      font-size: 0.85rem; font-weight: 800;
-      letter-spacing: 0.08em;
-      cursor: pointer;
-      z-index: 5;
-      transition: background 0.15s, color 0.15s;
-    }
-    .title-ranking-btn:hover {
-      background: var(--accent);
-      color: #1a1420;
-    }
     /* Phase α (1D-39 改): ヘッダー先頭に置く小型バッジ (= 旧 fixed top-left は date と
        被ってモバイルで日付が読めなくなっていた) */
     .alpha-badge--header {
@@ -186,23 +175,6 @@
       pointer-events: none;
       align-self: center;
     }
-    .lang-toggle {
-      position: fixed; bottom: 1.5rem; left: 50%;
-      transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: 0.55rem;
-      cursor: default;
-    }
-    .lang-toggle-label { font-size: 0.72rem; color: #6c5e8a; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
-    .lang-toggle .lang-btn {
-      appearance: none; background: #ffffff;
-      color: #4a3f6e; border: 1.5px solid #b8a8d8;
-      border-radius: 8px; padding: 0.5rem 1.1rem;
-      font-size: 0.85rem; cursor: pointer;
-      transition: background 0.18s, border-color 0.18s, color 0.18s;
-    }
-    .lang-toggle .lang-btn + .lang-btn { margin-left: 0.4rem; }
-    .lang-toggle .lang-btn:hover { background: rgba(155,127,210,0.12); border-color: #9b7fd2; }
-    .lang-toggle .lang-btn--active { background: #9b7fd2; border-color: #5b4d8a; color: #fff; font-weight: 700; }
 
     /* ── Factory shell ─────────────────────────────────────────── */
     .factory-app {
@@ -5639,7 +5611,8 @@
 
     /* Help overlay (placeholder shell, content TBD) */
     #helpOverlay {
-      position: fixed; inset: 0; z-index: 300;
+      /* SPEC-015: タイトル (z=1000) の「遊び方」からも開くので、その上に出す */
+      position: fixed; inset: 0; z-index: 1100;
       background: rgba(0,0,0,0.7);
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
@@ -6149,7 +6122,7 @@
       overflow-y: auto;
       padding: max(1.2rem, var(--safe-t)) max(1rem, var(--safe-r)) max(1rem, var(--safe-b)) max(1rem, var(--safe-l));
     }
-    .title-ranking-btn, .lang-toggle, .title-version {
+    .title-version {
       position: static; transform: none; left: auto; bottom: auto;
     }
     .title-version { margin-top: 0.2rem; }
@@ -6157,7 +6130,6 @@
     @media (max-height: 700px) {
       .title-screen { gap: 0.9rem; }
       .title-logo { max-width: min(340px, 80vw); }
-      .lang-toggle { gap: 0.35rem; }
     }
     /* ═══ SPEC-006: 演出 (0.6 秒以内・遊びを止めない) ═══ */
     @keyframes view-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -6215,33 +6187,39 @@
 <body>
 
   <!-- ── Title Screen (Phase α: 白背景 + α 版バナー) ── -->
-  <div id="titleView" class="title-screen" role="button" aria-label="Start the game" data-i18n-attr-aria-label="title.aria" tabindex="0">
+  <!-- SPEC-015: ボタンを押したときだけ始まる (画面全体の当たり判定は持たない) -->
+  <div id="titleView" class="title-screen">
     <img class="title-logo" src="./Image/Factory/title-logo.jpg" alt="MyCryptoFactory" />
     <div class="title-alpha-stack">
       <span class="alpha-badge" data-i18n="alpha.badge">v1.0.0</span>
       <p class="title-alpha-note" data-i18n="alpha.note">8 年のうちに工房 Lv.5 を目指そう。月の初めに、このブラウザへ自動で保存します。</p>
     </div>
-    <p class="title-press" data-i18n="title.press">Press to Start</p>
-    <!-- SPEC-002: セーブがあるときだけ (つづきから / はじめから) -->
-    <div class="title-save hidden" id="titleSave">
-      <button type="button" class="title-save__btn title-save__btn--primary" id="titleContinueBtn">
+    <!-- SPEC-015: 始め方 (つづきから はセーブがあるときだけ・ RTA は SDK があるときだけ) -->
+    <div class="title-save" id="titleSave">
+      <button type="button" class="title-save__btn title-save__btn--primary hidden" id="titleContinueBtn">
         <span data-i18n="save.continue">つづきから</span>
         <small class="title-save__meta" id="titleContinueMeta"></small>
       </button>
       <button type="button" class="title-save__btn" id="titleNewGameBtn" data-i18n="save.newGame">はじめから</button>
+      <button type="button" class="title-save__btn title-rta-btn hidden" id="titleRtaBtn" data-i18n="rta.start">⏱ RTA で始める</button>
     </div>
-    <!-- SPEC-003: bearko.games 共通基盤の SDK があるときだけ -->
-    <button type="button" class="title-save__btn title-rta-btn hidden" id="titleRtaBtn" data-i18n="rta.start">⏱ RTA で始める</button>
-    <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
-      <span class="lang-toggle-label" data-i18n="lang.toggle.label">言語 / Language</span>
-      <div class="lang-toggle-buttons">
-        <button type="button" class="lang-btn" data-lang="ja" data-i18n="lang.ja">JP：日本語</button>
-        <button type="button" class="lang-btn" data-lang="en" data-i18n="lang.en">EN：English</button>
-      </div>
+    <!-- SPEC-015: 設定・遊び方・ランキング -->
+    <div class="title-sub" role="group" aria-label="Menu">
+      <button type="button" class="title-sub__btn" id="titleSettingsBtn" data-i18n="title.settings">⚙ 設定</button>
+      <button type="button" class="title-sub__btn" id="titleHelpBtn" data-i18n="title.help">? 遊び方</button>
+      <!-- Phase 1D-46: タイトル画面からランキング閲覧 (= 開始前にトップ 50 を覗ける) -->
+      <button type="button" class="title-sub__btn" id="titleRankingBtn" data-i18n="ranking.viewer.openBtn">🏆 ランキング</button>
     </div>
-    <!-- Phase 1D-46: タイトル画面からランキング閲覧 (= 開始前にトップ 50 を覗ける) -->
-    <button type="button" class="title-ranking-btn" id="titleRankingBtn" data-i18n="ranking.viewer.openBtn">🏆 ランキング</button>
     <p class="title-version">© bearko / unofficial fan project</p>
+  </div>
+
+  <!-- SPEC-015: タイトルの設定。中身はゲームの設定 (#settingsSubmenu) の部品を開いているあいだだけ借りる -->
+  <div class="title-confirm title-settings hidden" id="titleSettings" role="dialog" aria-modal="true" aria-labelledby="titleSettingsTitle">
+    <div class="title-confirm__card title-settings__card">
+      <h2 class="title-settings__title" id="titleSettingsTitle" data-i18n="menu.settings">設定</h2>
+      <div class="title-settings__body" id="titleSettingsBody"></div>
+      <button type="button" class="title-save__btn title-save__btn--primary" id="titleSettingsClose" data-i18n="btn.close">閉じる</button>
+    </div>
   </div>
 
   <!-- SPEC-002: はじめからの確認 (セーブを消す) -->
