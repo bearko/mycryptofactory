@@ -1,7 +1,7 @@
 /**
  * factory-ranking-client.js — MCF 用ランキングクライアント (Phase 1D-26)
  *
- * Google Apps Script web app と連携。POST でスコア送信、GET でランキング取得。
+ * Google Apps Script web app と連携。GET でランキング取得（SPEC-019 から旧ランキングは見るだけ。送信はしない）。
  * 設計は mycryptotactics の ranking-client.js を踏襲。
  *
  * 設定:
@@ -26,7 +26,6 @@
  */
 
 const LS_API_URL = "mcf.rankingApiUrl";
-const LS_PLAYER_NAME = "mcf.playerName";
 
 /** 組み込みデフォルト (base64)。空文字なら未設定扱い → ローカル送信無効。
  *  Phase β2 hotfix: bearko デプロイの公式 GAS URL を埋め込み (= 起動だけで
@@ -51,50 +50,6 @@ export function getRankingApiUrl() {
   } catch (e) { /* fallthrough */ }
   const def = _decodeDefault();
   return (def && def.trim()) ? def.trim() : null;
-}
-
-/** GAS web app URL を保存 */
-export function setRankingApiUrl(url) {
-  try {
-    if (!url || !url.trim()) localStorage.removeItem(LS_API_URL);
-    else localStorage.setItem(LS_API_URL, url.trim());
-  } catch (e) { /* ignore */ }
-}
-
-/** プレイヤー名を取得 */
-export function getPlayerName() {
-  try { return localStorage.getItem(LS_PLAYER_NAME) || ""; }
-  catch (e) { return ""; }
-}
-
-/** プレイヤー名を保存 */
-export function setPlayerName(name) {
-  try {
-    const trimmed = (name || "").trim().slice(0, 30);
-    if (!trimmed) localStorage.removeItem(LS_PLAYER_NAME);
-    else localStorage.setItem(LS_PLAYER_NAME, trimmed);
-  } catch (e) { /* ignore */ }
-}
-
-/** スコア送信 */
-export async function submitFactoryScore(payload) {
-  const url = getRankingApiUrl();
-  if (!url) return { ok: false, error: "ランキング API URL が未設定です" };
-  try {
-    const body = { ...payload, timestamp: new Date().toISOString() };
-    const res = await fetch(url, {
-      method: "POST",
-      mode: "cors",
-      cache: "no-cache",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    const data = await res.json().catch(() => ({}));
-    return { ok: !!data.ok, error: data.error };
-  } catch (e) {
-    return { ok: false, error: String(e && e.message || e) };
-  }
 }
 
 /** ランキング取得 */

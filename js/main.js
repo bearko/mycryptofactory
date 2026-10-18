@@ -119,11 +119,7 @@ import {
 } from "./factory-hero-flavors.js";
 import {
   calcFactoryScore,
-  submitFactoryScore,
   getRankingApiUrl,
-  setRankingApiUrl,
-  getPlayerName,
-  setPlayerName,
   fetchFactoryRanking,
 } from "./factory-ranking-client.js";
 import {
@@ -1023,20 +1019,7 @@ function renderRankingScoreView() {
     <li><span>${escapeHtml(lang === "en" ? `Workshop Lv ${bd.factoryLevel}` : `工房 Lv ${bd.factoryLevel}`)}</span><strong>×${bd.factoryMult.toFixed(2)}</strong></li>
     <li><span>${escapeHtml(lang === "en" ? `Best Common appraisal ${bd.bestCommon}/50` : `Common 最高査定 ${bd.bestCommon}/50`)}</span><strong>×${bd.appraisalMult.toFixed(2)}</strong></li>
   `;
-  // 既存名を default に
-  const nameInput = $("rankingPlayerName");
-  if (nameInput && !nameInput.value) nameInput.value = getPlayerName();
-  // submit ボタン: ランキング API URL が無ければ無効化
-  const submitBtn = $("rankingSubmitBtn");
-  if (submitBtn) {
-    const apiAvail = !!getRankingApiUrl();
-    submitBtn.disabled = !apiAvail;
-    submitBtn.textContent = apiAvail
-      ? ti18n("ranking.submitBtn", "ランキングに登録")
-      : ti18n("ranking.noApi", "(API 未設定)");
-  }
-  // 状態リセット
-  $("rankingStatus").textContent = "";
+  // SPEC-019: 旧ランキングへの登録はやめた（記録は bearko.games のランキングへ自動で載る）
 }
 
 /** ─── Phase 1D-46: ランキング閲覧モーダル (タイトル / スコア後から開く) ─── */
@@ -1045,15 +1028,7 @@ function openRankingViewer() {
   const view = $("rankingViewer");
   if (!view) return;
   view.classList.remove("hidden");
-  // 設定パネルの URL を localStorage から復元
-  const urlInput = $("rankingApiUrlInput");
-  if (urlInput) {
-    try { urlInput.value = localStorage.getItem("mcf.rankingApiUrl") || ""; }
-    catch (e) { urlInput.value = ""; }
-  }
-  const urlStatus = $("rankingApiUrlStatus");
-  if (urlStatus) urlStatus.textContent = "";
-  // 自動取得
+  // 旧ランキング（SPEC-019：見るだけ）を自動で取得
   refreshRankingViewer();
 }
 
@@ -1073,7 +1048,7 @@ async function refreshRankingViewer() {
   if (!getRankingApiUrl()) {
     if (statusEl) statusEl.textContent = "";
     if (emptyEl) {
-      emptyEl.textContent = ti18n("ranking.viewer.noApi", "ランキング API URL が未設定です。下の上級設定から URL を登録してください。");
+      emptyEl.textContent = ti18n("ranking.viewer.noApi", "旧ランキングの送り先が見つかりません。");
       emptyEl.classList.remove("hidden");
     }
     return;
@@ -1112,54 +1087,6 @@ async function refreshRankingViewer() {
       <span class="ranking-viewer__entry-score">${score.toLocaleString()}</span>
     </li>`;
   }).join("");
-}
-
-function saveRankingApiUrl() {
-  const input = $("rankingApiUrlInput");
-  const status = $("rankingApiUrlStatus");
-  if (!input) return;
-  const url = (input.value || "").trim();
-  setRankingApiUrl(url);
-  if (status) {
-    status.textContent = url
-      ? ti18n("ranking.viewer.urlSaved", "保存しました")
-      : ti18n("ranking.viewer.urlReset", "既定 URL に戻しました");
-  }
-  // 即座に再取得
-  refreshRankingViewer();
-}
-
-async function submitRankingNow() {
-  const result = state.endgameScore;
-  const stats  = state.endgameStats;
-  if (!result || !stats) return;
-  const nameInput = $("rankingPlayerName");
-  const name = (nameInput?.value || "").trim().slice(0, 30);
-  if (!name) {
-    $("rankingStatus").textContent = ti18n("ranking.needName", "名前を入力してください");
-    return;
-  }
-  setPlayerName(name);
-  $("rankingStatus").textContent = ti18n("ranking.submitting", "送信中…");
-  const payload = {
-    playerName: name,
-    score: result.score,
-    gum: stats.gum,
-    factoryLevel: stats.factoryLevel,
-    craftCount: stats.craftCount,
-    hireCount: stats.hireCount,
-    saleCount: stats.saleCount,
-    appraisalBest: stats.appraisalBest?.common || 0,
-    yearWeek: stats.yearWeek,
-    version: "1D-26",
-  };
-  const res = await submitFactoryScore(payload);
-  if (res.ok) {
-    $("rankingStatus").textContent = ti18n("ranking.submitOk", "登録しました！");
-    $("rankingSubmitBtn").disabled = true;
-  } else {
-    $("rankingStatus").textContent = (ti18n("ranking.submitFail", "送信失敗: ") + (res.error || ""));
-  }
 }
 
 /** スコア画面を閉じて活動レポートに進む (期限の場合 = 引き続きプレイ案内) */
@@ -9377,7 +9304,6 @@ async function init() {
     if (e.target.id === "recipePopup") closeRecipePopup();
   });
   // Phase 1D-26: ランキング登録 view + 活動レポート view
-  $("rankingSubmitBtn")?.addEventListener("click", submitRankingNow);
   $("rankingScoreNext")?.addEventListener("click", proceedToActivityReport);
   $("activityReportClose")?.addEventListener("click", closeActivityReport);
   $("clearViewClose")?.addEventListener("click", closeClearView);
@@ -9392,7 +9318,6 @@ async function init() {
     if (e.target.id === "rankingViewer") closeRankingViewer();
   });
   $("rankingViewerRefresh")?.addEventListener("click", refreshRankingViewer);
-  $("rankingApiUrlSaveBtn")?.addEventListener("click", saveRankingApiUrl);
   // Phase 1D-23: 工房レベルアップ view close + アクション delegation
   $("factoryLvUpClose")?.addEventListener("click", closeFactoryLvUpView);
   $("factoryLvUpView")?.addEventListener("click", (e) => {
