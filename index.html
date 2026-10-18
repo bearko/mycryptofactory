@@ -4722,6 +4722,25 @@
       color: var(--text);
     }
     .sellable:hover { border-color: var(--accent); }
+    /* SPEC-018 オークション */
+    .sellable--sel { border-color: var(--accent); background: linear-gradient(135deg, #2f2740, #3a2f4a); }
+    .auction-head { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.6rem 0.7rem; margin-bottom: 0.8rem; background: var(--panel-2); border-radius: 6px; font-size: 0.82rem; }
+    .auction-head__row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+    .auction-head__row > span { color: var(--muted); flex: none; }
+    .auction-head__row > strong { text-align: right; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
+    .auction-head__note { margin: 0.2rem 0 0; font-size: 0.72rem; line-height: 1.5; color: var(--muted); }
+    .auction-chip { font-size: 0.72rem; font-weight: 700; padding: 0.05rem 0.45rem; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent); }
+    .auction-parts { list-style: none; margin: 0.3rem 0 0.5rem; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 0.8rem; font-size: 0.75rem; }
+    .auction-parts-wrap { padding: 0.1rem 0.7rem 0; }
+    .auction-parts li { display: flex; justify-content: space-between; color: var(--muted); }
+    .auction-parts b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .auction-preview { padding: 0.6rem 0.7rem; background: var(--panel-2); border-radius: 6px; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; }
+    .auction-preview__att { display: flex; justify-content: space-between; align-items: baseline; }
+    .auction-preview__att strong { font-size: 1.4rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .auction-preview__warn { margin: 0; font-size: 0.74rem; color: #ff9a8a; }
+    .auction-list-btn { appearance: none; margin-top: 0.3rem; padding: 0.6rem 0.9rem; border: none; border-radius: 6px; background: var(--accent); color: #1a1420; font-weight: 800; font-size: 0.92rem; cursor: pointer; touch-action: manipulation; }
+    .auction-list-btn:active:not(:disabled) { transform: translateY(1px); }
+    .auction-list-btn:disabled { background: #3a3450; color: var(--muted); cursor: not-allowed; }
     .sellable__icon {
       width: 56px; height: 56px;
       object-fit: cover; image-rendering: pixelated;
@@ -6756,6 +6775,7 @@
       <button type="button" class="market-view__tab market-view__tab--active" data-market-tab="warehouse" data-i18n="market.tab.warehouse">倉庫</button>
       <button type="button" class="market-view__tab" data-market-tab="hire" data-i18n="market.tab.hire">雇用</button>
       <button type="button" class="market-view__tab" data-market-tab="sell" data-i18n="market.tab.sell">出品</button>
+      <button type="button" class="market-view__tab" data-market-tab="auction" data-i18n="market.tab.auction">オークション</button>
     </div>
     <div class="market-view__body">
       <!-- 倉庫タブ (Phase 1B-5) -->
@@ -6773,6 +6793,11 @@
           <h3 class="market-sell__sec-title" data-i18n="sell.candidates">出品できる完成品</h3>
           <div class="sellable-list" id="sellableList"></div>
         </section>
+      </div>
+
+      <!-- オークションタブ (SPEC-018)。中身は renderMarketAuction が描く -->
+      <div data-market-tab-body="auction" class="hidden">
+        <div id="auctionTab"></div>
       </div>
 
       <!-- 雇用タブ (Phase 1D-3) -->

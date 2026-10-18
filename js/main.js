@@ -144,6 +144,13 @@ import {
   estimateSalePrice,
   netSaleRevenue,
   canSellExt,
+  AUCTION_LISTING_FEE,
+  auctionAttention,
+  auctionBasePrice,
+  auctionBidderRange,
+  auctionPriceRange,
+  auctionOutcome,
+  pickPopularSeries,
 } from "./factory-market.js";
 import {
   QUEST_DIFFICULTY,
@@ -280,11 +287,15 @@ const state = {
   /** Phase 1D-7: 定員溢れで一時保留中の候補 idx (fire modal で fire 後に再雇用される) */
   pendingHireCandIdx: /** @type {number | null} */ (null),
   /** Phase 1D-3 マーケットビュー UI: 現在開いているタブ */
-  marketTab: "warehouse",  // "warehouse" | "hire" | "sell"
+  marketTab: "warehouse",  // "warehouse" | "hire" | "sell" | "auction" (SPEC-018)
   /** Phase 1D-4 進行中の出品 (warehouse から販売中の ext)
    *  各要素: { id, warehouseIdx, sellerId, speedId, listedAtTick,
    *          weeks, expectedPrice, status: "listed"|"sold" } */
   activeSales: /** @type {Array<object>} */ ([]),
+  /** SPEC-018 オークション：出品中の 1 品 { warehouseIdx, sellerId, listedMonth, attention, parts, popular, base, seed } か null */
+  activeAuction: /** @type {object | null} */ (null),
+  /** SPEC-018 今月の人気シリーズ { month: 通算の月, series: [3 つ] } */
+  auctionPopular: /** @type {object | null} */ (null),
   /** Phase 1D-4 出品 modal の現在ピック中 ext (warehouse index) */
   sellPickedIdx: -1,
   /** Phase 1C-1 クエスト関連 */
@@ -2002,6 +2013,8 @@ function nextRarityForRemake(currentRarity, factoryLevel) {
 function isRemakeEligible(w) {
   if (!w) return false;
   if (state.activeCraft || state.pendingCompletion) return false;
+  // 出品中・オークションに出している品は打ち直せない（SPEC-018）
+  if (isWarehouseItemListed(w)) return false;
   const cur = effectiveRarityOf(w);
   const nxt = nextRarityForRemake(cur, state.factoryLevel || 1);
   return nxt != null;
@@ -3539,8 +3552,7 @@ function maybeIdleSpeak(hero) {
   if (!hero || hero.state !== HERO_STATE.IDLE) return;
   // 雇用担当 / 出品中 → 「忙しい」扱い、 idle セリフ抑制
   if (state.activeHire && state.activeHire.recruiterId === hero.heroId) return;
-  if (Array.isArray(state.activeSales)
-      && state.activeSales.some(s => s.sellerId === hero.heroId)) return;
+  if (isSellerAssigned(hero.heroId)) return;
   const wkKey = (state.year * 1000) + (state.month * 50) + state.week;
   if (state.heroIdleSpokeAt[hero.heroId] === wkKey) return;  // 今週もう発言済み
   // 平均 5〜6 週に 1 回ペースで発言する程度の確率 (= 0.03 / tick × 7 tick/週 ≈ 0.21)
@@ -4585,12 +4597,16 @@ function advanceWeek() {
   state.weekProgress = 0;
   state.week += 1;
   if (state.week > WEEKS_PER_MONTH) {
+    // SPEC-018: 4 週目の終わりにオークションを開催（月が変わる前に決める）
+    settleAuction();
     state.week = 1;
     state.month += 1;
     if (state.month > 12) {
       state.month = 1;
       state.year += 1;
     }
+    // SPEC-018: 今月の人気シリーズを選び直す
+    ensureAuctionPopular();
     // Phase 1D-32: 月初め (week=1 になった瞬間) に受注クラフトを再生成
     maybeRegenerateCommissions();
     // SPEC-002: 月の初めに自動保存 (予約。 書くのは次の落ち着いた tick)
@@ -4751,8 +4767,7 @@ function isHeroLocked(heroId, opts = {}) {
   // 編成 roster (= 次回派遣に予約) は opts で抑止できる弱 lock
   if (!opts.ignoreCraftTeam && Array.isArray(state.craftTeam) && state.craftTeam.includes(heroId)) return true;
   if (!opts.ignoreQuestTeam && Array.isArray(state.questTeam) && state.questTeam.includes(heroId)) return true;
-  if (!opts.ignoreSale && Array.isArray(state.activeSales)
-      && state.activeSales.some(s => s.sellerId === heroId)) return true;
+  if (!opts.ignoreSale && isSellerAssigned(heroId)) return true;
   if (!opts.ignoreHire && state.activeHire && state.activeHire.recruiterId === heroId) return true;
   return false;
 }
@@ -6362,8 +6377,7 @@ function renderWorkshop() {
     const isQuesting = hero.state === HERO_STATE.QUESTING;
     // Phase 1D-47: 雇用担当 / 出品中も「他作業」 として表示 (= グレーアウト + バッジ)
     const isHiring  = !!(state.activeHire && state.activeHire.recruiterId === hero.heroId);
-    const isSelling = Array.isArray(state.activeSales)
-                      && state.activeSales.some(s => s.sellerId === hero.heroId);
+    const isSelling = isSellerAssigned(hero.heroId); // SPEC-018: オークションの担当も「取引中」
     sprite.classList.toggle("workshop-hero--sleeping", isResting);
     sprite.classList.toggle("workshop-hero--questing", isQuesting);
     sprite.classList.toggle("workshop-hero--crafting", isCrafting);
@@ -6543,8 +6557,6 @@ function countTradeEligibleHeroes() {
   return state.ownedHeroes.filter(h => h.state === HERO_STATE.IDLE).length;
 }
 
-/** Phase 1D-13: オークション出品料 (placeholder)。実装時に factory-market に移管予定。 */
-const AUCTION_LISTING_FEE = 100;
 
 /** Market progress card 描画 (Trade + Auction の 2 サブカード)
  *
@@ -6612,36 +6624,59 @@ function renderMarketCard() {
     `;
   }
 
-  // Auction サブカード (placeholder: いつでも開催待ち = 出品ボタンを表示)
-  const remainW = computeAuctionWeeksRemaining();
+  // Auction サブカード（SPEC-018）：出品中ならその品・注目度・人気・開催まで n 週、なければ出品ボタン
+  const remainW = auctionWeeksRemaining();
   const auctionLbl = ti18n("progress.market.auctionWait").replace("{n}", remainW);
-  // disable 優先度: ext > GUM > hero
-  let auctionDisableReason = null;
-  if (!hasExt)            auctionDisableReason = "noExt";
-  else if (!hasGum)       auctionDisableReason = "noGum";
-  else if (!hasHero)      auctionDisableReason = "noHero";
-  const auctionDisabled = auctionDisableReason !== null;
-  const auctionNote = auctionDisabled
-    ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.market." + auctionDisableReason))}</p>`
-    : "";
-  const auctionBody = `
-    <div class="market-sub__row">
-      <div class="market-sub__icon"></div>
-      <div class="market-sub__main">
-        <span class="market-sub__name">${escapeHtml(auctionLbl)}</span>
-        <div class="market-sub__meta">
-          <span>${escapeHtml(ti18n("progress.market.auctionAttention"))}: —</span>
-          <span>${escapeHtml(ti18n("progress.market.auctionPopularity"))}: —</span>
+  let auctionBody;
+  const au = state.activeAuction;
+  const auW = au ? state.warehouse[au.warehouseIdx] : null;
+  if (au && auW) {
+    const ext = EXTENSION_BY_ID[String(auW.extId)];
+    const extName = ext ? (lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa) : "—";
+    auctionBody = `
+      <div class="market-sub__row">
+        <img class="market-sub__icon" src="${extIconUrl(auW.extId)}" alt="" onerror="this.style.opacity='0.2'" />
+        <div class="market-sub__main">
+          <span class="market-sub__name">${escapeHtml(extName)}</span>
+          <div class="market-sub__meta">
+            <span>${escapeHtml(ti18n("progress.market.auctionAttention"))}: ${au.attention}</span>
+            <span>${escapeHtml(ti18n("progress.market.auctionPopularity"))}: ${au.popular ? "★" : "—"}</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="progress-card__action-row">
-      <button type="button" class="progress-card__action-btn" data-market-go="auction" ${auctionDisabled ? "disabled" : ""}>
-        ${escapeHtml(ti18n("progress.market.actionAuction"))}
-      </button>
-      ${auctionNote}
-    </div>
-  `;
+      <div class="market-sub__empty">${escapeHtml(auctionLbl)}</div>
+    `;
+  } else {
+    // disable 優先度: ext > GUM > hero
+    const hasAuctionExt = state.warehouse.some((w, idx) => !state.activeSales.some(s => s.warehouseIdx === idx));
+    let auctionDisableReason = null;
+    if (!hasAuctionExt)     auctionDisableReason = "noExt";
+    else if (!hasGum)       auctionDisableReason = "noGum";
+    else if (!hasHero)      auctionDisableReason = "noHero";
+    const auctionDisabled = auctionDisableReason !== null;
+    const auctionNote = auctionDisabled
+      ? `<p class="progress-card__action-note">${escapeHtml(ti18n("progress.market." + auctionDisableReason))}</p>`
+      : "";
+    const popular = ensureAuctionPopular();
+    const popularLbl = popular.length ? popular.map(x => seriesLabel(x)).join(" / ") : "—";
+    auctionBody = `
+      <div class="market-sub__row">
+        <div class="market-sub__icon"></div>
+        <div class="market-sub__main">
+          <span class="market-sub__name">${escapeHtml(auctionLbl)}</span>
+          <div class="market-sub__meta">
+            <span>${escapeHtml(ti18n("progress.market.auctionPopularity"))}: ${escapeHtml(popularLbl)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="progress-card__action-row">
+        <button type="button" class="progress-card__action-btn" data-market-go="auction" ${auctionDisabled ? "disabled" : ""}>
+          ${escapeHtml(ti18n("progress.market.actionAuction"))}
+        </button>
+        ${auctionNote}
+      </div>
+    `;
+  }
 
   host.innerHTML = `
     <div class="market-card">
@@ -6657,17 +6692,9 @@ function renderMarketCard() {
   `;
 }
 
-/** 月次 (4 game-week) サイクルで開催される auction 仮設の残週数を返す。
- *  実 auction 機能未実装の placeholder。 */
-function computeAuctionWeeksRemaining() {
-  const y = state.year ?? 2018;
-  const m = state.month ?? 12;
-  const w = state.week ?? 1;
-  // (year * 12 + month) * 4 + week → 通算ゲーム週
-  const totalW = (y * 12 + (m - 1)) * 4 + (w - 1);
-  const cycle = 4;
-  const r = cycle - (totalW % cycle);
-  return r === 0 ? cycle : r;
+/** オークションの開催まで何週か（SPEC-018 3.1）。4 週目なら 1（その週の終わりに開催） */
+function auctionWeeksRemaining() {
+  return WEEKS_PER_MONTH - (state.week || 1) + 1;
 }
 
 /** Progress Card 全体の再描画 (Craft + Quest + Market) */
@@ -6792,8 +6819,10 @@ function _initProgressCarousel() {
         openMarketView();
         if (typeof setMarketTab === "function") setMarketTab("sell");
       } else if (kind === "auction") {
-        // オークション機能は未実装 (placeholder) → Mai 通知
-        maiSays("menu.auction.todo");
+        // SPEC-018: マーケット画面のオークションタブ
+        state.marketTab = "auction";
+        openMarketView();
+        if (typeof setMarketTab === "function") setMarketTab("auction");
       }
     }
   });
@@ -7478,6 +7507,7 @@ function renderMarketView() {
   if (state.marketTab === "warehouse") renderMarketWarehouse();
   else if (state.marketTab === "hire") renderMarketHire();
   else if (state.marketTab === "sell") renderMarketSell();
+  else if (state.marketTab === "auction") renderMarketAuction();
 }
 
 /** ─── 出品タブ (Phase 1D-4) ─────────────────────────────────────── */
@@ -7514,6 +7544,7 @@ function renderMarketSell() {
 
   // 出品候補 (warehouse 内 + まだ販売していない)
   const sellingIdxSet = new Set(state.activeSales.map(s => s.warehouseIdx));
+  if (state.activeAuction) sellingIdxSet.add(state.activeAuction.warehouseIdx); // SPEC-018
   const candidates = state.warehouse
     .map((w, idx) => ({ w, idx }))
     .filter(({ idx }) => !sellingIdxSet.has(idx));
@@ -7538,7 +7569,7 @@ function renderMarketSell() {
 function sellerEligibility(hero, ext) {
   if (!hero) return { eligible: false, reason: "" };
   // 既に別 sale の seller になっている?
-  if (state.activeSales?.some(s => s.sellerId === hero.heroId)) {
+  if (isSellerAssigned(hero.heroId)) {
     return { eligible: false, reason: ti18n("sell.busy.otherSale", "他の出品を担当中") };
   }
   // 採用担当者として配属中?
@@ -7618,7 +7649,7 @@ function renderSellModal() {
   //   前回の sellerId (state.lastSaleSellerId) があれば初回 default として選択。
   if (_sellPickedSellerId == null && state.lastSaleSellerId != null) {
     const last = findHero(state.lastSaleSellerId);
-    if (last && state.activeSales?.every(s => s.sellerId !== last.heroId)
+    if (last && !isSellerAssigned(last.heroId)
         && last.state !== HERO_STATE.CRAFTING
         && last.state !== HERO_STATE.QUESTING
         && canSellExt(last, ext)) {
@@ -7773,15 +7804,9 @@ function tickActiveSales() {
   if (completed.length > 0) {
     // warehouse から削除 (高い idx から消すと shift しない)
     const idxToRemove = completed.map(s => s.warehouseIdx).sort((a, b) => b - a);
-    for (const i of idxToRemove) state.warehouse.splice(i, 1);
-    // 売却済みは activeSales からも除去 + 残り active sales の warehouseIdx を補正
+    // 売却済みは activeSales から除去してから、倉庫から消す（残りの出品・オークションの番号は removeWarehouseItem が補正）
     state.activeSales = state.activeSales.filter(s => s.status !== "sold");
-    // 補正: 削除した warehouseIdx より大きい idx を持つ残 sale は idx を減算
-    for (const removed of idxToRemove) {
-      for (const s of state.activeSales) {
-        if (s.warehouseIdx > removed) s.warehouseIdx -= 1;
-      }
-    }
+    for (const i of idxToRemove) removeWarehouseItem(i);
     // Phase 1D-32: 取引成立は時間を止めずに、画面上部の速報タイルで通知する
     //   (= ヒーローのパッシブ発動と同じ仕組みの state.notifications)。
     //   形式: 「[ext名] が成約！ [GUM] GUM で売却しました」
@@ -7816,6 +7841,242 @@ function tickActiveSales() {
   }
   // 出品中もしくは tick ごとに進捗バーが進む overlay を更新
   if (state.activeSales.length > 0) renderSaleOverlay();
+}
+
+/** ─── オークション（SPEC-018） ─────────────────────────────────── */
+
+/** マーケットの出品かオークションの担当になっているか（開催・成約まで拘束） */
+function isSellerAssigned(heroId) {
+  if (Array.isArray(state.activeSales) && state.activeSales.some(s => s.sellerId === heroId)) return true;
+  return state.activeAuction?.sellerId === heroId;
+}
+
+/** 倉庫の品が、マーケットに出品中かオークションに出ているか */
+function isWarehouseItemListed(w) {
+  if (!w) return false;
+  if ((state.activeSales || []).some(s => state.warehouse[s.warehouseIdx] === w)) return true;
+  return !!state.activeAuction && state.warehouse[state.activeAuction.warehouseIdx] === w;
+}
+
+/** 倉庫から 1 品消す。後ろの品を指している出品・オークションの番号を 1 つ詰める */
+function removeWarehouseItem(idx) {
+  if (idx < 0 || idx >= state.warehouse.length) return;
+  state.warehouse.splice(idx, 1);
+  for (const s of (state.activeSales || [])) if (s.warehouseIdx > idx) s.warehouseIdx -= 1;
+  if (state.activeAuction && state.activeAuction.warehouseIdx > idx) state.activeAuction.warehouseIdx -= 1;
+}
+
+/** 通算の月（今月の人気シリーズの見分けに使う） */
+function currentMonthIndex() {
+  return (state.year ?? 2018) * 12 + ((state.month ?? 12) - 1);
+}
+
+/** 今月の人気シリーズ（3 つ）。月が変わっていたら、クラフトできるシリーズから選び直す */
+function ensureAuctionPopular() {
+  const month = currentMonthIndex();
+  if (!state.auctionPopular || state.auctionPopular.month !== month) {
+    const series = state.unlockedSeries instanceof Set ? [...state.unlockedSeries] : [];
+    state.auctionPopular = { month, series: pickPopularSeries(series, Math.random) };
+  }
+  return state.auctionPopular.series || [];
+}
+
+/** シリーズ名（英語表示なら seriesEn） */
+function seriesLabel(name) {
+  if (getLang() !== "en") return name;
+  const e = EXTENSIONS.find(x => x.series === name);
+  return (e && e.seriesEn) || name;
+}
+
+/** 品と担当から、出品する前の見込み（注目度の内訳・入札の数・落札額の幅）を出す */
+function auctionPreview(w, seller) {
+  const baseExt = EXTENSION_BY_ID[String(w.extId)];
+  const effRarity = effectiveRarityOf(w);
+  const ext = (baseExt && w.rarityOverride) ? makeRemakeExtShim(baseExt, effRarity) : baseExt;
+  const popular = ensureAuctionPopular().includes(baseExt?.series);
+  const sho = !!(seller && Array.isArray(seller.attributes) && seller.attributes.includes("sho"));
+  const att = auctionAttention({ tier: w.appraisal?.tier, rarity: effRarity, sho, popular });
+  // 倉庫スキルの売却額の上乗せ（tradePriceBoost）はマーケットと同じく掛ける
+  const tpPct = activeEffectPct("tradePriceBoost");
+  const raw = auctionBasePrice(w, ext);
+  const base = tpPct > 0 ? Math.round(raw * (1 + tpPct / 100)) : raw;
+  return { ext, popular, attention: att.total, parts: att.parts, base, bidders: auctionBidderRange(att.total), price: auctionPriceRange(base, att.total) };
+}
+
+let _auctionPickIdx = -1;
+let _auctionPickSellerId = null;
+
+/** 出品する（出品料を払い、担当を開催まで拘束する） */
+function startAuction() {
+  if (state.activeAuction) return;
+  const w = state.warehouse[_auctionPickIdx];
+  const seller = findHero(_auctionPickSellerId);
+  if (!w || !seller || isWarehouseItemListed(w)) return;
+  const pv = auctionPreview(w, seller);
+  if (!sellerEligibility(seller, pv.ext).eligible) return;
+  if ((state.gum ?? 0) < AUCTION_LISTING_FEE) return;
+  // 編成だけされている担当は、マーケットと同じく自動で外す
+  const ctIdx = state.craftTeam.indexOf(seller.heroId);
+  if (ctIdx >= 0) state.craftTeam[ctIdx] = null;
+  state.gum -= AUCTION_LISTING_FEE;
+  state.activeAuction = {
+    warehouseIdx: _auctionPickIdx,
+    sellerId: seller.heroId,
+    listedMonth: currentMonthIndex(),
+    attention: pv.attention,
+    parts: pv.parts,
+    popular: pv.popular,
+    base: pv.base,
+    seed: Math.floor(Math.random() * 0xffffffff) >>> 0,
+  };
+  _auctionPickIdx = -1;
+  _auctionPickSellerId = null;
+  setTimeout(() => pushHeroFlavor(seller.heroId, "saleStart"), 250);
+  renderHeader();
+  renderMarketView();
+  renderProgressCards();
+}
+
+/** 4 週目の終わりに呼ぶ：落札か不成立を決め、速報タイルで知らせる（時間は止めない） */
+function settleAuction() {
+  const a = state.activeAuction;
+  if (!a) return;
+  state.activeAuction = null;
+  const w = state.warehouse[a.warehouseIdx];
+  const ext = w ? EXTENSION_BY_ID[String(w.extId)] : null;
+  if (!w || !ext) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const extName = lang === "en" ? (ext.nameEn || ext.nameJa) : ext.nameJa;
+  const out = auctionOutcome({ base: a.base, attention: a.attention, seed: a.seed });
+  let text;
+  if (out.sold) {
+    state.gum += out.net;
+    state.saleCompletedCount = (state.saleCompletedCount || 0) + 1; // 工房 Lv の条件の「売却数」
+    removeWarehouseItem(a.warehouseIdx);
+    text = ti18n("notif.auctionSold").replace("{ext}", extName).replace("{n}", out.bidders).replace("{gum}", out.net.toLocaleString());
+    playSe("saleSettled");
+    if (Math.random() < 0.06) setTimeout(() => acquireRandomSeriesRecipe("recipe.from.sale"), 600);
+  } else {
+    text = ti18n("notif.auctionNoBids").replace("{ext}", extName);
+  }
+  state.notifications.push({ id: ++_notifId, text, element: "tiamat", value: 0, createdTick: state.tickCount });
+  console.log(`[auction] ${out.sold ? `sold ${out.net} GUM (${out.bidders} bids)` : "no bids"}`);
+  renderHeader();
+  renderNotifications();
+  renderProgressCards();
+  if (!$("marketView")?.classList.contains("hidden")) renderMarketView();
+}
+
+/** マーケット画面のオークションタブ */
+function renderMarketAuction() {
+  const host = $("auctionTab");
+  if (!host) return;
+  const lang = getLang() === "en" ? "en" : "ja";
+  const popular = ensureAuctionPopular();
+  const weeks = auctionWeeksRemaining();
+  const head = `
+    <div class="auction-head">
+      <div class="auction-head__row"><span>${escapeHtml(ti18n("auction.nextIn"))}</span><strong>${escapeHtml(ti18n("progress.market.auctionWait").replace("{n}", weeks))}</strong></div>
+      <div class="auction-head__row"><span>${escapeHtml(ti18n("auction.popular"))}</span><strong>${popular.length ? popular.map(x => `<span class="auction-chip">${escapeHtml(seriesLabel(x))}</span>`).join("") : "—"}</strong></div>
+      <div class="auction-head__row"><span>${escapeHtml(ti18n("auction.fee"))}</span><strong>${AUCTION_LISTING_FEE} GUM</strong></div>
+      <p class="auction-head__note">${escapeHtml(ti18n("auction.howto"))}</p>
+    </div>`;
+  const extNameOf = (w) => { const e = EXTENSION_BY_ID[String(w.extId)]; return e ? (lang === "en" ? (e.nameEn || e.nameJa) : e.nameJa) : "—"; };
+  const partsHtml = (p) => `
+    <ul class="auction-parts">
+      <li><span>${escapeHtml(ti18n("auction.part.tier"))}</span><b>+${p.tier}</b></li>
+      <li><span>${escapeHtml(ti18n("auction.part.rarity"))}</span><b>+${p.rarity}</b></li>
+      <li><span>${escapeHtml(ti18n("auction.part.sho"))}</span><b>+${p.sho}</b></li>
+      <li><span>${escapeHtml(ti18n("auction.part.popular"))}</span><b>+${p.popular}</b></li>
+    </ul>`;
+  // 出品中
+  const a = state.activeAuction;
+  if (a) {
+    const w = state.warehouse[a.warehouseIdx];
+    const seller = findHero(a.sellerId);
+    host.innerHTML = head + `
+      <section class="market-sell__section">
+        <h3 class="market-sell__sec-title">${escapeHtml(ti18n("auction.active"))}</h3>
+        <div class="active-sale">
+          <img src="${w ? extIconUrl(w.extId) : ""}" alt="" class="active-sale__icon" onerror="this.style.opacity='0.2'" />
+          <div class="active-sale__main">
+            <div class="active-sale__name-row"><span class="active-sale__name">${escapeHtml(w ? extNameOf(w) : "—")}</span>${a.popular ? `<span class="active-sale__speed">★ ${escapeHtml(ti18n("auction.popularMark"))}</span>` : ""}</div>
+            <div class="active-sale__meta">
+              <span>${escapeHtml(ti18n("sell.seller"))}: ${seller ? escapeHtml(tHero(seller.heroId, seller.nameJa)) : "—"}</span>
+              <span class="active-sale__price">${escapeHtml(ti18n("progress.market.auctionAttention"))} ${a.attention}</span>
+            </div>
+          </div>
+        </div>
+        <div class="auction-parts-wrap">${partsHtml(a.parts || { tier: 0, rarity: 0, sho: 0, popular: 0 })}</div>
+      </section>`;
+    return;
+  }
+  // 品を選ぶ
+  const cands = state.warehouse.map((w, idx) => ({ w, idx })).filter(({ w }) => !isWarehouseItemListed(w));
+  if (_auctionPickIdx >= 0 && !cands.some(c => c.idx === _auctionPickIdx)) { _auctionPickIdx = -1; _auctionPickSellerId = null; }
+  const list = cands.length === 0
+    ? `<p class="market-sell__empty-cand">${escapeHtml(ti18n("sell.noCandidates"))}</p>`
+    : cands.map(({ w, idx }) => {
+        const ext = EXTENSION_BY_ID[String(w.extId)];
+        const eff = effectiveRarityOf(w);
+        const tierLbl = w.appraisal ? ti18n("appraisal.tier." + w.appraisal.tier) : "";
+        const pop = popular.includes(ext?.series);
+        return `<button type="button" class="sellable${idx === _auctionPickIdx ? " sellable--sel" : ""}" data-auction-idx="${idx}">
+          <img src="${extIconUrl(w.extId)}" alt="" class="sellable__icon" onerror="this.style.opacity='0.2'" />
+          <span class="sellable__name">${escapeHtml(extNameOf(w))}${pop ? " ★" : ""}</span>
+          <span class="sellable__rarity" data-rarity="${eff}">${escapeHtml(ti18n("rarity." + eff))}</span>
+          ${tierLbl ? `<span class="sellable__tier" data-tier="${w.appraisal.tier}">${escapeHtml(tierLbl)}</span>` : ""}
+        </button>`;
+      }).join("");
+  let detail = "";
+  const pw = state.warehouse[_auctionPickIdx];
+  if (pw) {
+    const ext0 = auctionPreview(pw, null).ext;
+    const heroes = (state.ownedHeroes || []).slice().sort((x, y) => {
+      const ex = sellerEligibility(x, ext0).eligible, ey = sellerEligibility(y, ext0).eligible;
+      if (ex !== ey) return ex ? -1 : 1;
+      const sx = (x.attributes || []).includes("sho") ? 0 : 1, sy = (y.attributes || []).includes("sho") ? 0 : 1;
+      return sx - sy;
+    });
+    const sellerBtns = heroes.length === 0
+      ? `<p class="sell-seller__empty">${escapeHtml(ti18n("sell.noSellerOwned"))}</p>`
+      : heroes.map(h => {
+          const el = sellerEligibility(h, ext0);
+          const sho = Array.isArray(h.attributes) && h.attributes.includes("sho");
+          return `<button type="button" class="sell-seller${h.heroId === _auctionPickSellerId && el.eligible ? " sell-seller--sel" : ""}${el.eligible ? "" : " sell-seller--disabled"}" data-auction-seller="${h.heroId}" ${el.eligible ? "" : "disabled"}>
+            <img src="${h.img()}" alt="" onerror="this.style.opacity='0.2'" />
+            <span class="sell-seller__name">${escapeHtml(tHero(h.heroId, h.nameJa))}</span>
+            <span class="sell-seller__rarity" data-rarity="${h.rarity}">${escapeHtml(ti18n("rarity." + h.rarity))}</span>
+            ${sho ? `<span class="attr-badge attr-badge--sho" title="商">商</span>` : ""}
+            ${el.eligible ? "" : `<span class="sell-seller__reason">${escapeHtml(el.reason)}</span>`}
+          </button>`;
+        }).join("");
+    const seller = findHero(_auctionPickSellerId);
+    const sellerOk = !!seller && sellerEligibility(seller, ext0).eligible;
+    const pv = auctionPreview(pw, sellerOk ? seller : null);
+    const enoughGum = (state.gum ?? 0) >= AUCTION_LISTING_FEE;
+    const [blo, bhi] = pv.bidders;
+    const [plo, phi] = pv.price.map(netSaleRevenue);
+    detail = `
+      <section class="market-sell__section">
+        <h3 class="market-sell__sec-title">${escapeHtml(ti18n("sell.pickSeller"))}</h3>
+        <div class="sell-seller-list">${sellerBtns}</div>
+      </section>
+      <section class="market-sell__section auction-preview">
+        <div class="auction-preview__att"><span>${escapeHtml(ti18n("progress.market.auctionAttention"))}</span><strong>${pv.attention}</strong></div>
+        ${partsHtml(pv.parts)}
+        <div class="sell-est__row"><span>${escapeHtml(ti18n("auction.bidders"))}</span><strong>${escapeHtml(ti18n("auction.biddersRange").replace("{lo}", blo).replace("{hi}", bhi))}</strong></div>
+        <div class="sell-est__row"><span>${escapeHtml(ti18n("auction.netRange"))}</span><strong>${plo.toLocaleString()}${lang === "en" ? "–" : "〜"}${phi.toLocaleString()} GUM</strong></div>
+        ${blo === 0 ? `<p class="auction-preview__warn">${escapeHtml(ti18n("auction.mayFail"))}</p>` : ""}
+        <button type="button" class="auction-list-btn" id="auctionListBtn" ${sellerOk && enoughGum ? "" : "disabled"}>${escapeHtml(ti18n("auction.list").replace("{fee}", AUCTION_LISTING_FEE))}</button>
+        ${enoughGum ? "" : `<p class="auction-preview__warn">${escapeHtml(ti18n("progress.market.noGum"))}</p>`}
+      </section>`;
+  }
+  host.innerHTML = head + `
+    <section class="market-sell__section">
+      <h3 class="market-sell__sec-title">${escapeHtml(ti18n("auction.pickItem"))}</h3>
+      <div class="sellable-list">${list}</div>
+    </section>` + detail;
 }
 
 /** Phase 1D-3 雇用タブの描画 */
@@ -8241,6 +8502,8 @@ function fireableHeroes() {
   for (const sale of (state.activeSales || [])) {
     if (sale.sellerId != null) blocked.add(sale.sellerId);
   }
+  // SPEC-018: オークションの担当
+  if (state.activeAuction?.sellerId != null) blocked.add(state.activeAuction.sellerId);
   return state.ownedHeroes.map(h => ({
     hero: h,
     fireable: !blocked.has(h.heroId),
@@ -8662,7 +8925,7 @@ function finalizeCraftCleanup() {
     if (pc.remakeFromWarehouseIdx != null) {
       const idx = pc.remakeFromWarehouseIdx;
       if (idx >= 0 && idx < state.warehouse.length) {
-        state.warehouse.splice(idx, 1);
+        removeWarehouseItem(idx); // 出品・オークションの番号も補正する（SPEC-018）
       }
     }
     state.warehouse.push({
@@ -9238,6 +9501,22 @@ async function init() {
     }
   });
   $("sellListBtn")?.addEventListener("click", startSale);
+  // ── オークションタブ (SPEC-018)：品 → 担当 → 出品 ──
+  $("auctionTab")?.addEventListener("click", (ev) => {
+    const item = ev.target.closest("[data-auction-idx]");
+    if (item) {
+      const idx = parseInt(item.getAttribute("data-auction-idx"), 10);
+      if (Number.isFinite(idx)) { _auctionPickIdx = idx; _auctionPickSellerId = null; renderMarketAuction(); }
+      return;
+    }
+    const sel = ev.target.closest("[data-auction-seller]");
+    if (sel && !sel.disabled) {
+      const id = parseInt(sel.getAttribute("data-auction-seller"), 10);
+      if (Number.isFinite(id)) { _auctionPickSellerId = id; renderMarketAuction(); }
+      return;
+    }
+    if (ev.target.closest("#auctionListBtn")) startAuction();
+  });
   $("sellCancelBtn")?.addEventListener("click", closeSellModal);
   $("sellModal")?.addEventListener("click", (e) => {
     if (e.target.id === "sellModal") closeSellModal();
@@ -9619,9 +9898,11 @@ function installDebugHooks() {
       for (let i = 0; i < n; i++) {
         state.week += 1;
         if (state.week > WEEKS_PER_MONTH) {
+          settleAuction(); // SPEC-018
           state.week = 1;
           state.month += 1;
           if (state.month > 12) { state.month = 1; state.year += 1; }
+          ensureAuctionPopular();
         }
         checkWeekMilestones();
       }
@@ -9638,6 +9919,14 @@ function installDebugHooks() {
       return state.factoryLevel;
     },
     addGum(n = 0) { state.gum += n; renderHeader(); return state.gum; },
+    /** 倉庫に品を 1 つ置く（SPEC-018 の確かめ用。tier は査定） */
+    addItem(extId, tier = "fine") {
+      state.warehouse.push({ extId: Number(extId), appraisal: { tier } });
+      renderProgressCards();
+      return state.warehouse.length;
+    },
+    /** オークションの出品と今月の人気（確かめ用。読むだけ） */
+    auction() { return { active: state.activeAuction, popular: state.auctionPopular, gum: state.gum, warehouse: state.warehouse.length, sales: state.saleCompletedCount || 0 }; },
     /** 20 倍速 (1 tick = 50ms) の切り替え */
     fast(on = true) { state.timeSpeed20x = !!on; restartTimeLoopWithSpeed(); return state.timeSpeed20x; },
     state,

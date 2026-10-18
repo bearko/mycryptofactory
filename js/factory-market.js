@@ -292,3 +292,88 @@ export function rollHireCandidates(plan, ownedIds, rng = Math.random) {
   }
   return out;
 }
+
+/** ─── オークション (SPEC-018) ──────────────────────────────────────
+ *  月に 1 回 (4 週目の終わり) の開催。出来のよい品ほど高く売れるが、入札 0 件だと不成立。
+ *  ここは DOM に触れない純関数だけ (tests/auction.test.mjs)。 */
+
+/** 出品料 (出品したときに払う。売れなくても戻らない) */
+export const AUCTION_LISTING_FEE = 100;
+/** 注目度の点 (SPEC-018 3.2) */
+export const AUCTION_TIER_POINTS = { poor: 0, decent: 10, fine: 20, great: 35, masterpiece: 50 };
+export const AUCTION_RARITY_POINTS = { common: 0, uncommon: 5, rare: 10, epic: 15, legendary: 20 };
+export const AUCTION_SHO_POINTS = 15;
+export const AUCTION_POPULAR_POINTS = 15;
+/** 今月の人気シリーズの数 (SPEC-018 3.3) */
+export const AUCTION_POPULAR_COUNT = 3;
+
+/** 注目度 (0〜100) と内訳。tier は査定 (なければ fine)、sho は担当が「商」か、popular は今月の人気シリーズか */
+export function auctionAttention({ tier, rarity, sho, popular }) {
+  const parts = {
+    tier: AUCTION_TIER_POINTS[tier] ?? AUCTION_TIER_POINTS.fine,
+    rarity: AUCTION_RARITY_POINTS[rarity] ?? 0,
+    sho: sho ? AUCTION_SHO_POINTS : 0,
+    popular: popular ? AUCTION_POPULAR_POINTS : 0,
+  };
+  const total = Math.min(100, parts.tier + parts.rarity + parts.sho + parts.popular);
+  return { total, parts };
+}
+
+/** 基準価格 = マーケットの「相場に合わせる」(担当の「商」+10% は注目度に入れるので掛けない) */
+export function auctionBasePrice(warehouseItem, ext) {
+  return estimateSalePrice(warehouseItem, ext, "standard", null);
+}
+
+/** 入札の数 = 注目度 ÷ 15 (切り捨て) + 0〜2。rng は 0 以上 1 未満を返す関数 */
+export function auctionBidders(attention, rng) {
+  return Math.floor(attention / 15) + Math.min(2, Math.floor(rng() * 3));
+}
+
+/** 入札の見込み [少ないとき, 多いとき] */
+export function auctionBidderRange(attention) {
+  const lo = Math.floor(attention / 15);
+  return [lo, lo + 2];
+}
+
+/** 落札額 (手数料を引く前) = 基準価格 × (0.8 + 注目度/100) × 0.9〜1.1 */
+export function auctionHammerPrice(base, attention, rng) {
+  return Math.round(base * (0.8 + attention / 100) * (0.9 + rng() * 0.2));
+}
+
+/** 落札額の目安 [下限, 上限] (手数料を引く前) */
+export function auctionPriceRange(base, attention) {
+  const mid = base * (0.8 + attention / 100);
+  return [Math.round(mid * 0.9), Math.round(mid * 1.1)];
+}
+
+/** 種から決まる乱数 (mulberry32)。同じ種なら同じ並び */
+export function seededRng(seed) {
+  let a = (Number(seed) >>> 0) || 1;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** 開催の結果。{ sold, bidders, gross, net }。種 (出品のときに決めたもの) で決まるので、セーブ・ロードで変わらない */
+export function auctionOutcome({ base, attention, seed }) {
+  const rng = seededRng(seed);
+  const bidders = auctionBidders(attention, rng);
+  if (bidders <= 0) return { sold: false, bidders: 0, gross: 0, net: 0 };
+  const gross = auctionHammerPrice(base, attention, rng);
+  return { sold: true, bidders, gross, net: netSaleRevenue(gross) };
+}
+
+/** 今月の人気シリーズ。series (重なりなし) から n 個を選ぶ。series が n 個以下ならぜんぶ */
+export function pickPopularSeries(series, rng, n = AUCTION_POPULAR_COUNT) {
+  const pool = [...new Set(series)];
+  const out = [];
+  while (out.length < n && pool.length > 0) {
+    const i = Math.min(pool.length - 1, Math.floor(rng() * pool.length));
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out;
+}
