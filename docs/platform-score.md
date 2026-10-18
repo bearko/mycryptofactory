@@ -16,3 +16,4 @@ bearko.games の総合スコア（[bearko/mycryptoportfolio の SPEC-002](https:
 - 期限（8 年。SPEC-001）で送るのを止める（`finalizeScore`。待っている分を 1 回送ってから）。Lv 5 までの週数は 384 以下になる
 - セーブ（SPEC-002）から続けると、セーブの時点の成績から送り直す。共通基盤には自己ベストが残る
 - テスト：`node --test tests/*.test.mjs`
+- アチーブメント（共通基盤の旧トロフィー。ヒーロー名鑑 No.012〜022 とエクステンション 4 個）は別の仕組み：一覧と条件は [SPEC-021](specs/SPEC-021-platform-achievements.md)、送り方は [SPEC-009](specs/SPEC-009-platform-trophies.md) 3.2

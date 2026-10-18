@@ -2,6 +2,8 @@
 // SDK（https://bearko.games/sdk/v1.js）が読めない・通信に失敗しても何もしない。ゲームの進行・pauseTime には触らない。
 // 点の計算は共通基盤：工房 Lv（設備は Lv と一緒に増える）の節目 ＋ Lv 5 までの速さ ＋ クエスト攻略数 ＋ クラフトの数（レアリティの重み）
 
+import { LAND_NODES } from "./factory-quest.js";
+
 const SEND_EVERY = 60 * 1000; // こまめな送信は 1 分に 1 回まで
 let lastSentAt = 0;
 let timer = null;
@@ -217,19 +219,46 @@ export function rtaAbort() {
   rtaCall("abort", () => bg.rta.abort());
 }
 
-/* ─── トロフィー（SPEC-009。定義は共通基盤の platform/trophies.js） ─────── */
+/* ─── アチーブメント（SPEC-021。送り方は SPEC-009。定義は共通基盤の platform/trophies.js） ─────── */
+// 共通基盤の画面では「アチーブメント」と呼ぶ。API と ID は今までどおり unlockTrophy / factory.*
 
 export const CLEAR_3Y_WEEKS = 144; // 3 年 (= 1 年 48 週)
+export const MASTERPIECE_SCORE = 45; // 品評会の「傑作」(js/factory-appraisal.js の tier)
+export const CRAFTS_MANY = 50;
 
-/** 満たしているトロフィーの ID。純関数 */
+/** 雇っているヒーローのランクの最大。純関数 */
+export function maxHeroRank(state) {
+  return (state.ownedHeroes || []).reduce((m, h) => Math.max(m, Number(h?.rank) || 0), 0);
+}
+
+/** そろえたランド通行証の数 (LAND_NODES にあるものだけ。Set でも配列でも)。純関数 */
+export function landPassCount(state) {
+  const passes = state.landPasses instanceof Set ? state.landPasses : new Set(state.landPasses || []);
+  return LAND_NODES.filter((n) => passes.has(n.id)).length;
+}
+
+/** 満たしているアチーブメントの ID (factory.visit は SDK が送るので入れない)。純関数 */
 export function trophiesFor(state) {
   const out = [];
-  if ((state.factoryLevel || 1) >= 2) out.push("factory.lv2");
+  const lv = state.factoryLevel || 1;
+  const rank = maxHeroRank(state);
+  const crafts = state.craftCompletedCount || 0;
+  // ヒーロー名鑑
+  if (lv >= 2) out.push("factory.lv2");
+  if (lv >= 3) out.push("factory.lv3");
+  if (rank >= 3) out.push("factory.rank3");
+  if (landPassCount(state) >= LAND_NODES.length) out.push("factory.passes");
+  if (lv >= 4) out.push("factory.lv4");
+  if (rank >= 5) out.push("factory.rank5");
+  if (Object.values(state.appraisalBest || {}).some((v) => (Number(v) || 0) >= MASTERPIECE_SCORE)) out.push("factory.masterpiece");
+  if (state.clearedWeeks != null) out.push("factory.clear");
   if ((state.craftedByRarity?.legendary || 0) > 0) out.push("factory.legendary");
-  if (state.clearedWeeks != null) {
-    out.push("factory.clear");
-    if (state.clearedWeeks <= CLEAR_3Y_WEEKS) out.push("factory.clear3y");
-  }
+  if (state.clearedWeeks != null && state.clearedWeeks <= CLEAR_3Y_WEEKS) out.push("factory.clear3y");
+  if (state.endgameTriggered50y) out.push("factory.y50");
+  // エクステンション
+  if (crafts >= 1) out.push("factory.firstcraft");
+  if ((state.questClearCount || 0) >= 1) out.push("factory.firstquest");
+  if (crafts >= CRAFTS_MANY) out.push("factory.crafts50");
   return out;
 }
 
@@ -237,7 +266,7 @@ const trophiesSent = new Set(); // このページを開いてから送ったも
 // 1 つずつ順に送る。未ログインで同時に送ると、仮アカウントが送った数だけできてしまう (Cookie がまだないため)
 let trophyChain = Promise.resolve();
 
-/** まだ送っていないトロフィーを送る、ただ 1 か所。通知は SDK が出す */
+/** まだ送っていないアチーブメントを送る、ただ 1 か所。通知は SDK が出す */
 export function syncTrophies(state) {
   const bg = sdk();
   if (!bg || typeof bg.unlockTrophy !== "function") return trophyChain;
