@@ -6162,6 +6162,14 @@
     .factory-header__factory-lv.is-pop { animation: lv-pop 0.8s var(--ease-out); }
     /* ═══ SPEC-007: 指差し (最初のクラフトまで、次に押すところを光らせる) ═══ */
     @keyframes coach-ring { 0% { box-shadow: 0 0 0 0 rgba(240,193,75,0.85); } 70% { box-shadow: 0 0 0 12px rgba(240,193,75,0); } 100% { box-shadow: 0 0 0 0 rgba(240,193,75,0); } }
+    /* SPEC-017: マイの重ね (z=280) の上に置く、光っているボタンの当たり判定 (見た目はボタン側の光) */
+    .coach-hit {
+      position: fixed; z-index: 285; padding: 0; margin: 0;
+      background: transparent; border: 0; border-radius: 8px; cursor: pointer;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    .coach-hit.hidden { display: none !important; }
+    .coach-hit:not(:disabled):active { transform: none; }
     .coach-pulse { outline: 3px solid var(--tiamat); outline-offset: 2px; animation: coach-ring 1.4s ease-out infinite; }
     /* ヘルプ: 遊び方の箇条書き */
     .help-card h3 { margin: 0.9rem 0 0.3rem; font-size: 0.9rem; color: var(--accent); font-family: var(--font-display); }
@@ -6212,6 +6220,9 @@
     </div>
     <p class="title-version">© bearko / unofficial fan project</p>
   </div>
+
+  <!-- SPEC-017: マイのセリフ中に、光っているボタンだけを直接押すための当たり判定 (マイの重ねより上) -->
+  <button type="button" class="coach-hit hidden" id="coachHit" aria-label=""></button>
 
   <!-- SPEC-015: タイトルの設定。中身はゲームの設定 (#settingsSubmenu) の部品を開いているあいだだけ借りる -->
   <div class="title-confirm title-settings hidden" id="titleSettings" role="dialog" aria-modal="true" aria-labelledby="titleSettingsTitle">

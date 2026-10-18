@@ -20,3 +20,4 @@
 | [SPEC-014](SPEC-014-excluded-heroes.md) | 版権キャラクター（猿田彦）を表示しない | Done |
 | [SPEC-015](SPEC-015-title-menu.md) | タイトル画面をボタン式にする（はじめから・つづきから・RTA・設定） | Done |
 | [SPEC-016](SPEC-016-home-fixes.md) | 💬 の置き場所・GUM のアイコン・MENU を光らせる時機 | Done |
+| [SPEC-017](SPEC-017-coach-direct-tap.md) | マイのセリフ中でも、光っているボタンを直接押せる | Done |

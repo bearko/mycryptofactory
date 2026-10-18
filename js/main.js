@@ -7144,6 +7144,7 @@ function requestChatAnchor() {
  *  ホームのチュートリアルを読んだあと、 クラフト画面を初めて開くまで */
 function renderCoach({ duringMai = false } = {}) {
   document.querySelectorAll(".coach-pulse").forEach(el => el.classList.remove("coach-pulse"));
+  hideCoachHit();
   const tut = state.tutorial || {};
   if (!tut.home || tut.coachDone) return;
   if ((state.craftCompletedCount || 0) > 0 || state.activeCraft) { tut.coachDone = true; return; }
@@ -7154,6 +7155,41 @@ function renderCoach({ duringMai = false } = {}) {
   else if ($("craftSubmenu")?.classList.contains("hidden")) target = document.querySelector('.menu-item[data-menu="craft"]');
   else target = document.querySelector('[data-craft-action="new-dev"]');
   target?.classList.add("coach-pulse");
+  // SPEC-017: マイのセリフ中でも、光っているボタンだけは直接押せる (セリフを閉じてそのボタンを押す)
+  if (duringMai && target && !$("maiModal")?.classList.contains("hidden")) showCoachHit(target);
+}
+
+/** SPEC-017: 光っているボタンの上に、マイの透明な重ね (どこを押しても次へ) より上の当たり判定を置く。
+ *  押すとマイのセリフを閉じ (閉じたあとの処理も走る)、 そのボタンを押したのと同じにする。 ほかの UI は今までどおり押せない */
+let _coachHitTarget = null;
+function showCoachHit(target) {
+  const hit = $("coachHit");
+  if (!hit) return;
+  _coachHitTarget = target;
+  hit.setAttribute("aria-label", target.textContent.trim());
+  hit.classList.remove("hidden");
+  positionCoachHit();
+}
+function positionCoachHit() {
+  const hit = $("coachHit");
+  if (!hit || !_coachHitTarget || hit.classList.contains("hidden")) return;
+  const r = _coachHitTarget.getBoundingClientRect();
+  Object.assign(hit.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+}
+function hideCoachHit() {
+  $("coachHit")?.classList.add("hidden");
+  _coachHitTarget = null;
+}
+function pickCoachTarget() {
+  const target = _coachHitTarget;
+  hideCoachHit();
+  if (!target) return;
+  // セリフを最後まで送って閉じる (= 閉じるボタンと同じ。 pauseTime / resumeTime の対もそのまま)
+  if (!$("maiModal")?.classList.contains("hidden")) {
+    if (_maiSeqQueue.length > 0) _maiSeqIdx = _maiSeqQueue.length - 1;
+    closeMaiModal();
+  }
+  target.click();
 }
 
 /** Phase 1D-7: workshop の MENU ボタンの label を切替。
@@ -9086,6 +9122,10 @@ async function init() {
   // どこを押しても closeMaiModal が呼ばれる)。closeMaiModal はシーケンス
   // 進行中なら次行に進める、最終行 (= 「閉じる」 ラベル時) なら modal を閉じる。
   $("maiModal")?.addEventListener("click", () => closeMaiModal());
+  // SPEC-017: マイのセリフ中に光っているボタンを直接押す
+  $("coachHit")?.addEventListener("click", (ev) => { ev.stopPropagation(); pickCoachTarget(); });
+  window.addEventListener("resize", positionCoachHit, { passive: true });
+  window.addEventListener("scroll", positionCoachHit, { passive: true });
   // Esc は引き続き「skip dialog」として強制 close (シーケンス途中でも全閉)
   // → keydown ハンドラ側で forceCloseMaiModal を呼ぶ
 
