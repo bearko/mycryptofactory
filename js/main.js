@@ -8,7 +8,8 @@
 
 import {
   initPlatform, reportProgress, weeksSinceStart, finalizeScore,
-  isRtaAvailable, rtaStart, rtaMilestone, rtaAbort, syncTrophies,
+  isRtaAvailable, rtaStart, rtaMilestone, rtaAbort,
+  onChatReady, chatOffsetAbove, placeChat, syncTrophies,
   isChatOpen, onChatToggle, canPickAvatar, openAvatarPicker,
 } from "./platform.js";
 import {
@@ -7085,8 +7086,13 @@ function dismissTitle() {
         .map(q => document.querySelector(q)?.getBoundingClientRect().bottom || 0);
       rtaStart(Math.round(Math.max(...bottoms)));
     }
-    // Phase 1D-5: ホーム画面初回入りでマイのチュートリアル
-    runTutorialOnce("home", { onClose: renderCoach });
+    // SPEC-016: 💬 を MENU の上へ (マイの「次へ」ボタンに重ならないように)
+    renderChatAnchor();
+    // Phase 1D-5: ホーム画面初回入りでマイのチュートリアル。 最後の行 (「光っている MENU から」) で MENU を光らせる
+    runTutorialOnce("home", {
+      onClose: () => renderCoach(),
+      onLine: (i, n) => { if (i === n - 1) renderCoach({ duringMai: true }); },
+    });
     renderCoach();
   }, 380);
 }
@@ -7120,14 +7126,29 @@ function closeMenu() {
   renderCoach();
 }
 
+/** SPEC-016: 💬 (全体チャット) を MENU ボタンのすぐ上に置く。 タイトル中・ MENU が見えないときは既定の右下 */
+let _chatAnchorRaf = 0;
+function renderChatAnchor() {
+  _chatAnchorRaf = 0;
+  const onTitle = !$("titleView")?.classList.contains("hidden");
+  const menu = $("btnMenuOpen");
+  const off = onTitle || !menu ? null
+    : chatOffsetAbove(menu.getBoundingClientRect(), document.documentElement.clientWidth, window.innerHeight);
+  placeChat(off);
+}
+function requestChatAnchor() {
+  if (!_chatAnchorRaf) _chatAnchorRaf = requestAnimationFrame(renderChatAnchor);
+}
+
 /** SPEC-007: 最初のクラフトまでの指差し。 MENU → クラフト → 新規開発 の順に、次に押すところを光らせる。
  *  ホームのチュートリアルを読んだあと、 クラフト画面を初めて開くまで */
-function renderCoach() {
+function renderCoach({ duringMai = false } = {}) {
   document.querySelectorAll(".coach-pulse").forEach(el => el.classList.remove("coach-pulse"));
   const tut = state.tutorial || {};
   if (!tut.home || tut.coachDone) return;
   if ((state.craftCompletedCount || 0) > 0 || state.activeCraft) { tut.coachDone = true; return; }
-  if (!$("maiModal")?.classList.contains("hidden")) return;
+  // SPEC-016: マイのセリフ中は光らせない。 ただし「光っている MENU から」と言う行 (duringMai) では光らせる
+  if (!duringMai && !$("maiModal")?.classList.contains("hidden")) return;
   let target;
   if ($("menuOverlay")?.classList.contains("hidden")) target = $("btnMenuOpen");
   else if ($("craftSubmenu")?.classList.contains("hidden")) target = document.querySelector('.menu-item[data-menu="craft"]');
@@ -7260,11 +7281,13 @@ function closeMaiModal() {
       setMaiBody(_maiSeqQueue[_maiSeqIdx]);
       if (btn)  btn.textContent  = _maiSeqIdx < _maiSeqQueue.length - 1
         ? ti18n("mai.next") : ti18n("btn.close");
+      _maiSeqOnLine?.(_maiSeqIdx, _maiSeqQueue.length);
       return;  // モーダルは閉じない、次セリフだけ表示
     }
     // 最終行を表示し終わったので閉じる
     _maiSeqQueue = [];
     _maiSeqIdx = 0;
+    _maiSeqOnLine = null;
     const seqCb = _maiSeqOnClose;
     _maiSeqOnClose = null;
     $("maiModal")?.classList.add("hidden");
@@ -7303,11 +7326,13 @@ function forceCloseMaiModal() {
 let _maiSeqQueue = [];
 let _maiSeqIdx   = 0;
 let _maiSeqOnClose = null;
+let _maiSeqOnLine = null;
 function maiSaysSequence(messages, options = {}) {
   if (!Array.isArray(messages) || messages.length === 0) return;
   _maiSeqQueue   = messages.slice();
   _maiSeqIdx     = 0;
   _maiSeqOnClose = options.onClose || null;
+  _maiSeqOnLine  = options.onLine || null;   // SPEC-016: 行が変わるたびに (idx, 行数)
   const modal = $("maiModal");
   const body  = $("maiModalBody");
   const btn   = $("maiModalClose");
@@ -7317,6 +7342,7 @@ function maiSaysSequence(messages, options = {}) {
   setMaiBody(_maiSeqQueue[_maiSeqIdx]);
   btn.textContent  = _maiSeqQueue.length > 1 ? ti18n("mai.next") : ti18n("btn.close");
   modal.classList.remove("hidden");
+  _maiSeqOnLine?.(0, _maiSeqQueue.length);
   // Phase 1D-47 fix: 既に paused なら skip (= maiSays と同じ)
   if (state.pauseFlags === 0) pauseTime();
 }
@@ -8798,6 +8824,10 @@ async function init() {
     if (ev.key === "Escape") { ev.stopPropagation(); closeTitleSettings(); }
   });
   $("titleHelpBtn")?.addEventListener("click", openHelp);
+  // SPEC-016: 💬 の置き場所を MENU に合わせ直す (SDK の準備ができたとき・画面の大きさやスクロールが変わったとき)
+  onChatReady(renderChatAnchor);
+  window.addEventListener("resize", requestChatAnchor, { passive: true });
+  window.addEventListener("scroll", requestChatAnchor, { passive: true });
   $("newGameConfirmOk")?.addEventListener("click", pickNewGame);
   $("newGameConfirmCancel")?.addEventListener("click", closeNewGameConfirm);
   $("newGameConfirm")?.addEventListener("keydown", (ev) => {
