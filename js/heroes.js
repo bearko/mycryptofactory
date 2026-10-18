@@ -17,6 +17,9 @@ export const HERO_DEFS = {};
 
 let _loadingPromise = null;
 
+/** 表示しないヒーロー（第三者の版権キャラクター。SPEC-014）。data/heroes.json に戻っても読み込まない */
+export const EXCLUDED_HERO_IDS = [2035, 12035];
+
 /** data/heroes.json を fetch して HERO_ROSTER / HERO_DEFS に展開。idempotent。 */
 export function loadHeroes() {
   if (_loadingPromise) return _loadingPromise;
@@ -29,6 +32,7 @@ export function loadHeroes() {
       // 既存配列を mutate (export const のため reference は保持)
       HERO_ROSTER.length = 0;
       for (const h of arr) {
+        if (EXCLUDED_HERO_IDS.includes(h.heroId)) continue;
         const hero = { ...h, img: () => img(`Image/Heroes/${h.heroId}.png`) };
         HERO_ROSTER.push(hero);
         HERO_DEFS[String(h.heroId)] = hero;

@@ -95,3 +95,26 @@ export function saveSummary(save) {
     cleared: s.clearedWeeks != null,
   };
 }
+
+/**
+ * 表示しないヒーロー（SPEC-014）を、読み込んだ state から外す（state を直接書き換える）。
+ * ヒーローの記録（heroId と nameJa を持つもの）は配列から取り除き、編成（team・craftTeam・questTeam）の ID は null にする
+ */
+export function dropExcludedHeroes(state, ids) {
+  const excluded = new Set(ids);
+  const isTeamKey = (k) => /team$/i.test(k);
+  const walk = (v, key) => {
+    if (Array.isArray(v)) {
+      for (let i = v.length - 1; i >= 0; i--) {
+        const x = v[i];
+        if (x && typeof x === "object" && excluded.has(x.heroId) && "nameJa" in x) v.splice(i, 1);
+        else if (isTeamKey(key) && excluded.has(x)) v[i] = null;
+        else walk(x, key);
+      }
+    } else if (v && typeof v === "object" && !(v instanceof Set)) {
+      for (const [k, x] of Object.entries(v)) walk(x, k);
+    }
+  };
+  walk(state, "");
+  return state;
+}
