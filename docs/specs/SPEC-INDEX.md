@@ -16,3 +16,4 @@
 | [SPEC-010](SPEC-010-platform-ranking-link.md) | bearko.games の総合ランキングへの導線 | Done |
 | [SPEC-011](SPEC-011-volume-steps.md) | 音量の 20 段階（BGM・効果音） | Done |
 | [SPEC-012](SPEC-012-global-chat.md) | 全体チャット（窓を開いているあいだは時間を止める） | Done |
+| [SPEC-013](SPEC-013-ranking-hardening.md) | ランキングの表示を固くする（数は数に）・GAS の数式インジェクション・CI の権限 | Done |
