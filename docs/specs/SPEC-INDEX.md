@@ -21,3 +21,5 @@
 | [SPEC-015](SPEC-015-title-menu.md) | タイトル画面をボタン式にする（はじめから・つづきから・RTA・設定） | Done |
 | [SPEC-016](SPEC-016-home-fixes.md) | 💬 の置き場所・GUM のアイコン・MENU を光らせる時機 | Done |
 | [SPEC-017](SPEC-017-coach-direct-tap.md) | マイのセリフ中でも、光っているボタンを直接押せる | Done |
+| [SPEC-018](SPEC-018-auction.md) | オークション（月 1 回の開催・注目度・人気シリーズ・不成立あり） | Draft |
+| [SPEC-019](SPEC-019-legacy-ranking-readonly.md) | 旧ランキングは見るだけにする（記録は bearko.games のランキングへ） | Draft |
