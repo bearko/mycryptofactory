@@ -23,3 +23,4 @@
 | [SPEC-017](SPEC-017-coach-direct-tap.md) | マイのセリフ中でも、光っているボタンを直接押せる | Done |
 | [SPEC-018](SPEC-018-auction.md) | オークション（月 1 回の開催・注目度・人気シリーズ・不成立あり） | Done |
 | [SPEC-019](SPEC-019-legacy-ranking-readonly.md) | 旧ランキングは見るだけにする（記録は bearko.games のランキングへ） | Done |
+| [SPEC-020](SPEC-020-coach-all-screens.md) | 画面ごとのチュートリアルでも、次に押すボタンを光らせて直接押せる | Done |
