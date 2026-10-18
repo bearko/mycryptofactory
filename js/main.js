@@ -1065,16 +1065,19 @@ async function refreshRankingViewer() {
   emptyEl?.classList.add("hidden");
   const lang = getLang() === "en" ? "en" : "ja";
   listEl.innerHTML = list.map(e => {
+    // SPEC-013：サーバーから来た順位と点は、数に直してから HTML に入れる（送り先が変わっても HTML が入らない）
+    const rank = Number.isFinite(Number(e.rank)) ? Number(e.rank) : 0;
+    const score = Number.isFinite(Number(e.score)) ? Number(e.score) : 0;
     const meta = lang === "en"
       ? `Lv ${e.factoryLevel} · craft ${e.craftCount} · hire ${e.hireCount} · ${e.yearWeek || "-"}`
       : `Lv ${e.factoryLevel} · クラフト ${e.craftCount} · 雇用 ${e.hireCount} · ${e.yearWeek || "-"}`;
-    return `<li data-rank="${e.rank}">
-      <span class="ranking-viewer__rank">#${e.rank}</span>
+    return `<li data-rank="${rank}">
+      <span class="ranking-viewer__rank">#${rank}</span>
       <div>
         <div class="ranking-viewer__entry-name">${escapeHtml(String(e.playerName || "anonymous"))}</div>
         <div class="ranking-viewer__entry-meta">${escapeHtml(meta)}</div>
       </div>
-      <span class="ranking-viewer__entry-score">${(e.score || 0).toLocaleString()}</span>
+      <span class="ranking-viewer__entry-score">${score.toLocaleString()}</span>
     </li>`;
   }).join("");
 }

@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
 
+# 読むだけ（GITHUB_TOKEN に書き込みの権限を持たせない。SPEC-013）
+permissions:
+  contents: read
+
 jobs:
   # NOTE: ジョブ名は意図的に "build-and-test" のまま (旧 React+TS scaffold 時の名称)。
   # main ブランチの保護ルールが required check 名 "build-and-test" を要求しているため、
