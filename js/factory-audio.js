@@ -89,6 +89,11 @@ let _seScale = 1;
 let _bgmUnlocked = false; // 最初のユーザー操作 (playBgm) のあとだけ鳴らす
 const _lastSeAt = {};
 
+/** 画面が隠れている (ほかのアプリやタブへ移った・画面を消した・ブラウザを閉じた) */
+function isPageHidden() {
+  return typeof document !== "undefined" && document.visibilityState === "hidden";
+}
+
 /** BGM 用 Audio 要素を遅延作成 (file 取得前提) */
 function ensureBgm() {
   if (_bgmEl) return _bgmEl;
@@ -104,7 +109,7 @@ function ensureBgm() {
  *  promise を返さない (失敗時はサイレント)。 */
 export function playBgm() {
   _bgmUnlocked = true;
-  if (!_bgmOn || _bgmScale <= 0) return;
+  if (!_bgmOn || _bgmScale <= 0 || isPageHidden()) return;   // 隠れているあいだは、戻ったときに流す
   const el = ensureBgm();
   if (!el.paused && !el.ended) return;
   const p = el.play();
@@ -143,7 +148,7 @@ export function setSeVolume(v) { _seScale = Math.max(0, Math.min(1, Number(v) ||
  *  @param {keyof SE_FILES} seKey
  */
 export function playSe(seKey) {
-  if (!_seOn || _seScale <= 0) return;
+  if (!_seOn || _seScale <= 0 || isPageHidden()) return;
   const file = SE_FILES[seKey];
   if (!file) return;
   // 連発スロットル
@@ -172,4 +177,14 @@ export function preloadAllSe() {
     // 何もしない (Audio オブジェクトは破棄されるが内部キャッシュには載る)
     a.load?.();
   }
+}
+
+/** 画面が隠れたら BGM を止め、戻ったら続きから流す。ブラウザやアプリの外枠は、裏に回ったことを
+ *  ページの音までは伝えてくれない (HTML の Audio は鳴り続ける) ので、ここで自分で止める */
+if (typeof document !== "undefined" && typeof window !== "undefined") {
+  const showAgain = () => { if (!isPageHidden() && _bgmOn && _bgmUnlocked && _bgmScale > 0) playBgm(); };
+  document.addEventListener("visibilitychange", () => (isPageHidden() ? pauseBgm() : showAgain()));
+  window.addEventListener("pagehide", pauseBgm);
+  // 戻る・進むで同じページに戻ってきたとき (bfcache) は visibilitychange が来ないことがある
+  window.addEventListener("pageshow", (e) => { if (e.persisted) showAgain(); });
 }
